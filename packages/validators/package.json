@@ -1,0 +1,31 @@
+{
+  "name": "@opengovsg/starter-kitty-validators",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup ./src/index.ts --clean --dts --target es2020",
+    "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" --cache",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "vitest": "^2.0.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^18",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.56.0",
+    "eslint-config-opengovsg": "^3.0.0",
+    "eslint-config-prettier": "^8.6.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "prettier": "^2.8.4",
+    "tsup": "^8.1.0",
+    "typescript": "^5.4.5"
+  }
+}
