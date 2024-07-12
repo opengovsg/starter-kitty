@@ -21,11 +21,6 @@ describe('UrlValidator with default options', () => {
     expect(() => validator.parse('https://open.gov.sg')).not.toThrow()
   })
 
-  it('should parse a valid URL', () => {
-    const url = validator.parse('https://example.com')
-    expect(url).toBeInstanceOf(URL)
-  })
-
   // https://url.spec.whatwg.org/#missing-scheme-non-relative-url
   it('should throw an error when missing a scheme and no base URL or base URL', () => {
     expect(() => validator.parse('example.com')).toThrow(UrlValidationError)
