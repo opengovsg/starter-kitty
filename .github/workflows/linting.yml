@@ -1,0 +1,32 @@
+name: Linting
+
+on:
+  push:
+    branches-ignore:
+      - develop
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node LTS ✨
+        uses: actions/setup-node@v3
+        with:
+          cache: pnpm
+          node-version: lts/*
+
+      - name: Installing dependencies 📦️
+        run: pnpm install
+
+      - name: Lint 🛀
+        run: pnpm -r run lint
