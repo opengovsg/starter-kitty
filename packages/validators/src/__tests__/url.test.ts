@@ -38,6 +38,15 @@ describe('UrlValidator with default options', () => {
       UrlValidationError,
     )
   })
+
+  it('should prevent XSS attacks', () => {
+    expect(
+      () => validator.parse('javascript&colonalert(/xss/)').protocol,
+    ).toThrow(UrlValidationError)
+    expect(() => validator.parse('javascript:alert(/xss/)')).toThrow(
+      UrlValidationError,
+    )
+  })
 })
 
 describe('UrlValidator with custom protocol whitelist', () => {
@@ -94,6 +103,15 @@ describe('UrlValidator with base URL', () => {
 
   it('should throw an error when the URL is not on the same origin as the base URL', () => {
     expect(() => validator.parse('https://open.gov.sg')).toThrow(
+      UrlValidationError,
+    )
+  })
+
+  it('should prevent XSS attacks', () => {
+    expect(validator.parse('javascript&colonalert(/xss/)').protocol).toBe(
+      'https:',
+    )
+    expect(() => validator.parse('javascript:alert(/xss/)')).toThrow(
       UrlValidationError,
     )
   })

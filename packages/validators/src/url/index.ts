@@ -14,7 +14,7 @@ export class UrlValidator {
       this.schema = createUrlSchema(result.data)
       return
     }
-    throw new OptionsError(fromError(result.error))
+    throw new OptionsError(fromError(result.error).toString())
   }
 
   parse(url: string): URL {
@@ -23,7 +23,7 @@ export class UrlValidator {
       return result.data
     }
     if (result.error instanceof ZodError) {
-      throw new UrlValidationError(fromError(result.error))
+      throw new UrlValidationError(fromError(result.error).toString())
     } else {
       throw result.error
     }
