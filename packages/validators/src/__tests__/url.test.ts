@@ -26,6 +26,18 @@ describe('UrlValidator with default options', () => {
     expect(() => validator.parse('example.com')).toThrow(UrlValidationError)
     expect(() => validator.parse('/path')).toThrow(UrlValidationError)
   })
+
+  it('should not allow Next.js dynamic routes', () => {
+    expect(() => validator.parse('https://example.com/[[...slug]]')).toThrow(
+      UrlValidationError,
+    )
+    expect(() => validator.parse('https://example.com/[[slug]]')).toThrow(
+      UrlValidationError,
+    )
+    expect(() => validator.parse('https://example.com/[x]?x=1')).toThrow(
+      UrlValidationError,
+    )
+  })
 })
 
 describe('UrlValidator with custom protocol whitelist', () => {
@@ -84,6 +96,18 @@ describe('UrlValidator with base URL', () => {
     expect(() => validator.parse('https://open.gov.sg')).toThrow(
       UrlValidationError,
     )
+  })
+
+  it('should not allow Next.js dynamic routes', () => {
+    expect(() =>
+      validator.parse('/[[x]]https:/[y]/example.com/[[x]]/?x&y'),
+    ).toThrow(UrlValidationError)
+  })
+
+  it('should not allow Next.js dynamic routes', () => {
+    expect(() =>
+      validator.parse('/[[x]]javascript:alert(1337)/[y]/[z]?x&y&z'),
+    ).toThrow(UrlValidationError)
   })
 })
 
