@@ -16,7 +16,17 @@ export type Whitelist = z.infer<typeof whitelistSchema>
 export const optionsSchema = z.object({
   baseUrl: z
     .string()
-    .transform((value) => new URL(value))
+    .transform((value, ctx) => {
+      try {
+        return new URL(value)
+      } catch (error) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: (error as Error).message,
+        })
+        return z.NEVER
+      }
+    })
     .refine(
       (value) => value.protocol === 'http:' || value.protocol === 'https:',
     )

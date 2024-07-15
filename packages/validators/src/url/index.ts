@@ -1,4 +1,5 @@
 import { ZodError } from 'zod'
+import { fromError } from 'zod-validation-error'
 
 import { OptionsError, UrlValidationError } from '@/url/errors'
 import { defaultOptions, Options, optionsSchema } from '@/url/options'
@@ -8,13 +9,12 @@ export class UrlValidator {
   private schema
 
   constructor(options: Options = defaultOptions) {
-    let validatedOptions: Options
-    try {
-      validatedOptions = optionsSchema.parse({ ...defaultOptions, ...options })
-    } catch (error) {
-      throw new OptionsError(`Invalid options: ${(error as Error).message}`)
+    const result = optionsSchema.safeParse({ ...defaultOptions, ...options })
+    if (result.success) {
+      this.schema = createUrlSchema(result.data)
+      return
     }
-    this.schema = createUrlSchema(validatedOptions)
+    throw new OptionsError(fromError(result.error))
   }
 
   parse(url: string): URL {
@@ -23,7 +23,7 @@ export class UrlValidator {
       return result.data
     }
     if (result.error instanceof ZodError) {
-      throw new UrlValidationError(JSON.stringify(result.error.format()))
+      throw new UrlValidationError(fromError(result.error))
     } else {
       throw result.error
     }
