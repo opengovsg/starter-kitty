@@ -4,17 +4,17 @@ import { Whitelist } from '@/url/options'
 const DYNAMIC_ROUTE_SEGMENT_REGEX = /\[\[?([^\]]+)\]?\]/g
 
 export const resolveRelativeUrl = (url: string, baseUrl?: URL): URL => {
-  if (!baseUrl && !URL.canParse(url)) {
-    throw new UrlValidationError(`Invalid URL: ${url}`)
+  if (!baseUrl) {
+    if (!URL.canParse(url)) {
+      throw new UrlValidationError(`Invalid URL: ${url}`)
+    }
+    return new URL(url)
   }
 
-  let normalizedUrl: URL
-
-  try {
-    normalizedUrl = new URL(url, baseUrl)
-  } catch (error: TypeError) {
+  if (!URL.canParse(url, baseUrl)) {
     throw new UrlValidationError(`Invalid URL: ${url}`)
   }
+  const normalizedUrl = new URL(url, baseUrl)
 
   if (new URL(baseUrl).origin !== normalizedUrl.origin) {
     throw new UrlValidationError(
