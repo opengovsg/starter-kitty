@@ -139,4 +139,10 @@ describe('UrlValidator with invalid options', () => {
       OptionsError,
     )
   })
+
+  it('should throw an error when the base URL has a path', () => {
+    expect(
+      () => new UrlValidator({ baseUrl: 'https://example.com/path' }),
+    ).toThrow(OptionsError)
+  })
 })

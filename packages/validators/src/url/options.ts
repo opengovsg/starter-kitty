@@ -17,19 +17,21 @@ export const optionsSchema = z.object({
   baseUrl: z
     .string()
     .transform((value, ctx) => {
-      try {
-        return new URL(value)
-      } catch (error) {
+      if (!URL.canParse(value)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: (error as Error).message,
+          message: 'Invalid base URL',
         })
         return z.NEVER
       }
+      return new URL(value)
     })
-    .refine(
-      (value) => value.protocol === 'http:' || value.protocol === 'https:',
-    )
+    .refine((url) => url.protocol === 'http:' || url.protocol === 'https:', {
+      message: 'Base URL must use HTTP or HTTPS',
+    })
+    .refine((url) => url.pathname === '/', {
+      message: 'Base URL must not have a path',
+    })
     .optional(),
   whitelist: whitelistSchema,
 })
