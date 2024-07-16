@@ -4,12 +4,8 @@ import { Whitelist } from '@/url/options'
 const DYNAMIC_ROUTE_SEGMENT_REGEX = /\[\[?([^\]]+)\]?\]/g
 
 export const resolveRelativeUrl = (url: string, baseUrl?: URL): URL => {
-  if (!baseUrl) {
-    try {
-      return new URL(url)
-    } catch (error: TypeError) {
-      throw new UrlValidationError(`Invalid URL: ${url}`)
-    }
+  if (!baseUrl && !URL.canParse(url)) {
+    throw new UrlValidationError(`Invalid URL: ${url}`)
   }
 
   let normalizedUrl: URL
@@ -27,6 +23,7 @@ export const resolveRelativeUrl = (url: string, baseUrl?: URL): URL => {
   }
   return normalizedUrl
 }
+
 /* As of Next.js 14.2.5, router.push() resolves dynamic routes using query parameters. */
 const resolveNextDynamicRoute = (url: URL): URL => {
   const pathname = url.pathname
