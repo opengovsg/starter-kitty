@@ -10,7 +10,7 @@ Validates URLs against a whitelist of allowed protocols and hostnames, preventin
 
 `options?`: `<Object>`
 
-- `baseUrl`: `<string>` - The base URL to use for relative URLs. If no base URL is provided, relative URLs will be considered invalid.
+- `baseOrigin`: `<string>` - The base origin to use for relative URLs. If no base origin is provided, relative URLs will be considered invalid. An origin does not include the path or query parameters. For example, a valid base origin is `https://example.com`.
 - `whitelist`: `<Object>`
   - `protocols`: `<string[]>` - A list of allowed protocols. If no protocols are provided, the validator will use the default protocols: `['http', 'https']`. **Caution: allowing `javascript` or `data` protocols can lead to XSS vulnerabilities.**
   - `hostnames`: `<string[]>` - A list of allowed hostnames. If no hostnames are provided, the validator will allow any hostname. **It is recommended to provide a list of allowed hostnames to prevent open redirects.**

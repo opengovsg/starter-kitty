@@ -92,7 +92,7 @@ describe('UrlValidator with custom host whitelist', () => {
 
 describe('UrlValidator with base URL', () => {
   const validator = new UrlValidator({
-    baseUrl: 'https://example.com',
+    baseOrigin: 'https://example.com',
   })
 
   it('should parse a valid relative URL', () => {
@@ -131,18 +131,20 @@ describe('UrlValidator with base URL', () => {
 
 describe('UrlValidator with invalid options', () => {
   it('should throw an error when the base URL is not a valid URL', () => {
-    expect(() => new UrlValidator({ baseUrl: 'invalid' })).toThrow(OptionsError)
+    expect(() => new UrlValidator({ baseOrigin: 'invalid' })).toThrow(
+      OptionsError,
+    )
   })
 
   it('should throw an error when the base URL protocol is not http or https', () => {
-    expect(() => new UrlValidator({ baseUrl: 'ftp://example.com' })).toThrow(
+    expect(() => new UrlValidator({ baseOrigin: 'ftp://example.com' })).toThrow(
       OptionsError,
     )
   })
 
   it('should throw an error when the base URL has a path', () => {
     expect(
-      () => new UrlValidator({ baseUrl: 'https://example.com/path' }),
+      () => new UrlValidator({ baseOrigin: 'https://example.com/path' }),
     ).toThrow(OptionsError)
   })
 })

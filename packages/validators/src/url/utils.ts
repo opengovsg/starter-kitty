@@ -3,22 +3,22 @@ import { Whitelist } from '@/url/options'
 
 const DYNAMIC_ROUTE_SEGMENT_REGEX = /\[\[?([^\]]+)\]?\]/g
 
-export const resolveRelativeUrl = (url: string, baseUrl?: URL): URL => {
-  if (!baseUrl) {
+export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
+  if (!baseOrigin) {
     if (!URL.canParse(url)) {
       throw new UrlValidationError(`Invalid URL: ${url}`)
     }
     return new URL(url)
   }
 
-  if (!URL.canParse(url, baseUrl)) {
+  if (!URL.canParse(url, baseOrigin)) {
     throw new UrlValidationError(`Invalid URL: ${url}`)
   }
-  const normalizedUrl = new URL(url, baseUrl)
+  const normalizedUrl = new URL(url, baseOrigin)
 
-  if (new URL(baseUrl).origin !== normalizedUrl.origin) {
+  if (new URL(baseOrigin).origin !== normalizedUrl.origin) {
     throw new UrlValidationError(
-      `Invalid URL: ${url} is not on the same origin as base URL ${baseUrl.href}`,
+      `Invalid URL: ${url} is not on the same origin as base URL ${baseOrigin.href}`,
     )
   }
   return normalizedUrl

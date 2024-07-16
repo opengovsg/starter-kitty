@@ -14,7 +14,7 @@ export const whitelistSchema = z.object({
 export type Whitelist = z.infer<typeof whitelistSchema>
 
 export const optionsSchema = z.object({
-  baseUrl: z
+  baseOrigin: z
     .string()
     .transform((value, ctx) => {
       if (!URL.canParse(value)) {
