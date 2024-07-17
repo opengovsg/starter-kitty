@@ -5,9 +5,28 @@ import { OptionsError, UrlValidationError } from '@/url/errors'
 import { defaultOptions, Options, optionsSchema } from '@/url/options'
 import { createUrlSchema } from '@/url/schema'
 
+/**
+ * Validates URLs against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.
+ */
 export class UrlValidator {
   private schema
 
+  /**
+   * Creates a new UrlValidator instance. If no options are provided, the validator will use the default options:
+   *
+   * ```ts
+   * {
+   *    whitelist: {
+   *      protocols: ['http', 'https'],
+   *    },
+   * }
+   * ```
+   *
+   * @param options - The options to use for validation
+   * @throws {@link OptionsError} If the options are invalid
+   *
+   * @public
+   */
   constructor(options: Options = defaultOptions) {
     const result = optionsSchema.safeParse({ ...defaultOptions, ...options })
     if (result.success) {
@@ -17,6 +36,15 @@ export class UrlValidator {
     throw new OptionsError(fromError(result.error).toString())
   }
 
+  /**
+   * Parses a URL string.
+   *
+   * @param url - The URL to validate
+   * @returns The URL object if the URL is valid
+   * @throws {@link UrlValidationError} If the URL is invalid
+   *
+   * @public
+   */
   parse(url: string): URL {
     const result = this.schema.safeParse(url)
     if (result.success) {

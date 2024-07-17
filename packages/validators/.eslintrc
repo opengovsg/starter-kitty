@@ -1,9 +1,10 @@
 {
   "extends": ["opengovsg"],
   "ignorePatterns": ["dist/**/*", "vitest.config.ts"],
-  "plugins": ["import"],
+  "plugins": ["import", "eslint-plugin-tsdoc"],
   "rules": {
-    "import/no-unresolved": "error"
+    "import/no-unresolved": "error",
+    "tsdoc/syntax": "error"
   },
   "parser": "@typescript-eslint/parser",
   "parserOptions": {

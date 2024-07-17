@@ -7,7 +7,17 @@ export const defaultOptions = {
 }
 
 export const whitelistSchema = z.object({
+  /**
+   * The list of allowed protocols.
+   * Caution: allowing `javascript` or `data` protocols can lead to XSS vulnerabilities.
+   *
+   * @defaultValue ['http', 'https']
+   */
   protocols: z.array(z.string()).default(defaultOptions.whitelist.protocols),
+  /**
+   * The list of allowed hostnames.
+   * It is recommended to provide a list of allowed hostnames to prevent open redirects.
+   */
   hosts: z.array(z.string()).optional(),
 })
 
