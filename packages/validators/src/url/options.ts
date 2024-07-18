@@ -46,4 +46,4 @@ export const optionsSchema = z.object({
   whitelist: whitelistSchema,
 })
 
-export type Options = z.infer<typeof optionsSchema>
+export type ParsedOptions = z.infer<typeof optionsSchema>
