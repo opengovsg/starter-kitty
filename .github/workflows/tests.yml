@@ -27,7 +27,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pnpm -r run test
+          pnpm test
 
   build:
     runs-on: ubuntu-latest
@@ -48,4 +48,4 @@ jobs:
 
       - name: Compile
         run: |
-          pnpm -r run build
+          pnpm build

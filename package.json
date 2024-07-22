@@ -2,9 +2,13 @@
   "name": "starter-kitty",
   "private": true,
   "scripts": {
+    "preinstall": "npx only-allow pnpm",
     "build": "turbo build",
+    "build:report": "turbo build:report",
+    "build:docs": "turbo build:docs",
     "dev": "turbo dev",
     "lint": "turbo lint",
+    "ci:report": "turbo ci:report",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {

@@ -30,17 +30,16 @@ jobs:
           registry-url: "https://registry.npmjs.org/"
           scope: "@opengovsg"
 
-      - run: npx changelogithub
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Install Dependencies
         run: pnpm i --frozen-lockfile
 
-      - name: 🔨 Build
-        run: pnpm build
+      - name: Check API report
+        run: pnpm ci:api-report
 
-      - name: Publish to NPM
-        run: pnpm publish -r --no-git-checks --tag latest --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Generate documentation
+        run: pnpm build:docs
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/docs/.vitepress/dist
