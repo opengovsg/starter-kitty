@@ -2,8 +2,7 @@ name: Documentation
 
 on:
   push:
-    branches-ignore:
-      - develop
+    branches: [develop]
 
 permissions:
   id-token: write
