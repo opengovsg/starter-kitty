@@ -33,7 +33,7 @@ jobs:
         run: pnpm i --frozen-lockfile
 
       - name: Check API report
-        run: pnpm ci:api-report
+        run: pnpm ci:report
 
       - name: Generate documentation
         run: pnpm build:docs
