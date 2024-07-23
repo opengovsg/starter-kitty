@@ -1,3 +1,8 @@
+/**
+ * Invalid options error.
+ *
+ * @public
+ */
 export class OptionsError extends Error {
   constructor(message: string) {
     super(message)
@@ -5,6 +10,11 @@ export class OptionsError extends Error {
   }
 }
 
+/**
+ * Invalid URL error.
+ *
+ *  @public
+ */
 export class UrlValidationError extends Error {
   constructor(message: string) {
     super(message)

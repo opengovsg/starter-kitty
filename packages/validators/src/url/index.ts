@@ -2,20 +2,13 @@ import { ZodError } from 'zod'
 import { fromError } from 'zod-validation-error'
 
 import { OptionsError, UrlValidationError } from '@/url/errors'
-import { defaultOptions, optionsSchema, Whitelist } from '@/url/options'
+import { defaultOptions, Options, optionsSchema } from '@/url/options'
 import { createUrlSchema } from '@/url/schema'
-
-interface Options {
-  /**
-   * The base origin to use for relative URLs. If no base origin is provided, relative URLs will be considered invalid.
-   * An origin does not include the path or query parameters. For example, a valid base origin is https://example.com or http://localhost:3000.
-   */
-  baseOrigin?: string
-  whitelist: Whitelist
-}
 
 /**
  * Validates URLs against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.
+ *
+ * @public
  */
 export class UrlValidator {
   private schema
@@ -49,8 +42,8 @@ export class UrlValidator {
    * Parses a URL string.
    *
    * @param url - The URL to validate
-   * @returns The URL object if the URL is valid
    * @throws {@link UrlValidationError} If the URL is invalid
+   * @returns The URL object if the URL is valid
    *
    * @public
    */

@@ -11,7 +11,7 @@ export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
     return new URL(url)
   }
 
-  if (!URL.canParse(url, baseOrigin)) {
+  if (!URL.canParse(url, baseOrigin.href)) {
     throw new UrlValidationError(`Invalid URL: ${url}`)
   }
   const normalizedUrl = new URL(url, baseOrigin)

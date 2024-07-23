@@ -21,6 +21,36 @@ export const whitelistSchema = z.object({
   hosts: z.array(z.string()).optional(),
 })
 
+/**
+ * The options to use for URL validation.
+ *
+ * @public
+ */
+export interface Options {
+  /**
+   * The base origin to use for relative URLs. If no base origin is provided, relative URLs will be considered invalid.
+   * An origin does not include the path or query parameters. For example, a valid base origin is `https://example.com` or `http://localhost:3000`.
+   */
+  baseOrigin?: string
+  /**
+   * The list of allowed protocols and hostnames for URL validation.
+   *
+   * @example
+   * ```
+   * {
+   *    protocols: ['http', 'https'],
+   *    hosts: ['example.com']
+   * }
+   * ```
+   * */
+  whitelist?: Whitelist
+}
+
+/**
+ * The list of allowed protocols and hostnames for URL validation.
+ *
+ * @public
+ */
 export type Whitelist = z.infer<typeof whitelistSchema>
 
 export const optionsSchema = z.object({
