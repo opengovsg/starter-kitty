@@ -4,11 +4,20 @@
     "build": {
       "dependsOn": ["^build"]
     },
+    "build:report": {
+      "dependsOn": ["build"]
+    },
+    "build:docs": {
+      "dependsOn": ["^build:docs", "build:report"]
+    },
     "lint": {
       "dependsOn": ["^lint"]
     },
     "test": {
       "dependsOn": ["^test"]
+    },
+    "ci:report": {
+      "dependsOn": ["build"]
     },
     "dev": {
       "cache": false,

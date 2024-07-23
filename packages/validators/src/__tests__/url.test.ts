@@ -75,6 +75,7 @@ describe('UrlValidator with custom protocol whitelist', () => {
 describe('UrlValidator with custom host whitelist', () => {
   const validator = new UrlValidator({
     whitelist: {
+      protocols: ['http', 'https'],
       hosts: ['example.com'],
     },
   })
@@ -96,7 +97,7 @@ describe('UrlValidator with base URL', () => {
   })
 
   it('should parse a valid relative URL', () => {
-    const url = validator.parse('/path', 'https://example.com')
+    const url = validator.parse('/path')
     expect(url).toBeInstanceOf(URL)
     expect(url.href).toBe('https://example.com/path')
   })
