@@ -51,8 +51,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          config-file: opengovsg/codeql-pack/codeql-config.yml@develop
 
       # If the analyze step fails for one of the languages you are analyzing with
       # "We were unable to automatically build your code", modify the matrix above
