@@ -1,7 +1,6 @@
 {
   "name": "@opengovsg/starter-kitty-docs",
-  "version": "1.0.0",
-  "description": "",
+  "description": "Documentation for Starter Kitty",
   "main": "index.js",
   "scripts": {
     "dev": "vitepress dev",
