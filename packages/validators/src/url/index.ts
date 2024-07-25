@@ -24,6 +24,8 @@ export class UrlValidator {
    * }
    * ```
    *
+   * In most cases, you should provide your own whitelist with a list of allowed hostnames to prevent open redirects.
+   *
    * @param options - The options to use for validation
    * @throws {@link OptionsError} If the options are invalid
    *
