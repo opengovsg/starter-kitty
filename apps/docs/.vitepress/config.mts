@@ -1,4 +1,5 @@
 import { defineConfig } from "vitepress";
+import { scanDir } from "./utils";
 
 export default defineConfig({
   lang: "en-US",
@@ -19,5 +20,15 @@ export default defineConfig({
     socialLinks: [
       { icon: "github", link: "https://github.com/opengovsg/starter-kitty" },
     ],
+
+    docFooter: {
+      prev: false,
+      next: false,
+    },
+
+    sidebar: {
+      "/packages/": scanDir("packages"),
+      "/api/": scanDir("api"),
+    },
   },
 });

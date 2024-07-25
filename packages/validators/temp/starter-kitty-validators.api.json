@@ -217,7 +217,7 @@
             {
               "kind": "PropertySignature",
               "canonicalReference": "@opengovsg/starter-kitty-validators!Options#whitelist:member",
-              "docComment": "/**\n * The list of allowed protocols and hostnames for URL validation.\n *\n * @example\n * ```\n * {\n *    protocols: ['http', 'https'],\n *    hosts: ['example.com']\n * }\n * ```\n *\n */\n",
+              "docComment": "/**\n * The list of allowed protocols and hostnames for URL validation. The default whitelist allows only `http` and `https` protocols, and does not restrict hostnames.\n *\n * @example\n * ```\n * {\n *    protocols: ['http', 'https'],\n *    hosts: ['example.com']\n * }\n * ```\n *\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -392,7 +392,7 @@
             {
               "kind": "Constructor",
               "canonicalReference": "@opengovsg/starter-kitty-validators!UrlValidator:constructor(1)",
-              "docComment": "/**\n * Creates a new UrlValidator instance. If no options are provided, the validator will use the default options:\n * ```ts\n * {\n *    whitelist: {\n *      protocols: ['http', 'https'],\n *    },\n * }\n * ```\n *\n * @param options - The options to use for validation\n *\n * @throws\n *\n * {@link OptionsError} If the options are invalid\n *\n * @public\n */\n",
+              "docComment": "/**\n * Creates a new UrlValidator instance. If no options are provided, the validator will use the default options:\n * ```ts\n * {\n *    whitelist: {\n *      protocols: ['http', 'https'],\n *    },\n * }\n * ```\n *\n * In most cases, you should provide your own whitelist with a list of allowed hostnames to prevent open redirects.\n *\n * @param options - The options to use for validation\n *\n * @throws\n *\n * {@link OptionsError} If the options are invalid\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",

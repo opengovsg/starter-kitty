@@ -69,7 +69,7 @@ Whitelist
 
 </td><td>
 
-_(Optional)_ The list of allowed protocols and hostnames for URL validation.
+_(Optional)_ The list of allowed protocols and hostnames for URL validation. The default whitelist allows only `http` and `https` protocols, and does not restrict hostnames.
 
 
 </td></tr>

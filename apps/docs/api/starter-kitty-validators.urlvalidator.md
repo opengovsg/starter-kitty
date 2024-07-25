@@ -49,6 +49,7 @@ Creates a new UrlValidator instance. If no options are provided, the validator w
    },
 }
 ```
+In most cases, you should provide your own whitelist with a list of allowed hostnames to prevent open redirects.
 
 
 </td></tr>
