@@ -64,6 +64,7 @@ describe('EmailValidator that disallows subdomains', () => {
 
 describe('EmailValidator with invalid options', () => {
   it('should throw an error for invalid options', () => {
+    // @ts-expect-error Testing invalid options
     expect(() => new EmailValidator({ domains: 'gov.sg' })).toThrowError(
       OptionsError,
     )
