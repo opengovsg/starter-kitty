@@ -32,4 +32,8 @@ export default defineConfig({
       "/api/": scanDir("api"),
     },
   },
+  ignoreDeadLinks: [
+    // ignore all localhost links
+    /^https?:\/\/localhost/,
+  ],
 });

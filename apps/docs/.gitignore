@@ -1,0 +1,4 @@
+.vitepress/dist
+.vitepress/cache
+.vitepress/.temp
+api/*.md
