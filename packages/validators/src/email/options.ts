@@ -10,22 +10,29 @@ export interface EmailValidatorOptions {
    * The list of allowed domains for the domain part of the email address.
    * If not provided, all domains are allowed.
    *
-   * @example
-   * `[ 'gov.sg', 'example.com' ]`
-   */
-  domains?: string[]
-  /**
-   * Whether subdomains are allowed. Defaults to `true`.
+   * Each whitelisted domain must be specified as an object with the `domain`
+   * and `includeSubdomains` properties. If `includeSubdomains` is `true`, all
+   * subdomains of the domain are also allowed.
    *
    * @example
-   * If `false`, `open.gov.sg` is not allowed, even if `gov.sg` is in the whitelist.
+   * ```javascript
+   * [ { domain: 'gov.sg', includeSubdomains: true } ]
+   * ```
+   *
+   * This will allow `gov.sg` and all subdomains of `gov.sg`, such as `open.gov.sg`.
    */
-  allowSubdomains?: boolean
+  domains?: { domain: string; includeSubdomains: boolean }[]
 }
 
 export const optionsSchema = z.object({
-  domains: z.array(z.string()).optional(),
-  allowSubdomains: z.boolean().default(true),
+  domains: z
+    .array(
+      z.object({
+        domain: z.string(),
+        includeSubdomains: z.boolean(),
+      }),
+    )
+    .default([]),
 })
 
 export type ParsedEmailValidatorOptions = z.infer<typeof optionsSchema>

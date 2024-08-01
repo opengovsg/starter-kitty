@@ -173,168 +173,51 @@
       "preserveMemberOrder": false,
       "members": [
         {
-          "kind": "Class",
-          "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidationError:class",
-          "docComment": "/**\n * Invalid email error.\n *\n * @public\n */\n",
+          "kind": "Function",
+          "canonicalReference": "@opengovsg/starter-kitty-validators!createEmailSchema:function(1)",
+          "docComment": "/**\n * Create a schema that validates emails against RFC 5322 and a whitelist of domains.\n *\n * @param options - The options to use for validation\n *\n * @returns A Zod schema that validates emails according to the provided options\n *\n * @throws\n *\n * {@link OptionsError} If the options are invalid\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export declare class EmailValidationError extends "
+              "text": "createEmailSchema: (options?: "
             },
             {
               "kind": "Reference",
-              "text": "Error",
-              "canonicalReference": "!Error:interface"
+              "text": "EmailValidatorOptions",
+              "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidatorOptions:interface"
             },
             {
               "kind": "Content",
-              "text": " "
-            }
-          ],
-          "fileUrlPath": "dist/email/errors.d.ts",
-          "releaseTag": "Public",
-          "isAbstract": false,
-          "name": "EmailValidationError",
-          "preserveMemberOrder": false,
-          "members": [
+              "text": ") => "
+            },
             {
-              "kind": "Constructor",
-              "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidationError:constructor(1)",
-              "docComment": "/**\n * Constructs a new instance of the `EmailValidationError` class\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "constructor(message: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "string"
-                },
-                {
-                  "kind": "Content",
-                  "text": ");"
-                }
-              ],
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "message",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                }
-              ]
-            }
-          ],
-          "extendsTokenRange": {
-            "startIndex": 1,
-            "endIndex": 2
-          },
-          "implementsTokenRanges": []
-        },
-        {
-          "kind": "Class",
-          "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidator:class",
-          "docComment": "/**\n * Validates emails against RFC 5322 and a whitelist of domains.\n *\n * @public\n */\n",
-          "excerptTokens": [
+              "kind": "Reference",
+              "text": "ZodSchema",
+              "canonicalReference": "zod!ZodType:class"
+            },
             {
               "kind": "Content",
-              "text": "export declare class EmailValidator "
+              "text": "<string>"
             }
           ],
           "fileUrlPath": "dist/email/index.d.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 3,
+            "endIndex": 5
+          },
           "releaseTag": "Public",
-          "isAbstract": false,
-          "name": "EmailValidator",
-          "preserveMemberOrder": false,
-          "members": [
+          "overloadIndex": 1,
+          "parameters": [
             {
-              "kind": "Constructor",
-              "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidator:constructor(1)",
-              "docComment": "/**\n * Constructs a new instance of the `EmailValidator` class\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "constructor(options?: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "EmailValidatorOptions",
-                  "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidatorOptions:interface"
-                },
-                {
-                  "kind": "Content",
-                  "text": ");"
-                }
-              ],
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "options",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": true
-                }
-              ]
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidator#parse:member(1)",
-              "docComment": "/**\n * Parses an email address string.\n *\n * @param email - The email to validate\n *\n * @returns \n *\n * @throws\n *\n * {@link EmailValidationError} If the email is invalid\n *\n * @public\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "parse(email: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "string"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Content",
-                  "text": "string"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 3,
-                "endIndex": 4
+              "parameterName": "options",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
               },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "email",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "parse"
+              "isOptional": true
             }
           ],
-          "implementsTokenRanges": []
+          "name": "createEmailSchema"
         },
         {
           "kind": "Interface",
@@ -353,35 +236,8 @@
           "members": [
             {
               "kind": "PropertySignature",
-              "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidatorOptions#allowSubdomains:member",
-              "docComment": "/**\n * Whether subdomains are allowed. Defaults to `true`.\n *\n * @example\n *\n * If `false`, `open.gov.sg` is not allowed, even if `gov.sg` is in the whitelist.\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "allowSubdomains?: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "boolean"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isReadonly": false,
-              "isOptional": true,
-              "releaseTag": "Public",
-              "name": "allowSubdomains",
-              "propertyTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              }
-            },
-            {
-              "kind": "PropertySignature",
               "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidatorOptions#domains:member",
-              "docComment": "/**\n * The list of allowed domains for the domain part of the email address. If not provided, all domains are allowed.\n *\n * @example\n *\n * `[ 'gov.sg', 'example.com' ]`\n */\n",
+              "docComment": "/**\n * The list of allowed domains for the domain part of the email address. If not provided, all domains are allowed.\n *\n * Each whitelisted domain must be specified as an object with the `domain` and `includeSubdomains` properties. If `includeSubdomains` is `true`, all subdomains of the domain are also allowed.\n *\n * @example\n * ```javascript\n * [ { domain: 'gov.sg', includeSubdomains: true } ]\n * ```\n *\n * This will allow `gov.sg` and all subdomains of `gov.sg`, such as `open.gov.sg`.\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -389,7 +245,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "string[]"
+                  "text": "{\n        domain: string;\n        includeSubdomains: boolean;\n    }[]"
                 },
                 {
                   "kind": "Content",

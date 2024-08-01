@@ -21,28 +21,6 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-[EmailValidationError](./starter-kitty-validators.emailvalidationerror.md)
-
-
-</td><td>
-
-Invalid email error.
-
-
-</td></tr>
-<tr><td>
-
-[EmailValidator](./starter-kitty-validators.emailvalidator.md)
-
-
-</td><td>
-
-Validates emails against RFC 5322 and a whitelist of domains.
-
-
-</td></tr>
-<tr><td>
-
 [OptionsError](./starter-kitty-validators.optionserror.md)
 
 
@@ -71,6 +49,32 @@ Invalid URL error.
 </td><td>
 
 Parses URLs according to WHATWG standards and validates against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.
+
+
+</td></tr>
+</tbody></table>
+
+## Functions
+
+<table><thead><tr><th>
+
+Function
+
+
+</th><th>
+
+Description
+
+
+</th></tr></thead>
+<tbody><tr><td>
+
+[createEmailSchema(options)](./starter-kitty-validators.createemailschema.md)
+
+
+</td><td>
+
+Create a schema that validates emails against RFC 5322 and a whitelist of domains.
 
 
 </td></tr>

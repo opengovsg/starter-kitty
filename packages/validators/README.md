@@ -48,8 +48,9 @@ try {
 
 `options?`: `<Object>`
 
-- `domains?`: `<string[]>` - A list of allowed email domains. If no domains are provided, the validator will allow any domain.
-- `allowSubdomains?`: `<boolean>` - Whether to allow subdomains of the allowed domains. If `false`, only an exact match of the allowed domains will be allowed. Defaults to `true`.
+- `domains?`: `<Object>[]`
+  - `domain`: `<string>` - The domain to allow.
+  - `allowSubdomains?`: `<boolean>` - Whether to allow subdomains of the domain. Defaults to `false`.
 
 ### EmailValidator.parse(email)
 

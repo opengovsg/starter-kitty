@@ -37,25 +37,6 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-[allowSubdomains?](./starter-kitty-validators.emailvalidatoroptions.allowsubdomains.md)
-
-
-</td><td>
-
-
-</td><td>
-
-boolean
-
-
-</td><td>
-
-_(Optional)_ Whether subdomains are allowed. Defaults to `true`<!-- -->.
-
-
-</td></tr>
-<tr><td>
-
 [domains?](./starter-kitty-validators.emailvalidatoroptions.domains.md)
 
 
@@ -64,12 +45,14 @@ _(Optional)_ Whether subdomains are allowed. Defaults to `true`<!-- -->.
 
 </td><td>
 
-string\[\]
+{ domain: string; includeSubdomains: boolean; }\[\]
 
 
 </td><td>
 
 _(Optional)_ The list of allowed domains for the domain part of the email address. If not provided, all domains are allowed.
+
+Each whitelisted domain must be specified as an object with the `domain` and `includeSubdomains` properties. If `includeSubdomains` is `true`<!-- -->, all subdomains of the domain are also allowed.
 
 
 </td></tr>

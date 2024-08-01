@@ -6,13 +6,22 @@
 
 The list of allowed domains for the domain part of the email address. If not provided, all domains are allowed.
 
+Each whitelisted domain must be specified as an object with the `domain` and `includeSubdomains` properties. If `includeSubdomains` is `true`<!-- -->, all subdomains of the domain are also allowed.
+
 **Signature:**
 
 ```typescript
-domains?: string[];
+domains?: {
+        domain: string;
+        includeSubdomains: boolean;
+    }[];
 ```
 
 ## Example
 
-`[ 'gov.sg', 'example.com' ]`
+
+```javascript
+[ { domain: 'gov.sg', includeSubdomains: true } ]
+```
+This will allow `gov.sg` and all subdomains of `gov.sg`<!-- -->, such as `open.gov.sg`<!-- -->.
 

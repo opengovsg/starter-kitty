@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { ParsedEmailValidatorOptions } from '@/email/options'
 import { isWhitelistedDomain, parseEmail } from '@/email/utils'
 
-export const createEmailSchema = (options: ParsedEmailValidatorOptions) => {
+export const toSchema = (options: ParsedEmailValidatorOptions) => {
   return z
     .string()
     .trim()
@@ -11,15 +11,11 @@ export const createEmailSchema = (options: ParsedEmailValidatorOptions) => {
     .transform((email) => parseEmail(email))
     .refine(
       (parsed) => {
-        if (!options.domains) {
+        if (options.domains.length === 0) {
           return true
         }
         const domain = parsed.domain
-        return isWhitelistedDomain(
-          domain,
-          options.domains,
-          options.allowSubdomains,
-        )
+        return isWhitelistedDomain(domain, options.domains)
       },
       {
         message: 'Domain not allowed',

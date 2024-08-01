@@ -1,47 +1,25 @@
-import { ZodError } from 'zod'
+import { ZodSchema } from 'zod'
 import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
 import { EmailValidatorOptions, optionsSchema } from '@/email/options'
-
-import { EmailValidationError } from './errors'
-import { createEmailSchema } from './schema'
+import { toSchema } from '@/email/schema'
 
 /**
- *  Validates emails against RFC 5322 and a whitelist of domains.
+ * Create a schema that validates emails against RFC 5322 and a whitelist of domains.
+ *
+ * @param options - The options to use for validation
+ * @throws {@link OptionsError} If the options are invalid
+ * @returns A Zod schema that validates emails according to the provided options
  *
  * @public
  */
-export class EmailValidator {
-  private schema
-
-  constructor(options: EmailValidatorOptions = {}) {
-    const result = optionsSchema.safeParse(options)
-    if (result.success) {
-      this.schema = createEmailSchema(result.data)
-      return
-    }
-    throw new OptionsError(fromError(result.error).toString())
+export const createEmailSchema = (
+  options: EmailValidatorOptions = {},
+): ZodSchema<string> => {
+  const result = optionsSchema.safeParse(options)
+  if (result.success) {
+    return toSchema(result.data)
   }
-
-  /**
-   * Parses an email address string.
-   *
-   * @param email - The email to validate
-   * @throws {@link EmailValidationError} If the email is invalid
-   * @returns
-   *
-   * @public
-   */
-  parse(email: string) {
-    const result = this.schema.safeParse(email)
-    if (result.success) {
-      return result.data
-    }
-    if (result.error instanceof ZodError) {
-      throw new EmailValidationError(fromError(result.error).toString())
-    } else {
-      throw result.error
-    }
-  }
+  throw new OptionsError(fromError(result.error).toString())
 }

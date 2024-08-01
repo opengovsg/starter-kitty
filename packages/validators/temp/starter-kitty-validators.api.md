@@ -7,22 +7,17 @@
 /// <reference types="node" />
 
 import { z } from 'zod';
+import { ZodSchema } from 'zod';
 
 // @public
-export class EmailValidationError extends Error {
-    constructor(message: string);
-}
-
-// @public
-export class EmailValidator {
-    constructor(options?: EmailValidatorOptions);
-    parse(email: string): string;
-}
+export const createEmailSchema: (options?: EmailValidatorOptions) => ZodSchema<string>;
 
 // @public
 export interface EmailValidatorOptions {
-    allowSubdomains?: boolean;
-    domains?: string[];
+    domains?: {
+        domain: string;
+        includeSubdomains: boolean;
+    }[];
 }
 
 // @public
