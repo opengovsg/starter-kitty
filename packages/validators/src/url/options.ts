@@ -26,7 +26,7 @@ export const whitelistSchema = z.object({
  *
  * @public
  */
-export interface Options {
+export interface UrlValidatorOptions {
   /**
    * The base origin to use for relative URLs. If no base origin is provided, relative URLs will be considered invalid.
    * An origin does not include the path or query parameters. For example, a valid base origin is `https://example.com` or `http://localhost:3000`.
@@ -44,7 +44,7 @@ export interface Options {
    * }
    * ```
    * */
-  whitelist?: Whitelist
+  whitelist?: UrlValidatorWhitelist
 }
 
 /**
@@ -52,7 +52,7 @@ export interface Options {
  *
  * @public
  */
-export type Whitelist = z.infer<typeof whitelistSchema>
+export type UrlValidatorWhitelist = z.infer<typeof whitelistSchema>
 
 export const optionsSchema = z.object({
   baseOrigin: z
@@ -77,4 +77,4 @@ export const optionsSchema = z.object({
   whitelist: whitelistSchema,
 })
 
-export type ParsedOptions = z.infer<typeof optionsSchema>
+export type ParsedUrlValidatorOptions = z.infer<typeof optionsSchema>

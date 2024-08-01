@@ -21,12 +21,23 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-[OptionsError](./starter-kitty-validators.optionserror.md)
+[EmailValidationError](./starter-kitty-validators.emailvalidationerror.md)
 
 
 </td><td>
 
-Invalid options error.
+Invalid email error.
+
+
+</td></tr>
+<tr><td>
+
+[EmailValidator](./starter-kitty-validators.emailvalidator.md)
+
+
+</td><td>
+
+Validates emails against RFC 5322 and a whitelist of domains.
 
 
 </td></tr>
@@ -48,7 +59,7 @@ Invalid URL error.
 
 </td><td>
 
-Validates URLs against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.
+Parses URLs according to WHATWG standards and validates against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.
 
 
 </td></tr>
@@ -69,7 +80,18 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-[Options](./starter-kitty-validators.options.md)
+[EmailValidatorOptions](./starter-kitty-validators.emailvalidatoroptions.md)
+
+
+</td><td>
+
+The options to use for email validation.
+
+
+</td></tr>
+<tr><td>
+
+[UrlValidatorOptions](./starter-kitty-validators.urlvalidatoroptions.md)
 
 
 </td><td>

@@ -4,7 +4,7 @@
 
 ## UrlValidator class
 
-Validates URLs against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.
+Parses URLs according to WHATWG standards and validates against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.
 
 **Signature:**
 

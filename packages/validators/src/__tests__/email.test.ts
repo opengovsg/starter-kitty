@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { OptionsError } from '@/common/errors'
-import { EmailValidator } from '@/email'
 import { EmailValidationError } from '@/email/errors'
+import { EmailValidator } from '@/index'
 
 describe('EmailValidator with default options', () => {
   const validator = new EmailValidator()

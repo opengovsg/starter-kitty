@@ -3,11 +3,16 @@ import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
 import { UrlValidationError } from '@/url/errors'
-import { defaultOptions, Options, optionsSchema } from '@/url/options'
+import {
+  defaultOptions,
+  optionsSchema,
+  UrlValidatorOptions,
+} from '@/url/options'
 import { createUrlSchema } from '@/url/schema'
 
 /**
- * Validates URLs against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.
+ * Parses URLs according to WHATWG standards and validates against a whitelist of allowed protocols and hostnames,
+ * preventing open redirects, XSS, SSRF, and other security vulnerabilities.
  *
  * @public
  */
@@ -32,7 +37,7 @@ export class UrlValidator {
    *
    * @public
    */
-  constructor(options: Options = defaultOptions) {
+  constructor(options: UrlValidatorOptions = defaultOptions) {
     const result = optionsSchema.safeParse({ ...defaultOptions, ...options })
     if (result.success) {
       this.schema = createUrlSchema(result.data)

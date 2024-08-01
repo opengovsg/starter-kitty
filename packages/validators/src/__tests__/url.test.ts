@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { OptionsError } from '@/common/errors'
-import { UrlValidator } from '@/url'
+import { UrlValidator } from '@/index'
 import { UrlValidationError } from '@/url/errors'
 
 describe('UrlValidator with default options', () => {

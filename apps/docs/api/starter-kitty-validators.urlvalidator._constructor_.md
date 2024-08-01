@@ -18,7 +18,7 @@ In most cases, you should provide your own whitelist with a list of allowed host
 **Signature:**
 
 ```typescript
-constructor(options?: Options);
+constructor(options?: UrlValidatorOptions);
 ```
 
 ## Parameters
@@ -46,7 +46,7 @@ options
 
 </td><td>
 
-[Options](./starter-kitty-validators.options.md)
+[UrlValidatorOptions](./starter-kitty-validators.urlvalidatoroptions.md)
 
 
 </td><td>
@@ -59,5 +59,5 @@ _(Optional)_ The options to use for validation
 
 ## Exceptions
 
-[OptionsError](./starter-kitty-validators.optionserror.md) If the options are invalid
+ If the options are invalid
 

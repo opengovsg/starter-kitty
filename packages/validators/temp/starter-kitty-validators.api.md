@@ -9,15 +9,20 @@
 import { z } from 'zod';
 
 // @public
-export interface Options {
-    baseOrigin?: string;
-    // Warning: (ae-forgotten-export) The symbol "Whitelist" needs to be exported by the entry point index.d.ts
-    whitelist?: Whitelist;
+export class EmailValidationError extends Error {
+    constructor(message: string);
 }
 
 // @public
-export class OptionsError extends Error {
-    constructor(message: string);
+export class EmailValidator {
+    constructor(options?: EmailValidatorOptions);
+    parse(email: string): string;
+}
+
+// @public
+export interface EmailValidatorOptions {
+    allowSubdomains?: boolean;
+    domains?: string[];
 }
 
 // @public
@@ -27,8 +32,15 @@ export class UrlValidationError extends Error {
 
 // @public
 export class UrlValidator {
-    constructor(options?: Options);
+    constructor(options?: UrlValidatorOptions);
     parse(url: string): URL;
+}
+
+// @public
+export interface UrlValidatorOptions {
+    baseOrigin?: string;
+    // Warning: (ae-forgotten-export) The symbol "UrlValidatorWhitelist" needs to be exported by the entry point index.d.ts
+    whitelist?: UrlValidatorWhitelist;
 }
 
 ```

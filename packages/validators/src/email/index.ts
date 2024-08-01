@@ -2,15 +2,18 @@ import { ZodError } from 'zod'
 import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
-import { Options, optionsSchema } from '@/email/options'
+import { EmailValidatorOptions, optionsSchema } from '@/email/options'
 
 import { EmailValidationError } from './errors'
 import { createEmailSchema } from './schema'
 
+/**
+ *  Validates emails against RFC 5322 and a whitelist of domains.
+ */
 export class EmailValidator {
   private schema
 
-  constructor(options: Options = {}) {
+  constructor(options: EmailValidatorOptions = {}) {
     const result = optionsSchema.safeParse(options)
     if (result.success) {
       this.schema = createEmailSchema(result.data)

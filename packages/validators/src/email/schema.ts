@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
-import { ParsedOptions } from '@/email/options'
+import { ParsedEmailValidatorOptions } from '@/email/options'
 import { isWhitelistedDomain, parseEmail } from '@/email/utils'
 
-export const createEmailSchema = (options: ParsedOptions) => {
+export const createEmailSchema = (options: ParsedEmailValidatorOptions) => {
   return z
     .string()
     .trim()

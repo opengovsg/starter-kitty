@@ -8,6 +8,59 @@ This package provides a set of validators that provide sensible defaults to prev
 npm i --save @opengovsg/starter-kitty-validators
 ```
 
+## Class: `EmailValidator`
+
+Validates email addresses against RFC 5322 and a whitelist of allowed domains.
+
+### Example
+
+```javascript
+import { EmailValidator } from '@opengovsg/starter-kitty-validators'
+
+const BLANKET_ALLOWED_EMAIL_DOMAINS = [
+  'gov.sg',
+  'tp.edu.sg',
+  'rp.edu.sg',
+  'nyp.edu.sg',
+  'sp.edu.sg',
+  'np.edu.sg',
+]
+
+const validator = new EmailValidator({
+  domains: BLANKET_ALLOWED_EMAIL_DOMAINS,
+  allowSubdomains: true,
+})
+
+try {
+  const email = validator.parse(emailInput)
+  
+  sendMail({
+    to: email,
+    subject: 'OTP',
+    text: 'Your OTP is 123456.',
+  })
+} catch (error) {
+  ...
+}
+```
+
+### new EmailValidator(options)
+
+`options?`: `<Object>`
+
+- `domains?`: `<string[]>` - A list of allowed email domains. If no domains are provided, the validator will allow any domain.
+- `allowSubdomains?`: `<boolean>` - Whether to allow subdomains of the allowed domains. If `false`, only an exact match of the allowed domains will be allowed. Defaults to `true`.
+
+### EmailValidator.parse(email)
+
+- `email`: `<string>` - The email address to parse.
+- Returns: `<string>` - The parsed email address.
+- Throws: `<EmailValidationError>` - If the email address is invalid or not allowed.
+
+## Class: `UrlValidator`
+
+Validates URLs against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.
+
 ### Example
 
 ```javascript
@@ -61,10 +114,6 @@ export const callbackUrlSchema = z
   })
   .catch(new URL(HOME, baseUrl))
 ```
-
-## Class: `UrlValidator`
-
-Validates URLs against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.
 
 ### new UrlValidator(options)
 
