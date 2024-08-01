@@ -59,5 +59,5 @@ _(Optional)_ The options to use for validation
 
 ## Exceptions
 
- If the options are invalid
+[OptionsError](./starter-kitty-validators.optionserror.md) If the options are invalid
 

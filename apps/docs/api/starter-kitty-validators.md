@@ -43,6 +43,17 @@ Validates emails against RFC 5322 and a whitelist of domains.
 </td></tr>
 <tr><td>
 
+[OptionsError](./starter-kitty-validators.optionserror.md)
+
+
+</td><td>
+
+Invalid options error.
+
+
+</td></tr>
+<tr><td>
+
 [UrlValidationError](./starter-kitty-validators.urlvalidationerror.md)
 
 

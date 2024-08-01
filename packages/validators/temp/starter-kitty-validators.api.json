@@ -239,7 +239,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidator:class",
-          "docComment": "/**\n * Validates emails against RFC 5322 and a whitelist of domains.\n */\n",
+          "docComment": "/**\n * Validates emails against RFC 5322 and a whitelist of domains.\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -407,6 +407,70 @@
             }
           ],
           "extendsTokenRanges": []
+        },
+        {
+          "kind": "Class",
+          "canonicalReference": "@opengovsg/starter-kitty-validators!OptionsError:class",
+          "docComment": "/**\n * Invalid options error.\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare class OptionsError extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "Error",
+              "canonicalReference": "!Error:interface"
+            },
+            {
+              "kind": "Content",
+              "text": " "
+            }
+          ],
+          "fileUrlPath": "dist/common/errors.d.ts",
+          "releaseTag": "Public",
+          "isAbstract": false,
+          "name": "OptionsError",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "Constructor",
+              "canonicalReference": "@opengovsg/starter-kitty-validators!OptionsError:constructor(1)",
+              "docComment": "/**\n * Constructs a new instance of the `OptionsError` class\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "constructor(message: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ");"
+                }
+              ],
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "message",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ]
+            }
+          ],
+          "extendsTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
+          },
+          "implementsTokenRanges": []
         },
         {
           "kind": "Class",

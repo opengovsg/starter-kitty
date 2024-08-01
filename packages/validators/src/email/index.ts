@@ -9,6 +9,8 @@ import { createEmailSchema } from './schema'
 
 /**
  *  Validates emails against RFC 5322 and a whitelist of domains.
+ *
+ * @public
  */
 export class EmailValidator {
   private schema

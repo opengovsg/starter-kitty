@@ -26,6 +26,11 @@ export interface EmailValidatorOptions {
 }
 
 // @public
+export class OptionsError extends Error {
+    constructor(message: string);
+}
+
+// @public
 export class UrlValidationError extends Error {
     constructor(message: string);
 }
