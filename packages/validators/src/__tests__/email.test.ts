@@ -54,6 +54,20 @@ describe('EmailValidator that disallows subdomains', () => {
   })
 })
 
+describe('EmailValidator that disallows subdomains (by default)', () => {
+  const schema = createEmailSchema({
+    domains: [{ domain: 'gov.sg' }],
+  })
+
+  it('should allow a valid domain', () => {
+    expect(() => schema.parse('zeyu@gov.sg')).not.toThrow()
+  })
+
+  it('should throw an error for a subdomain', () => {
+    expect(() => schema.parse('zeyu@open.gov.sg')).toThrowError(ZodError)
+  })
+})
+
 describe('EmailValidator with invalid options', () => {
   it('should throw an error for invalid options', () => {
     // @ts-expect-error Testing invalid options

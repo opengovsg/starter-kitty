@@ -29,7 +29,7 @@ export const optionsSchema = z.object({
     .array(
       z.object({
         domain: z.string(),
-        includeSubdomains: z.boolean().optional(),
+        includeSubdomains: z.boolean().optional().default(false),
       }),
     )
     .default([]),
