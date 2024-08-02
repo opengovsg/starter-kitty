@@ -21,7 +21,7 @@ export interface EmailValidatorOptions {
    *
    * This will allow `gov.sg` and all subdomains of `gov.sg`, such as `open.gov.sg`.
    */
-  domains?: { domain: string; includeSubdomains: boolean }[]
+  domains?: { domain: string; includeSubdomains?: boolean }[]
 }
 
 export const optionsSchema = z.object({
@@ -29,7 +29,7 @@ export const optionsSchema = z.object({
     .array(
       z.object({
         domain: z.string(),
-        includeSubdomains: z.boolean(),
+        includeSubdomains: z.boolean().optional(),
       }),
     )
     .default([]),
