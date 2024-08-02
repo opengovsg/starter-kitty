@@ -245,7 +245,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "{\n        domain: string;\n        includeSubdomains: boolean;\n    }[]"
+                  "text": "{\n        domain: string;\n        includeSubdomains?: boolean;\n    }[]"
                 },
                 {
                   "kind": "Content",

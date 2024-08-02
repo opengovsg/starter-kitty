@@ -16,7 +16,7 @@ export const createEmailSchema: (options?: EmailValidatorOptions) => ZodSchema<s
 export interface EmailValidatorOptions {
     domains?: {
         domain: string;
-        includeSubdomains: boolean;
+        includeSubdomains?: boolean;
     }[];
 }
 

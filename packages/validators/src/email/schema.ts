@@ -1,14 +1,25 @@
+import { ParsedMailbox, parseOneAddress } from 'email-addresses'
 import { z } from 'zod'
 
 import { ParsedEmailValidatorOptions } from '@/email/options'
-import { isWhitelistedDomain, parseEmail } from '@/email/utils'
+import { isWhitelistedDomain } from '@/email/utils'
 
 export const toSchema = (options: ParsedEmailValidatorOptions) => {
   return z
     .string()
     .trim()
     .email({ message: 'Invalid email address' })
-    .transform((email) => parseEmail(email))
+    .transform((email, ctx) => {
+      const parsed = parseOneAddress(email) as ParsedMailbox
+      if (!parsed) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid email address',
+        })
+        return z.NEVER
+      }
+      return parsed
+    })
     .refine(
       (parsed) => {
         if (options.domains.length === 0) {
