@@ -7,7 +7,7 @@ export const toSchema = (options: ParsedEmailValidatorOptions) => {
   return z
     .string()
     .trim()
-    .email('Invalid email address')
+    .email({ message: 'Invalid email address' })
     .transform((email) => parseEmail(email))
     .refine(
       (parsed) => {
