@@ -1,5 +1,5 @@
 import { UrlValidationError } from '@/url/errors'
-import { Whitelist } from '@/url/options'
+import { UrlValidatorWhitelist } from '@/url/options'
 
 const DYNAMIC_ROUTE_SEGMENT_REGEX = /\[\[?([^\]]+)\]?\]/g
 
@@ -42,7 +42,7 @@ const resolveNextDynamicRoute = (url: URL): URL => {
   return result
 }
 
-export const isSafeUrl = (url: URL, whitelist: Whitelist) => {
+export const isSafeUrl = (url: URL, whitelist: UrlValidatorWhitelist) => {
   // only allow whitelisted protocols
   if (
     !whitelist.protocols.some((protocol) => url.protocol === `${protocol}:`)

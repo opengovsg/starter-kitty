@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
-import { ParsedOptions } from '@/url/options'
+import { ParsedUrlValidatorOptions } from '@/url/options'
 import { isSafeUrl, resolveRelativeUrl } from '@/url/utils'
 
-export const createUrlSchema = (options: ParsedOptions) => {
+export const createUrlSchema = (options: ParsedUrlValidatorOptions) => {
   return z
     .string()
     .transform((url) => resolveRelativeUrl(url, options.baseOrigin))

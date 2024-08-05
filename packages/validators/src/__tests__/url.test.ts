@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { UrlValidator } from '@/url'
-import { OptionsError, UrlValidationError } from '@/url/errors'
+import { OptionsError } from '@/common/errors'
+import { UrlValidator } from '@/index'
+import { UrlValidationError } from '@/url/errors'
 
 describe('UrlValidator with default options', () => {
   const validator = new UrlValidator()

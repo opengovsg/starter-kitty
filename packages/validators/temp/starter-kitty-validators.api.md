@@ -7,12 +7,17 @@
 /// <reference types="node" />
 
 import { z } from 'zod';
+import { ZodSchema } from 'zod';
 
 // @public
-export interface Options {
-    baseOrigin?: string;
-    // Warning: (ae-forgotten-export) The symbol "Whitelist" needs to be exported by the entry point index.d.ts
-    whitelist?: Whitelist;
+export const createEmailSchema: (options?: EmailValidatorOptions) => ZodSchema<string>;
+
+// @public
+export interface EmailValidatorOptions {
+    domains?: {
+        domain: string;
+        includeSubdomains?: boolean;
+    }[];
 }
 
 // @public
@@ -27,8 +32,15 @@ export class UrlValidationError extends Error {
 
 // @public
 export class UrlValidator {
-    constructor(options?: Options);
+    constructor(options?: UrlValidatorOptions);
     parse(url: string): URL;
+}
+
+// @public
+export interface UrlValidatorOptions {
+    baseOrigin?: string;
+    // Warning: (ae-forgotten-export) The symbol "UrlValidatorWhitelist" needs to be exported by the entry point index.d.ts
+    whitelist?: UrlValidatorWhitelist;
 }
 
 ```

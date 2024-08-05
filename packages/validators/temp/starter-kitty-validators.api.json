@@ -173,32 +173,79 @@
       "preserveMemberOrder": false,
       "members": [
         {
-          "kind": "Interface",
-          "canonicalReference": "@opengovsg/starter-kitty-validators!Options:interface",
-          "docComment": "/**\n * The options to use for URL validation.\n *\n * @public\n */\n",
+          "kind": "Function",
+          "canonicalReference": "@opengovsg/starter-kitty-validators!createEmailSchema:function(1)",
+          "docComment": "/**\n * Create a schema that validates emails against RFC 5322 and a whitelist of domains.\n *\n * @param options - The options to use for validation\n *\n * @returns A Zod schema that validates emails according to the provided options\n *\n * @throws\n *\n * {@link OptionsError} If the options are invalid\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export interface Options "
+              "text": "createEmailSchema: (options?: "
+            },
+            {
+              "kind": "Reference",
+              "text": "EmailValidatorOptions",
+              "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidatorOptions:interface"
+            },
+            {
+              "kind": "Content",
+              "text": ") => "
+            },
+            {
+              "kind": "Reference",
+              "text": "ZodSchema",
+              "canonicalReference": "zod!ZodType:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<string>"
             }
           ],
-          "fileUrlPath": "dist/url/options.d.ts",
+          "fileUrlPath": "dist/email/index.d.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 3,
+            "endIndex": 5
+          },
           "releaseTag": "Public",
-          "name": "Options",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "options",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isOptional": true
+            }
+          ],
+          "name": "createEmailSchema"
+        },
+        {
+          "kind": "Interface",
+          "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidatorOptions:interface",
+          "docComment": "/**\n * The options to use for email validation.\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface EmailValidatorOptions "
+            }
+          ],
+          "fileUrlPath": "dist/email/options.d.ts",
+          "releaseTag": "Public",
+          "name": "EmailValidatorOptions",
           "preserveMemberOrder": false,
           "members": [
             {
               "kind": "PropertySignature",
-              "canonicalReference": "@opengovsg/starter-kitty-validators!Options#baseOrigin:member",
-              "docComment": "/**\n * The base origin to use for relative URLs. If no base origin is provided, relative URLs will be considered invalid. An origin does not include the path or query parameters. For example, a valid base origin is `https://example.com` or `http://localhost:3000`.\n */\n",
+              "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidatorOptions#domains:member",
+              "docComment": "/**\n * The list of allowed domains for the domain part of the email address. If not provided, all domains are allowed.\n *\n * Each whitelisted domain must be specified as an object with the `domain` and `includeSubdomains` properties. By default, `includeSubdomains` is `false`, meaning only the exact domain is allowed. If `includeSubdomains` is `true`, all subdomains of the domain are also allowed.\n *\n * @example\n * ```javascript\n * [ { domain: 'gov.sg', includeSubdomains: true } ]\n * ```\n *\n * This will allow `gov.sg` and all subdomains of `gov.sg`, such as `open.gov.sg`.\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "baseOrigin?: "
+                  "text": "domains?: "
                 },
                 {
                   "kind": "Content",
-                  "text": "string"
+                  "text": "{\n        domain: string;\n        includeSubdomains?: boolean;\n    }[]"
                 },
                 {
                   "kind": "Content",
@@ -208,35 +255,7 @@
               "isReadonly": false,
               "isOptional": true,
               "releaseTag": "Public",
-              "name": "baseOrigin",
-              "propertyTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              }
-            },
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@opengovsg/starter-kitty-validators!Options#whitelist:member",
-              "docComment": "/**\n * The list of allowed protocols and hostnames for URL validation. The default whitelist allows only `http` and `https` protocols, and does not restrict hostnames.\n *\n * @example\n * ```\n * {\n *    protocols: ['http', 'https'],\n *    hosts: ['example.com']\n * }\n * ```\n *\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "whitelist?: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "Whitelist",
-                  "canonicalReference": "@opengovsg/starter-kitty-validators!~Whitelist:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isReadonly": false,
-              "isOptional": true,
-              "releaseTag": "Public",
-              "name": "whitelist",
+              "name": "domains",
               "propertyTypeTokenRange": {
                 "startIndex": 1,
                 "endIndex": 2
@@ -264,7 +283,7 @@
               "text": " "
             }
           ],
-          "fileUrlPath": "dist/url/errors.d.ts",
+          "fileUrlPath": "dist/common/errors.d.ts",
           "releaseTag": "Public",
           "isAbstract": false,
           "name": "OptionsError",
@@ -376,7 +395,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@opengovsg/starter-kitty-validators!UrlValidator:class",
-          "docComment": "/**\n * Validates URLs against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.\n *\n * @public\n */\n",
+          "docComment": "/**\n * Parses URLs according to WHATWG standards and validates against a whitelist of allowed protocols and hostnames, preventing open redirects, XSS, SSRF, and other security vulnerabilities.\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -400,8 +419,8 @@
                 },
                 {
                   "kind": "Reference",
-                  "text": "Options",
-                  "canonicalReference": "@opengovsg/starter-kitty-validators!Options:interface"
+                  "text": "UrlValidatorOptions",
+                  "canonicalReference": "@opengovsg/starter-kitty-validators!UrlValidatorOptions:interface"
                 },
                 {
                   "kind": "Content",
@@ -473,6 +492,79 @@
             }
           ],
           "implementsTokenRanges": []
+        },
+        {
+          "kind": "Interface",
+          "canonicalReference": "@opengovsg/starter-kitty-validators!UrlValidatorOptions:interface",
+          "docComment": "/**\n * The options to use for URL validation.\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface UrlValidatorOptions "
+            }
+          ],
+          "fileUrlPath": "dist/url/options.d.ts",
+          "releaseTag": "Public",
+          "name": "UrlValidatorOptions",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "PropertySignature",
+              "canonicalReference": "@opengovsg/starter-kitty-validators!UrlValidatorOptions#baseOrigin:member",
+              "docComment": "/**\n * The base origin to use for relative URLs. If no base origin is provided, relative URLs will be considered invalid. An origin does not include the path or query parameters. For example, a valid base origin is `https://example.com` or `http://localhost:3000`.\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "baseOrigin?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "baseOrigin",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            },
+            {
+              "kind": "PropertySignature",
+              "canonicalReference": "@opengovsg/starter-kitty-validators!UrlValidatorOptions#whitelist:member",
+              "docComment": "/**\n * The list of allowed protocols and hostnames for URL validation. The default whitelist allows only `http` and `https` protocols, and does not restrict hostnames.\n *\n * @example\n * ```\n * {\n *    protocols: ['http', 'https'],\n *    hosts: ['example.com']\n * }\n * ```\n *\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "whitelist?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UrlValidatorWhitelist",
+                  "canonicalReference": "@opengovsg/starter-kitty-validators!~UrlValidatorWhitelist:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "whitelist",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            }
+          ],
+          "extendsTokenRanges": []
         }
       ]
     }

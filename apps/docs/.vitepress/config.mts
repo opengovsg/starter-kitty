@@ -14,7 +14,7 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: "Home", link: "/" },
-      { text: "Packages", link: "/packages" },
+      { text: "Examples", link: "/examples" },
       { text: "API", link: "/api" },
     ],
 
@@ -28,8 +28,12 @@ export default defineConfig({
     },
 
     sidebar: {
-      "/packages/": scanDir("packages"),
+      "/examples/": scanDir("examples"),
       "/api/": scanDir("api"),
     },
   },
+  ignoreDeadLinks: [
+    // ignore all localhost links
+    /^https?:\/\/localhost/,
+  ],
 });

@@ -1,6 +1,6 @@
 {
   "name": "@opengovsg/starter-kitty-validators",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
@@ -15,6 +15,7 @@
     "ci:report": "api-extractor run --verbose"
   },
   "dependencies": {
+    "email-addresses": "^5.0.0",
     "zod": "^3.23.8",
     "zod-validation-error": "^3.3.0"
   },

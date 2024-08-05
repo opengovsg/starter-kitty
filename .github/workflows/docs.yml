@@ -32,7 +32,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pnpm i --frozen-lockfile
-          npm install -g @microsoft/api-documenter
+          npm install -g @microsoft/api-documenter@7.23.38
           npm install -g @microsoft/api-extractor
 
       - name: Check API report
