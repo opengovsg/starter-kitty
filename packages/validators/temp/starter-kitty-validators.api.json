@@ -237,7 +237,7 @@
             {
               "kind": "PropertySignature",
               "canonicalReference": "@opengovsg/starter-kitty-validators!EmailValidatorOptions#domains:member",
-              "docComment": "/**\n * The list of allowed domains for the domain part of the email address. If not provided, all domains are allowed.\n *\n * Each whitelisted domain must be specified as an object with the `domain` and `includeSubdomains` properties. If `includeSubdomains` is `true`, all subdomains of the domain are also allowed.\n *\n * @example\n * ```javascript\n * [ { domain: 'gov.sg', includeSubdomains: true } ]\n * ```\n *\n * This will allow `gov.sg` and all subdomains of `gov.sg`, such as `open.gov.sg`.\n */\n",
+              "docComment": "/**\n * The list of allowed domains for the domain part of the email address. If not provided, all domains are allowed.\n *\n * Each whitelisted domain must be specified as an object with the `domain` and `includeSubdomains` properties. By default, `includeSubdomains` is `false`, meaning only the exact domain is allowed. If `includeSubdomains` is `true`, all subdomains of the domain are also allowed.\n *\n * @example\n * ```javascript\n * [ { domain: 'gov.sg', includeSubdomains: true } ]\n * ```\n *\n * This will allow `gov.sg` and all subdomains of `gov.sg`, such as `open.gov.sg`.\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",

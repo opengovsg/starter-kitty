@@ -24,6 +24,9 @@ export const isWhitelistedDomain = (
   domain: string,
   whitelistedDomains: { domain: string; includeSubdomains: boolean }[],
 ) => {
+  // Accept in the following cases:
+  // Case 1: The domain is an exact match of a whitelisted domain
+  // Case 2: The domain is a subdomain of a whitelisted domain, AND includeSubdomains is true
   return whitelistedDomains.some(
     (whitelisted) =>
       domain === whitelisted.domain ||

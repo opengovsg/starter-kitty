@@ -11,7 +11,8 @@ export interface EmailValidatorOptions {
    * If not provided, all domains are allowed.
    *
    * Each whitelisted domain must be specified as an object with the `domain`
-   * and `includeSubdomains` properties. If `includeSubdomains` is `true`, all
+   * and `includeSubdomains` properties. By default, `includeSubdomains` is `false`,
+   * meaning only the exact domain is allowed. If `includeSubdomains` is `true`, all
    * subdomains of the domain are also allowed.
    *
    * @example
