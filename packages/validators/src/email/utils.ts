@@ -7,12 +7,12 @@ export const isValidEmail = (
   email: ParsedMailbox,
   whitelisted: ParsedEmailValidatorOptions['domains'],
 ) => {
-  console.log(email)
   const domain = email.domain
   const local = email.local
 
-  if (local.length > MAX_LOCAL_LENGTH || domain.length > MAX_DOMAIN_LENGTH)
+  if (local.length > MAX_LOCAL_LENGTH || domain.length > MAX_DOMAIN_LENGTH) {
     return false
+  }
 
   if (whitelisted.length === 0) {
     return true
