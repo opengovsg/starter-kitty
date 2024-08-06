@@ -44,3 +44,16 @@ jobs:
         run: pnpm -r publish --no-git-checks --tag latest --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: lts/*
+          cache: pnpm
+          registry-url: "https://npm.pkg.github.com/"
+          scope: "@opengovsg"
+
+      - name: Publish to NPM
+        run: pnpm -r publish --no-git-checks --tag latest --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
