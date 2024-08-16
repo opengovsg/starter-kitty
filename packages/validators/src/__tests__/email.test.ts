@@ -76,6 +76,20 @@ describe('EmailValidator with default options', () => {
     expect(() => schema.parse('postmaster@[123.123.123.123]')).toThrowError(
       ZodError,
     )
+
+    // Encoded-word
+    // https://portswigger.net/research/splitting-the-email-atom
+    expect(() =>
+      schema.parse('=?iso-8859-1?q?=61=62=63?=collab@psres.net'),
+    ).toThrowError(ZodError)
+
+    expect(() =>
+      schema.parse('=?utf-7?b?JkFHWUFid0J2QUdJQVlRQnkt?=@psres.net'),
+    ).toThrowError(ZodError)
+
+    expect(() =>
+      schema.parse('=?x?q?collab=40invalid.com=3e=00?=open.gov.sg'),
+    ).toThrowError(ZodError)
   })
 
   it('should clean up unnecessary whitespace', () => {

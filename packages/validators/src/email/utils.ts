@@ -1,6 +1,10 @@
 import { ParsedMailbox } from 'email-addresses'
 
-import { MAX_DOMAIN_LENGTH, MAX_LOCAL_LENGTH } from './consts'
+import {
+  ENCODED_WORD_REGEX,
+  MAX_DOMAIN_LENGTH,
+  MAX_LOCAL_LENGTH,
+} from './consts'
 import { ParsedEmailValidatorOptions } from './options'
 
 export const isValidEmail = (
@@ -17,6 +21,11 @@ export const isValidEmail = (
   if (whitelisted.length === 0) {
     return true
   }
+
+  if (ENCODED_WORD_REGEX.test(email.address)) {
+    return false
+  }
+
   return isWhitelistedDomain(domain, whitelisted)
 }
 
