@@ -5,13 +5,16 @@ const DYNAMIC_ROUTE_SEGMENT_REGEX = /\[\[?([^\]]+)\]?\]/g
 
 export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
   if (!baseOrigin) {
-    if (!URL.canParse(url)) {
+    try {
+      return new URL(url)
+    } catch (error) {
       throw new UrlValidationError(`Invalid URL: ${url}`)
     }
-    return new URL(url)
   }
 
-  if (!URL.canParse(url, baseOrigin.href)) {
+  try {
+    new URL(url, baseOrigin.href)
+  } catch (error) {
     throw new UrlValidationError(`Invalid URL: ${url}`)
   }
   const normalizedUrl = new URL(url, baseOrigin)
