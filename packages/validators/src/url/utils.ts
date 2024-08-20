@@ -12,12 +12,12 @@ export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
     }
   }
 
+  let normalizedUrl
   try {
-    new URL(url, baseOrigin.href)
+    normalizedUrl = new URL(url, baseOrigin)
   } catch (error) {
     throw new UrlValidationError(`Invalid URL: ${url}`)
   }
-  const normalizedUrl = new URL(url, baseOrigin)
 
   if (new URL(baseOrigin).origin !== normalizedUrl.origin) {
     throw new UrlValidationError(
