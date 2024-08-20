@@ -58,14 +58,15 @@ export const optionsSchema = z.object({
   baseOrigin: z
     .string()
     .transform((value, ctx) => {
-      if (!URL.canParse(value)) {
+      try {
+        return new URL(value)
+      } catch (error) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Invalid base URL',
         })
         return z.NEVER
       }
-      return new URL(value)
     })
     .refine((url) => url.protocol === 'http:' || url.protocol === 'https:', {
       message: 'Base URL must use HTTP or HTTPS',
