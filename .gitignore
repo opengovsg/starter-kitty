@@ -27,7 +27,7 @@ out/
 build
 dist
 cache
-
+temp/
 
 # Debug
 npm-debug.log*
