@@ -65,6 +65,9 @@ importers:
       eslint-plugin-tsdoc:
         specifier: ^0.3.0
         version: 0.3.0
+      memfs:
+        specifier: ^4.11.1
+        version: 4.11.1
       prettier:
         specifier: ^2.8.4
         version: 2.8.8
@@ -465,6 +468,24 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
+
+  '@jsonjoy.com/base64@1.1.2':
+    resolution: {integrity: sha512-q6XAnWQDIMA3+FTiOYajoYqySkO+JSat0ytXGSuRdq9uXE7o92gzuQwQM14xaCRlBLGq3v5miDGC4vkVTn54xA==}
+    engines: {node: '>=10.0'}
+    peerDependencies:
+      tslib: '2'
+
+  '@jsonjoy.com/json-pack@1.1.0':
+    resolution: {integrity: sha512-zlQONA+msXPPwHWZMKFVS78ewFczIll5lXiVPwFPCZUsrOKdxc2AvxU1HoNBmMRhqDZUR9HkC3UOm+6pME6Xsg==}
+    engines: {node: '>=10.0'}
+    peerDependencies:
+      tslib: '2'
+
+  '@jsonjoy.com/util@1.3.0':
+    resolution: {integrity: sha512-Cebt4Vk7k1xHy87kHY7KSPLT77A7Ev7IfOblyLZhtYEhrdQ6fX4EoLq3xOQ3O/DRMEh2ok5nyC180E+ABS8Wmw==}
+    engines: {node: '>=10.0'}
+    peerDependencies:
+      tslib: '2'
 
   '@microsoft/tsdoc-config@0.17.0':
     resolution: {integrity: sha512-v/EYRXnCAIHxOHW+Plb6OWuUoMotxTN0GLatnpOb1xq0KuTNw/WI3pamJx/UbsoJP5k9MCw1QxvvhPcF9pH3Zg==}
@@ -1504,6 +1525,10 @@ packages:
     resolution: {integrity: sha512-AXcZb6vzzrFAUE61HnN4mpLqd/cSIwNQjtNWR0euPm6y0iqx3G4gOXaIDdtdDwZmhwe82LA6+zinmW4UBWVePQ==}
     engines: {node: '>=16.17.0'}
 
+  hyperdyperid@1.2.0:
+    resolution: {integrity: sha512-Y93lCzHYgGWdrJ66yIktxiaGULYc6oGiABxhcO5AufBeOyoIdZF7bIfLaOrbM0iGIOXQQgxxRrFEnb+Y6w1n4A==}
+    engines: {node: '>=10.18'}
+
   ignore@5.3.1:
     resolution: {integrity: sha512-5Fytz/IraMjqpwfd34ke28PTVMjZjJG2MPn5t7OE4eUCUNf8BAa7b5WUS9/Qvr6mwOQS7Mk6vdsMno5he+T8Xw==}
     engines: {node: '>= 4'}
@@ -1731,6 +1756,10 @@ packages:
 
   mark.js@8.11.1:
     resolution: {integrity: sha512-1I+1qpDt4idfgLQG+BNWmrqku+7/2bi5nLf4YwF8y8zXvmfiTBY3PV3ZibfrjBueCByROpuBjLLFCajqkgYoLQ==}
+
+  memfs@4.11.1:
+    resolution: {integrity: sha512-LZcMTBAgqUUKNXZagcZxvXXfgF1bHX7Y7nQ0QyEiNbRJgE29GhgPd8Yna1VQcLlPiHt/5RFJMWYN9Uv/VPNvjQ==}
+    engines: {node: '>= 4.0.0'}
 
   merge-stream@2.0.0:
     resolution: {integrity: sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==}
@@ -2174,6 +2203,12 @@ packages:
   thenify@3.3.1:
     resolution: {integrity: sha512-RVZSIV5IG10Hk3enotrhvz0T9em6cyHBLkH/YAZuKqd8hRkKhSfCGIcP2KUY0EPxndzANBmNllzWPwak+bheSw==}
 
+  thingies@1.21.0:
+    resolution: {integrity: sha512-hsqsJsFMsV+aD4s3CWKk85ep/3I9XzYV/IXaSouJMYIoDlgyi11cBhsqYe9/geRfB0YIikBQg6raRaM+nIMP9g==}
+    engines: {node: '>=10.18'}
+    peerDependencies:
+      tslib: ^2
+
   tinybench@2.8.0:
     resolution: {integrity: sha512-1/eK7zUnIklz4JUUlL+658n58XO2hHLQfSk1Zf2LKieUjxidN16eKFEoDEfjHc3ohofSSqK3X5yO6VGb6iW8Lw==}
 
@@ -2199,6 +2234,12 @@ packages:
 
   tr46@1.0.1:
     resolution: {integrity: sha512-dTpowEjclQ7Kgx5SdBkqRzVhERQXov8/l9Ft9dVM9fmg0W0KQSVaXX9T4i6twCPNtYiZM53lpSSUAwJbFPOHxA==}
+
+  tree-dump@1.0.2:
+    resolution: {integrity: sha512-dpev9ABuLWdEubk+cIaI9cHwRNNDjkBBLXTwI4UCUFdQ5xXKqNXoK4FEciw/vxf+NQ7Cb7sGUyeUtORvHIdRXQ==}
+    engines: {node: '>=10.0'}
+    peerDependencies:
+      tslib: '2'
 
   tree-kill@1.2.2:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
@@ -2236,6 +2277,9 @@ packages:
 
   tslib@1.14.1:
     resolution: {integrity: sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==}
+
+  tslib@2.7.0:
+    resolution: {integrity: sha512-gLXCKdN1/j47AiHiOkJN69hJmcbGTHI0ImLmbYLHykhgeN0jVGola9yVjFgzCUklsZQMW55o+dW7IXv3RCXDzA==}
 
   tsup@8.1.0:
     resolution: {integrity: sha512-UFdfCAXukax+U6KzeTNO2kAARHcWxmKsnvSPXUcfA1D+kU05XDccCrkffCQpFaWDsZfV0jMyTsxU39VfCp6EOg==}
@@ -2744,7 +2788,7 @@ snapshots:
   '@humanwhocodes/config-array@0.11.14':
     dependencies:
       '@humanwhocodes/object-schema': 2.0.3
-      debug: 4.3.5
+      debug: 4.3.4
       minimatch: 3.1.2
     transitivePeerDependencies:
       - supports-color
@@ -2797,6 +2841,22 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.1
       '@jridgewell/sourcemap-codec': 1.4.15
     optional: true
+
+  '@jsonjoy.com/base64@1.1.2(tslib@2.7.0)':
+    dependencies:
+      tslib: 2.7.0
+
+  '@jsonjoy.com/json-pack@1.1.0(tslib@2.7.0)':
+    dependencies:
+      '@jsonjoy.com/base64': 1.1.2(tslib@2.7.0)
+      '@jsonjoy.com/util': 1.3.0(tslib@2.7.0)
+      hyperdyperid: 1.2.0
+      thingies: 1.21.0(tslib@2.7.0)
+      tslib: 2.7.0
+
+  '@jsonjoy.com/util@1.3.0(tslib@2.7.0)':
+    dependencies:
+      tslib: 2.7.0
 
   '@microsoft/tsdoc-config@0.17.0':
     dependencies:
@@ -4037,6 +4097,8 @@ snapshots:
 
   human-signals@5.0.0: {}
 
+  hyperdyperid@1.2.0: {}
+
   ignore@5.3.1: {}
 
   import-fresh@3.3.0:
@@ -4248,6 +4310,13 @@ snapshots:
     optional: true
 
   mark.js@8.11.1: {}
+
+  memfs@4.11.1:
+    dependencies:
+      '@jsonjoy.com/json-pack': 1.1.0(tslib@2.7.0)
+      '@jsonjoy.com/util': 1.3.0(tslib@2.7.0)
+      tree-dump: 1.0.2(tslib@2.7.0)
+      tslib: 2.7.0
 
   merge-stream@2.0.0: {}
 
@@ -4693,6 +4762,10 @@ snapshots:
     dependencies:
       any-promise: 1.3.0
 
+  thingies@1.21.0(tslib@2.7.0):
+    dependencies:
+      tslib: 2.7.0
+
   tinybench@2.8.0: {}
 
   tinypool@1.0.0: {}
@@ -4710,6 +4783,10 @@ snapshots:
   tr46@1.0.1:
     dependencies:
       punycode: 2.3.0
+
+  tree-dump@1.0.2(tslib@2.7.0):
+    dependencies:
+      tslib: 2.7.0
 
   tree-kill@1.2.2: {}
 
@@ -4778,6 +4855,8 @@ snapshots:
       strip-bom: 3.0.0
 
   tslib@1.14.1: {}
+
+  tslib@2.7.0: {}
 
   tsup@8.1.0(@swc/core@1.6.13)(postcss@8.4.39)(ts-node@10.9.1(@swc/core@1.6.13)(@types/node@18.19.39)(typescript@5.4.5))(typescript@5.4.5):
     dependencies:

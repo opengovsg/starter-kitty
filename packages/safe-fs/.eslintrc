@@ -1,6 +1,6 @@
 {
   "extends": ["opengovsg"],
-  "ignorePatterns": ["dist/**/*", "vitest.config.ts"],
+  "ignorePatterns": ["dist/**/*", "vitest.config.ts", "vitest.setup.ts"],
   "plugins": ["import", "eslint-plugin-tsdoc"],
   "rules": {
     "import/no-unresolved": "error",

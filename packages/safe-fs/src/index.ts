@@ -1,15 +1,18 @@
 import * as fs from 'node:fs'
 
-import * as overrides from './overrides'
+import { Overrides } from '@/overrides'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type FSFunction = (...args: any[]) => any
+type FsFunction = (...args: any[]) => any
 
 type OverrideMethods<T> = {
-  [K in keyof T]?: T[K] extends FSFunction ? T[K] : never
+  // We only want to override methods, not properties
+  [K in keyof T]?: T[K] extends FsFunction ? T[K] : never
 }
 
-function createFSProxy(overrides: OverrideMethods<typeof fs> = {}): typeof fs {
+function createFs(basePath: string = process.cwd()): typeof fs {
+  const overrides = new Overrides(basePath) as OverrideMethods<typeof fs>
+
   return new Proxy({} as typeof fs, {
     get: (target, prop: keyof typeof fs) => {
       if (prop in overrides) {
@@ -21,4 +24,4 @@ function createFSProxy(overrides: OverrideMethods<typeof fs> = {}): typeof fs {
   })
 }
 
-export default createFSProxy(overrides)
+export default createFs
