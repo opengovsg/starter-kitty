@@ -1,5 +1,4 @@
 import * as fs from 'node:fs'
-import { promisify } from 'node:util'
 
 import * as overrides from './overrides'
 
@@ -17,11 +16,7 @@ function createFSProxy(overrides: OverrideMethods<typeof fs> = {}): typeof fs {
         return overrides[prop]
       }
 
-      const fsMethod = fs[prop]
-      if (typeof fsMethod === 'function' && prop !== 'promises') {
-        return promisify(fsMethod)
-      }
-      return fsMethod
+      return fs[prop]
     },
   })
 }
