@@ -31,6 +31,10 @@ importers:
         version: 3.4.33(typescript@5.4.5)
 
   packages/safe-fs:
+    dependencies:
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
     devDependencies:
       '@swc/core':
         specifier: ^1.6.13
