@@ -160,6 +160,7 @@ describe('getter', () => {
 
     it('should allow operations within the base path', () => {
       const validPath = 'valid/nested/path.txt'
+      const newPath = 'valid/new.txt'
       const content = 'Valid content'
 
       expect(() =>
@@ -167,9 +168,10 @@ describe('getter', () => {
       ).not.toThrow()
       expect(() => sfs.writeFileSync(validPath, content)).not.toThrow()
       expect(() => sfs.readFileSync(validPath)).not.toThrow()
-      expect(() => sfs.unlinkSync(validPath)).not.toThrow()
-      expect(() => sfs.renameSync(validPath, 'valid/new.txt')).not.toThrow()
-      expect(() => sfs.statSync(validPath)).not.toThrow()
+      expect(() => sfs.renameSync(validPath, newPath)).not.toThrow()
+      expect(() => sfs.statSync(newPath)).not.toThrow()
+      expect(() => sfs.unlinkSync(newPath)).not.toThrow()
+      expect(() => sfs.rmdirSync('valid/nested')).not.toThrow()
     })
   })
 })
