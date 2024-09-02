@@ -130,6 +130,13 @@ describe('getter', () => {
   })
 
   describe('security tests', () => {
+    beforeEach(() => {
+      const sensitiveDir = '/etc'
+
+      vol.reset()
+      vol.mkdirSync(sensitiveDir, { recursive: true })
+    })
+
     it('should prevent path traversal attempts', () => {
       const maliciousPath = '../../../etc/passwd'
       const content = 'Malicious content'
@@ -159,9 +166,18 @@ describe('getter', () => {
     })
 
     it('should allow operations within the base path', () => {
+      const sfs2 = new Proxy<typeof fs>(fs, { get: createGetter('/etc') }) // unsafe usage of the library
+      const maliciousPath = 'passwd'
+      const content = 'Valid content'
+
+      expect(() => sfs2.writeFileSync(maliciousPath, content)).not.toThrow()
+      expect(() => sfs2.readFileSync(maliciousPath)).not.toThrow()
+      expect(() => sfs2.renameSync(maliciousPath, 'new.txt')).not.toThrow()
+      expect(() => sfs2.statSync('new.txt')).not.toThrow()
+      expect(() => sfs2.unlinkSync('new.txt')).not.toThrow()
+
       const validPath = 'valid/nested/path.txt'
       const newPath = 'valid/new.txt'
-      const content = 'Valid content'
 
       expect(() =>
         sfs.mkdirSync('valid/nested', { recursive: true }),
