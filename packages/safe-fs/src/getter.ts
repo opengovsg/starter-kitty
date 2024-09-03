@@ -1,11 +1,12 @@
-import fs from 'fs'
+import fs from 'node:fs'
+
 import { z } from 'zod'
 
 import pathParams from './params.json'
 import { sanitizePath } from './sanitizers'
 
 const pathParamsRecordSchema = z.record(z.array(z.number()))
-export type PathParamsRecord = z.infer<typeof paramsJsonSchema>
+export type PathParamsRecord = z.infer<typeof pathParamsRecordSchema>
 
 const pathParamsRecord = pathParamsRecordSchema.parse(pathParams)
 
@@ -15,9 +16,22 @@ type ReturnType<F extends CallableFunction> = F extends (
   ? R
   : never
 
-export const createGetter =
+export const createGetter: (
+  basePath: string,
+) => ProxyHandler<typeof fs>['get'] =
   (basePath: string) => (target: typeof fs, p: keyof typeof fs, receiver) => {
-    if (typeof target[p] === 'function') {
+    if (
+      typeof target[p] === 'function' &&
+      // required for func to get the correct type
+      p !== 'promises' &&
+      p !== 'constants' &&
+      p !== 'Stats' &&
+      p !== 'StatsFs' &&
+      p !== 'Dirent' &&
+      p !== 'Dir' &&
+      p !== 'ReadStream' &&
+      p !== 'WriteStream'
+    ) {
       const func = Reflect.get(target, p, receiver)
       const paramsToSanitize = pathParamsRecord[p]
 
@@ -30,10 +44,12 @@ export const createGetter =
             }
             return arg
           })
-          return func(...sanitizedArgs) as ReturnType<typeof func>
+          return (func as CallableFunction)(...sanitizedArgs) as ReturnType<
+            typeof func
+          >
         }
-        return func
       }
-      return Reflect.get(target, p, receiver)
+      return func
     }
+    return Reflect.get(target, p, receiver)
   }

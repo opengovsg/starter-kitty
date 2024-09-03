@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc && tsc-alias",
     "build:report": "api-extractor run --local --verbose",
-    "build:docs": "api-documenter markdown --input-folder ./temp/ --output-folder ../../apps/docs/api/",
+    "build:docs": "api-documenter markdown --input-folder ../../temp/ --output-folder ../../apps/docs/api/",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" --cache",
     "test": "vitest",
     "ci:report": "api-extractor run --verbose"

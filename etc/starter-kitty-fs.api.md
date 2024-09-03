@@ -8,9 +8,9 @@
 
 import * as fs from 'node:fs';
 
-// @public (undocumented)
-function createFs(basePath?: string): typeof fs;
-export default createFs;
+// @public
+const safeFs: (basePath?: string) => typeof fs;
+export default safeFs;
 
 // (No @packageDocumentation comment for this package)
 

@@ -6,6 +6,41 @@
 npm i --save @opengovsg/starter-kitty-validators
 ```
 
+## Path Validation
+
+```javascript
+import { createPathSchema } from '@opengovsg/starter-kitty-validators'
+
+const pathSchema = createPathSchema({
+  basePath: '/app/content',
+})
+
+const contentSubmissionSchema = z.object({
+  fullPermalink: pathSchema,
+  title: z.string(),
+  content: z.string(),
+})
+
+type ContentSubmission = z.infer<typeof contentSchema>
+```
+
+## Email Validation
+
+```javascript
+import { createEmailSchema } from '@opengovsg/starter-kitty-validators'
+
+const emailSchema = createEmailSchema({
+  domains: [{ domain: 'gov.sg', includeSubdomains: true }],
+})
+
+const formSchema = z.object({
+  name: z.string(),
+  email: emailSchema,
+})
+
+type FormValues = z.infer<typeof formSchema>
+```
+
 ## URL Validation
 
 ```javascript
@@ -58,21 +93,4 @@ export const callbackUrlSchema = z
     }
   })
   .catch(new URL(HOME, baseUrl))
-```
-
-## Email Validation
-
-```javascript
-import { createEmailSchema } from '@opengovsg/starter-kitty-validators'
-
-const emailSchema = createEmailSchema({
-  domains: [{ domain: 'gov.sg', includeSubdomains: true }],
-})
-
-const formSchema = z.object({
-  name: z.string(),
-  email: emailSchema,
-})
-
-type FormValues = z.infer<typeof formSchema>
 ```

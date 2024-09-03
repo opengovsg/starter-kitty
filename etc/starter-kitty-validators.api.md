@@ -13,6 +13,9 @@ import { ZodSchema } from 'zod';
 export const createEmailSchema: (options?: EmailValidatorOptions) => ZodSchema<string>;
 
 // @public
+export const createPathSchema: (options?: PathValidatorOptions) => ZodSchema<string>;
+
+// @public
 export interface EmailValidatorOptions {
     domains?: {
         domain: string;
@@ -23,6 +26,11 @@ export interface EmailValidatorOptions {
 // @public
 export class OptionsError extends Error {
     constructor(message: string);
+}
+
+// @public
+export interface PathValidatorOptions {
+    basePath?: string;
 }
 
 // @public

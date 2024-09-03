@@ -81,8 +81,11 @@ describe('Path validator with invalid options', () => {
   })
 
   it('should throw an error for non-string base paths', () => {
+    // @ts-expect-error Testing invalid options
     expect(() => createPathSchema({ basePath: 123 })).toThrow(OptionsError)
+    // @ts-expect-error Testing invalid options
     expect(() => createPathSchema({ basePath: null })).toThrow(OptionsError)
+    // @ts-expect-error Testing invalid options
     expect(() => createPathSchema({ basePath: {} })).toThrow(OptionsError)
   })
 })
