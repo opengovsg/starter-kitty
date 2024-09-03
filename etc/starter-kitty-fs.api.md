@@ -12,6 +12,4 @@ import * as fs from 'node:fs';
 const safeFs: (basePath?: string) => typeof fs;
 export default safeFs;
 
-// (No @packageDocumentation comment for this package)
-
 ```

@@ -1,3 +1,9 @@
+/**
+ * A safe-by-default wrapper around the `fs` module.
+ *
+ * @packageDocumentation
+ */
+
 import * as fs from 'node:fs'
 
 import { createGetter } from './getter'
