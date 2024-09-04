@@ -17,13 +17,13 @@ export interface PathValidatorOptions {
    *
    * @example `'/var/www'`
    */
-  basePath?: string
+  basePath: string
 }
 
 export const optionsSchema = z.object({
   basePath: z.string().refine((basePath) => {
     return basePath === path.resolve(basePath) && path.isAbsolute(basePath)
-  }),
+  }, 'The base path must be an absolute path'),
 })
 
 export type ParsedPathValidatorOptions = z.infer<typeof optionsSchema>

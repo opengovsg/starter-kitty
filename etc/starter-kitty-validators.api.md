@@ -13,7 +13,7 @@ import { ZodSchema } from 'zod';
 export const createEmailSchema: (options?: EmailValidatorOptions) => ZodSchema<string>;
 
 // @public
-export const createPathSchema: (options?: PathValidatorOptions) => ZodSchema<string>;
+export const createPathSchema: (options: PathValidatorOptions) => ZodSchema<string>;
 
 // @public
 export interface EmailValidatorOptions {
@@ -30,7 +30,7 @@ export class OptionsError extends Error {
 
 // @public
 export interface PathValidatorOptions {
-    basePath?: string;
+    basePath: string;
 }
 
 // @public
