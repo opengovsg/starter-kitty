@@ -9,23 +9,24 @@ type ReturnType<F extends CallableFunction> = F extends (
   ? R
   : never
 
+type FsFunctionNames = Exclude<
+  keyof typeof fs,
+  | 'promises'
+  | 'constants'
+  | 'Stats'
+  | 'StatsFs'
+  | 'Dirent'
+  | 'Dir'
+  | 'ReadStream'
+  | 'WriteStream'
+>
+
 export const createGetter: (
   basePath: string,
 ) => ProxyHandler<typeof fs>['get'] =
   (basePath: string) => (target: typeof fs, p: keyof typeof fs, receiver) => {
-    if (
-      typeof target[p] === 'function' &&
-      // required for func to get the correct type
-      p !== 'promises' &&
-      p !== 'constants' &&
-      p !== 'Stats' &&
-      p !== 'StatsFs' &&
-      p !== 'Dirent' &&
-      p !== 'Dir' &&
-      p !== 'ReadStream' &&
-      p !== 'WriteStream'
-    ) {
-      const func = Reflect.get(target, p, receiver)
+    if (typeof target[p] === 'function') {
+      const func = Reflect.get(target, p as FsFunctionNames, receiver)
       const paramsToSanitize = PARAMS_TO_SANITIZE[p]
 
       if (paramsToSanitize) {
