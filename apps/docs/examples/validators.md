@@ -24,6 +24,8 @@ const contentSubmissionSchema = z.object({
 type ContentSubmission = z.infer<typeof contentSchema>
 ```
 
+`fullPermalink`, when resolved relative to the working directory of the Node process, must lie within `/app/content`.
+
 ## Email Validation
 
 ```javascript
@@ -40,6 +42,8 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 ```
+
+`email` must be a valid email address and have a domain that is `gov.sg` or a subdomain of `gov.sg`.
 
 ## URL Validation
 

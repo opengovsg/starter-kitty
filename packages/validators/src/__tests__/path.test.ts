@@ -6,8 +6,8 @@ import { ZodError } from 'zod'
 import { OptionsError } from '@/common/errors'
 import { createPathSchema } from '@/index'
 
-describe('Path validator with default options', () => {
-  const schema = createPathSchema()
+describe('Path validator with current working directory', () => {
+  const schema = createPathSchema({ basePath: process.cwd() })
 
   it('should allow a valid path', () => {
     expect(() => schema.parse('valid/path')).not.toThrow()
@@ -52,7 +52,7 @@ describe('Path validator with default options', () => {
   })
 })
 
-describe('Path validator with custom options', () => {
+describe('Path validator with different directory', () => {
   const schema = createPathSchema({ basePath: '/var/www' })
 
   it('should allow a valid path within the base path', () => {
@@ -72,6 +72,10 @@ describe('Path validator with custom options', () => {
 })
 
 describe('Path validator with invalid options', () => {
+  it('should throw an error for missing options', () => {
+    // @ts-expect-error Testing invalid options
+    expect(() => createPathSchema()).toThrow(OptionsError)
+  })
   it('should throw an error for an invalid base path', () => {
     expect(() => createPathSchema({ basePath: 'relative/path' })).toThrow(
       OptionsError,
