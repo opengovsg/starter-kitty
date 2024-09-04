@@ -6,7 +6,7 @@
 
 import * as fs from 'node:fs'
 
-import { createGetter } from './getter'
+import { createGetter } from '@/getter'
 
 /**
  * Creates a safe-by-default version of the Node.js `fs` module.

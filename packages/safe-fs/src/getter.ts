@@ -1,14 +1,7 @@
 import fs from 'node:fs'
 
-import { z } from 'zod'
-
-import pathParams from './params.json'
-import { sanitizePath } from './sanitizers'
-
-const pathParamsRecordSchema = z.record(z.array(z.number()))
-export type PathParamsRecord = z.infer<typeof pathParamsRecordSchema>
-
-const pathParamsRecord = pathParamsRecordSchema.parse(pathParams)
+import PARAMS_TO_SANITIZE from '@/params'
+import { sanitizePath } from '@/sanitizers'
 
 type ReturnType<F extends CallableFunction> = F extends (
   ...args: infer A
@@ -33,7 +26,7 @@ export const createGetter: (
       p !== 'WriteStream'
     ) {
       const func = Reflect.get(target, p, receiver)
-      const paramsToSanitize = pathParamsRecord[p]
+      const paramsToSanitize = PARAMS_TO_SANITIZE[p]
 
       if (paramsToSanitize) {
         return (...args: Parameters<typeof func>) => {

@@ -14,9 +14,6 @@
     "test": "vitest",
     "ci:report": "api-extractor run --verbose"
   },
-  "dependencies": {
-    "zod": "^3.23.8"
-  },
   "devDependencies": {
     "@swc/core": "^1.6.13",
     "@types/node": "^18.19.47",
@@ -29,11 +26,11 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-tsdoc": "^0.3.0",
+    "memfs": "^4.11.1",
     "prettier": "^2.8.4",
     "tsc-alias": "^1.8.10",
     "tsup": "^8.1.0",
     "typescript": "^5.4.5",
-    "vitest": "^2.0.2",
-    "memfs": "^4.11.1"
+    "vitest": "^2.0.2"
   }
 }
