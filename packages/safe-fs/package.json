@@ -1,5 +1,5 @@
 {
-  "name": "@opengovsg/starter-kitty-validators",
+  "name": "@opengovsg/starter-kitty-fs",
   "version": "1.2.3",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,14 +14,9 @@
     "test": "vitest",
     "ci:report": "api-extractor run --verbose"
   },
-  "dependencies": {
-    "email-addresses": "^5.0.0",
-    "zod": "^3.23.8",
-    "zod-validation-error": "^3.3.0"
-  },
   "devDependencies": {
     "@swc/core": "^1.6.13",
-    "@types/node": "^18",
+    "@types/node": "^18.19.47",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.56.0",
@@ -31,6 +26,7 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-tsdoc": "^0.3.0",
+    "memfs": "^4.11.1",
     "prettier": "^2.8.4",
     "tsc-alias": "^1.8.10",
     "tsup": "^8.1.0",
