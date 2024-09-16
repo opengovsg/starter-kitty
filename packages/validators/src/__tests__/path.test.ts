@@ -16,9 +16,7 @@ describe('Path validator with current working directory', () => {
   })
 
   it('should trim the path', () => {
-    expect(schema.parse('  valid/path  ')).toBe(
-      path.join(process.cwd(), 'valid/path'),
-    )
+    expect(schema.parse('  valid/path  ')).toBe(path.join(process.cwd(), 'valid/path'))
   })
 
   it('should not allow directory traversal', () => {
@@ -56,9 +54,7 @@ describe('Path validator with different directory', () => {
   const schema = createPathSchema({ basePath: '/var/www' })
 
   it('should allow a valid path within the base path', () => {
-    expect(() =>
-      schema.parse('../'.repeat(process.cwd().split('/').length) + 'var/www'),
-    ).not.toThrow()
+    expect(() => schema.parse('../'.repeat(process.cwd().split('/').length) + 'var/www')).not.toThrow()
     expect(() => schema.parse('/var/www')).not.toThrow()
     expect(() => schema.parse('/var/www/valid/path')).not.toThrow()
     expect(() => schema.parse('/var/www/valid/nested/path')).not.toThrow()
@@ -77,9 +73,7 @@ describe('Path validator with invalid options', () => {
     expect(() => createPathSchema()).toThrow(OptionsError)
   })
   it('should throw an error for an invalid base path', () => {
-    expect(() => createPathSchema({ basePath: 'relative/path' })).toThrow(
-      OptionsError,
-    )
+    expect(() => createPathSchema({ basePath: 'relative/path' })).toThrow(OptionsError)
     expect(() => createPathSchema({ basePath: '' })).toThrow(OptionsError)
     expect(() => createPathSchema({ basePath: '.' })).toThrow(OptionsError)
   })

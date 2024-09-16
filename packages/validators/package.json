@@ -11,6 +11,7 @@
     "build:report": "api-extractor run --local --verbose",
     "build:docs": "api-documenter markdown --input-folder ../../temp/ --output-folder ../../apps/docs/api/",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" --cache",
+    "format": "prettier --write .",
     "test": "vitest",
     "ci:report": "api-extractor run --verbose"
   },
@@ -20,21 +21,14 @@
     "zod-validation-error": "^3.3.0"
   },
   "devDependencies": {
+    "@opengovsg/eslint-config-starter-kitty": "workspace:*",
+    "@opengovsg/prettier-config-starter-kitty": "workspace:*",
     "@swc/core": "^1.6.13",
     "@types/node": "^18",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.56.0",
-    "eslint-config-opengovsg": "^3.0.0",
-    "eslint-config-prettier": "^8.6.0",
-    "eslint-import-resolver-typescript": "^3.6.1",
-    "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-simple-import-sort": "^10.0.0",
-    "eslint-plugin-tsdoc": "^0.3.0",
-    "prettier": "^2.8.4",
     "tsc-alias": "^1.8.10",
     "tsup": "^8.1.0",
     "typescript": "^5.4.5",
     "vitest": "^2.0.2"
-  }
+  },
+  "prettier": "@opengovsg/prettier-config-starter-kitty"
 }

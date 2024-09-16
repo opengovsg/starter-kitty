@@ -68,10 +68,10 @@ export const optionsSchema = z.object({
         return z.NEVER
       }
     })
-    .refine((url) => url.protocol === 'http:' || url.protocol === 'https:', {
+    .refine(url => url.protocol === 'http:' || url.protocol === 'https:', {
       message: 'Base URL must use HTTP or HTTPS',
     })
-    .refine((url) => url.pathname === '/', {
+    .refine(url => url.pathname === '/', {
       message: 'Base URL must not have a path',
     })
     .optional(),

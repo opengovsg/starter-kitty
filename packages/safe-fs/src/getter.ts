@@ -3,17 +3,11 @@ import fs from 'node:fs'
 import PARAMS_TO_SANITIZE from '@/params'
 import { sanitizePath } from '@/sanitizers'
 
-type ReturnType<F extends CallableFunction> = F extends (
-  ...args: infer A
-) => infer R
-  ? R
-  : never
+type ReturnType<F extends CallableFunction> = F extends (...args: infer A) => infer R ? R : never
 
 type FsFunction = Extract<(typeof fs)[keyof typeof fs], CallableFunction>
 
-export const createGetter: (
-  basePath: string,
-) => ProxyHandler<typeof fs>['get'] =
+export const createGetter: (basePath: string) => ProxyHandler<typeof fs>['get'] =
   (basePath: string) => (target: typeof fs, p: keyof typeof fs, receiver) => {
     if (typeof target[p] === 'function') {
       const func = Reflect.get(target, p, receiver) as FsFunction
@@ -28,9 +22,7 @@ export const createGetter: (
             }
             return arg
           })
-          return (func as CallableFunction)(...sanitizedArgs) as ReturnType<
-            typeof func
-          >
+          return (func as CallableFunction)(...sanitizedArgs) as ReturnType<typeof func>
         }
       }
       return func

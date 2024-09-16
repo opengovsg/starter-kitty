@@ -83,7 +83,7 @@ describe('getter', () => {
       const content = 'Async Hello, World!'
 
       await new Promise<void>((resolve, reject) => {
-        sfs.writeFile(filePath, content, (err) => {
+        sfs.writeFile(filePath, content, err => {
           if (err) reject(err)
           else resolve()
         })
@@ -105,14 +105,14 @@ describe('getter', () => {
       const appendedContent = 'Appended async content'
 
       await new Promise<void>((resolve, reject) => {
-        sfs.writeFile(filePath, initialContent, (err) => {
+        sfs.writeFile(filePath, initialContent, err => {
           if (err) reject(err)
           else resolve()
         })
       })
 
       await new Promise<void>((resolve, reject) => {
-        sfs.appendFile(filePath, appendedContent, (err) => {
+        sfs.appendFile(filePath, appendedContent, err => {
           if (err) reject(err)
           else resolve()
         })
@@ -179,9 +179,7 @@ describe('getter', () => {
       const validPath = 'valid/nested/path.txt'
       const newPath = 'valid/new.txt'
 
-      expect(() =>
-        sfs.mkdirSync('valid/nested', { recursive: true }),
-      ).not.toThrow()
+      expect(() => sfs.mkdirSync('valid/nested', { recursive: true })).not.toThrow()
       expect(() => sfs.writeFileSync(validPath, content)).not.toThrow()
       expect(() => sfs.readFileSync(validPath)).not.toThrow()
       expect(() => sfs.renameSync(validPath, newPath)).not.toThrow()

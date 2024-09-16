@@ -14,9 +14,7 @@ import { toSchema } from '@/path/schema'
  *
  * @public
  */
-export const createPathSchema = (
-  options: PathValidatorOptions,
-): ZodSchema<string> => {
+export const createPathSchema = (options: PathValidatorOptions): ZodSchema<string> => {
   const result = optionsSchema.safeParse(options)
   if (result.success) {
     return toSchema(result.data)
