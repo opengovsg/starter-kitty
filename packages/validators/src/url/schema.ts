@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { ParsedUrlValidatorOptions } from '@/url/options'
 import { isSafeUrl, resolveRelativeUrl } from '@/url/utils'
 
-export const createUrlSchema = (options: ParsedUrlValidatorOptions) => {
+export const toSchema = (options: ParsedUrlValidatorOptions) => {
   return z
     .string()
     .transform((url) => resolveRelativeUrl(url, options.baseOrigin))

@@ -8,12 +8,16 @@
 
 import { z } from 'zod';
 import { ZodSchema } from 'zod';
+import { ZodTypeDef } from 'zod';
 
 // @public
 export const createEmailSchema: (options?: EmailValidatorOptions) => ZodSchema<string>;
 
 // @public
 export const createPathSchema: (options: PathValidatorOptions) => ZodSchema<string>;
+
+// @public
+export const createUrlSchema: (options?: UrlValidatorOptions) => ZodSchema<URL, ZodTypeDef, string>;
 
 // @public
 export interface EmailValidatorOptions {

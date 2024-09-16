@@ -1,4 +1,4 @@
-import { ZodError } from 'zod'
+import { ZodError, ZodSchema, ZodTypeDef } from 'zod'
 import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
@@ -8,7 +8,7 @@ import {
   optionsSchema,
   UrlValidatorOptions,
 } from '@/url/options'
-import { createUrlSchema } from '@/url/schema'
+import { toSchema } from '@/url/schema'
 
 /**
  * Parses URLs according to WHATWG standards and validates against a whitelist of allowed protocols and hostnames,
@@ -40,7 +40,7 @@ export class UrlValidator {
   constructor(options: UrlValidatorOptions = defaultOptions) {
     const result = optionsSchema.safeParse({ ...defaultOptions, ...options })
     if (result.success) {
-      this.schema = createUrlSchema(result.data)
+      this.schema = toSchema(result.data)
       return
     }
     throw new OptionsError(fromError(result.error).toString())
@@ -66,4 +66,24 @@ export class UrlValidator {
       throw result.error
     }
   }
+}
+
+/**
+ * Create a schema that validates user-supplied URLs. This does the same thing as the `UrlValidator` class,
+ * but it returns a Zod schema which can be used as part of a larger schema.
+ *
+ * @param options - The options to use for validation
+ * @throws {@link OptionsError} If the options are invalid
+ * @returns A Zod schema that validates paths.
+ *
+ * @public
+ */
+export const createUrlSchema = (
+  options: UrlValidatorOptions = defaultOptions
+): ZodSchema<URL, ZodTypeDef, string> => {
+  const result = optionsSchema.safeParse({ ...defaultOptions, ...options })
+  if (result.success) {
+    return toSchema(result.data)
+  }
+  throw new OptionsError(fromError(result.error).toString())
 }
