@@ -6,6 +6,7 @@
     "dev": "vitepress dev",
     "build:docs": "vitepress build",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "preview": "vitepress preview"
   },
   "keywords": [],

@@ -12,6 +12,7 @@
     "build:docs": "api-documenter markdown --input-folder ../../temp/ --output-folder ../../apps/docs/api/",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" --cache",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest",
     "ci:report": "api-extractor run --verbose"
   },
