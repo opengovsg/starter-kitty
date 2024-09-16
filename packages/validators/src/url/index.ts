@@ -79,7 +79,7 @@ export class UrlValidator {
  * @public
  */
 export const createUrlSchema = (
-  options: UrlValidatorOptions = defaultOptions
+  options: UrlValidatorOptions = defaultOptions,
 ): ZodSchema<URL, ZodTypeDef, string> => {
   const result = optionsSchema.safeParse({ ...defaultOptions, ...options })
   if (result.success) {
