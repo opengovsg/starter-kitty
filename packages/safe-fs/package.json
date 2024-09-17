@@ -11,6 +11,7 @@
     "build:report": "api-extractor run --local --verbose",
     "build:docs": "api-documenter markdown --input-folder ../../temp/ --output-folder ../../apps/docs/api/",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" --cache",
+    "lint:fix": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest",

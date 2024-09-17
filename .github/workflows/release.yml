@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "*/v*"
   workflow_dispatch: {}
 
 permissions:
@@ -56,4 +56,3 @@ jobs:
         run: pnpm -r publish --no-git-checks --tag latest --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  

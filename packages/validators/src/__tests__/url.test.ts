@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { OptionsError } from '@/common/errors'
-import { UrlValidator } from '@/index'
+import { createUrlSchema, UrlValidator } from '@/index'
 import { UrlValidationError } from '@/url/errors'
 
 describe('UrlValidator with default options', () => {
@@ -114,5 +114,43 @@ describe('UrlValidator with invalid options', () => {
 
   it('should throw an error when the base URL has a path', () => {
     expect(() => new UrlValidator({ baseOrigin: 'https://example.com/path' })).toThrow(OptionsError)
+  })
+})
+
+describe('createUrlSchema', () => {
+  it('should create a schema with default options', () => {
+    const schema = createUrlSchema()
+    expect(() => schema.parse('https://example.com')).not.toThrow()
+  })
+
+  it('should create a schema with custom options', () => {
+    const schema = createUrlSchema({
+      whitelist: {
+        protocols: ['http', 'https', 'mailto'],
+      },
+    })
+    expect(() => schema.parse('mailto:test@test.test')).not.toThrow()
+  })
+
+  it('should throw an error when the options are invalid', () => {
+    expect(() => createUrlSchema({ baseOrigin: 'invalid' })).toThrow(OptionsError)
+    expect(() => createUrlSchema({ baseOrigin: 'ftp://example.com' })).toThrow(OptionsError)
+    expect(() => createUrlSchema({ baseOrigin: 'https://example.com/path' })).toThrow(OptionsError)
+  })
+
+  it('should not throw an error when the options are valid', () => {
+    expect(() =>
+      createUrlSchema({
+        whitelist: {
+          protocols: ['http', 'https'],
+          hosts: ['example.com'],
+        },
+      }),
+    ).not.toThrow()
+  })
+
+  it('should reject relaative URLs when the base URL is not provided', () => {
+    const schema = createUrlSchema()
+    expect(() => schema.parse('/path')).toThrow(UrlValidationError)
   })
 })
