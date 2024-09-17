@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "vitepress dev",
     "build:docs": "vitepress build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "preview": "vitepress preview"
   },
   "keywords": [],
@@ -12,7 +14,7 @@
   "license": "ISC",
   "devDependencies": {
     "vitepress": "^1.3.1",
-    "vue": "~3.4.31",
-    "@opengovsg/starter-kitty-validators": "workspace:*"
-  }
+    "vue": "~3.4.31"
+  },
+  "prettier": "@opengovsg/prettier-config-starter-kitty"
 }

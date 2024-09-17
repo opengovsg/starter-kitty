@@ -1,16 +1,9 @@
 import { ParsedMailbox } from 'email-addresses'
 
-import {
-  ENCODED_WORD_REGEX,
-  MAX_DOMAIN_LENGTH,
-  MAX_LOCAL_LENGTH,
-} from './consts'
+import { ENCODED_WORD_REGEX, MAX_DOMAIN_LENGTH, MAX_LOCAL_LENGTH } from './consts'
 import { ParsedEmailValidatorOptions } from './options'
 
-export const isValidEmail = (
-  email: ParsedMailbox,
-  whitelisted: ParsedEmailValidatorOptions['domains'],
-) => {
+export const isValidEmail = (email: ParsedMailbox, whitelisted: ParsedEmailValidatorOptions['domains']) => {
   const domain = email.domain
   const local = email.local
 
@@ -37,9 +30,7 @@ export const isWhitelistedDomain = (
   // Case 1: The domain is an exact match of a whitelisted domain
   // Case 2: The domain is a subdomain of a whitelisted domain, AND includeSubdomains is true
   return whitelistedDomains.some(
-    (whitelisted) =>
-      domain === whitelisted.domain ||
-      (whitelisted.includeSubdomains &&
-        domain.endsWith(`.${whitelisted.domain}`)),
+    whitelisted =>
+      domain === whitelisted.domain || (whitelisted.includeSubdomains && domain.endsWith(`.${whitelisted.domain}`)),
   )
 }

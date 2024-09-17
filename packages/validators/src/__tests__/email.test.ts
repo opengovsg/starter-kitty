@@ -12,18 +12,12 @@ describe('EmailValidator with default options', () => {
 
     // https://en.wikipedia.org/wiki/Email_address
     expect(schema.parse('simple@example.com')).toBe('simple@example.com')
-    expect(schema.parse('FirstName.LastName@EasierReading.org')).toBe(
-      'FirstName.LastName@EasierReading.org',
-    )
+    expect(schema.parse('FirstName.LastName@EasierReading.org')).toBe('FirstName.LastName@EasierReading.org')
     expect(schema.parse('x@example.com')).toBe('x@example.com')
-    expect(
-      schema.parse(
-        'long.email-address-with-hyphens@and.subdomains.example.com',
-      ),
-    ).toBe('long.email-address-with-hyphens@and.subdomains.example.com')
-    expect(schema.parse('user.name+tag+sorting@example.com')).toBe(
-      'user.name+tag+sorting@example.com',
+    expect(schema.parse('long.email-address-with-hyphens@and.subdomains.example.com')).toBe(
+      'long.email-address-with-hyphens@and.subdomains.example.com',
     )
+    expect(schema.parse('user.name+tag+sorting@example.com')).toBe('user.name+tag+sorting@example.com')
     expect(schema.parse('user-@example.org')).toBe('user-@example.org')
   })
 
@@ -32,64 +26,38 @@ describe('EmailValidator with default options', () => {
 
     // https://en.wikipedia.org/wiki/Email_address
     expect(() => schema.parse('a@b@c@example.com')).toThrowError(ZodError)
+    expect(() => schema.parse('a"b(c)d,e:f;g<h>i[jk]l@example.com')).toThrowError(ZodError)
+    expect(() => schema.parse('just"not"right@example.com')).toThrowError(ZodError)
+    expect(() => schema.parse('this is"notallowed@example.com')).toThrowError(ZodError)
+    expect(() => schema.parse('this\\ still\\"not\\\\allowed@example.com')).toThrowError(ZodError)
     expect(() =>
-      schema.parse('a"b(c)d,e:f;g<h>i[jk]l@example.com'),
+      schema.parse('1234567890123456789012345678901234567890123456789012345678901234+x@example.com'),
     ).toThrowError(ZodError)
-    expect(() => schema.parse('just"not"right@example.com')).toThrowError(
+    expect(() => schema.parse('i.like.underscores@but_they_are_not_allowed_in_this_part.example.com')).toThrowError(
       ZodError,
     )
-    expect(() => schema.parse('this is"notallowed@example.com')).toThrowError(
-      ZodError,
-    )
-    expect(() =>
-      schema.parse('this\\ still\\"not\\\\allowed@example.com'),
-    ).toThrowError(ZodError)
-    expect(() =>
-      schema.parse(
-        '1234567890123456789012345678901234567890123456789012345678901234+x@example.com',
-      ),
-    ).toThrowError(ZodError)
-    expect(() =>
-      schema.parse(
-        'i.like.underscores@but_they_are_not_allowed_in_this_part.example.com',
-      ),
-    ).toThrowError(ZodError)
 
     // We are stricter than RFC 5322, and disallow some edge cases:
     // Quoted strings
     expect(() => schema.parse('" "@example.org')).toThrowError(ZodError)
     expect(() => schema.parse('"john..doe"@example.org')).toThrowError(ZodError)
     // Bangified host route
-    expect(() => schema.parse('mailhost!username@example.org')).toThrowError(
-      ZodError,
-    )
+    expect(() => schema.parse('mailhost!username@example.org')).toThrowError(ZodError)
     expect(() =>
-      schema.parse(
-        '"very.(),:;<>[]\\".VERY.\\"very@\\\\ \\"very\\".unusual"@strange.example.com',
-      ),
+      schema.parse('"very.(),:;<>[]\\".VERY.\\"very@\\\\ \\"very\\".unusual"@strange.example.com'),
     ).toThrowError(ZodError)
     // %-escaped mail route
-    expect(() => schema.parse('user%example.com@example.org')).toThrowError(
-      ZodError,
-    )
+    expect(() => schema.parse('user%example.com@example.org')).toThrowError(ZodError)
     // IP address instead of domain
-    expect(() => schema.parse('postmaster@[123.123.123.123]')).toThrowError(
-      ZodError,
-    )
+    expect(() => schema.parse('postmaster@[123.123.123.123]')).toThrowError(ZodError)
 
     // Encoded-word
     // https://portswigger.net/research/splitting-the-email-atom
-    expect(() =>
-      schema.parse('=?iso-8859-1?q?=61=62=63?=collab@psres.net'),
-    ).toThrowError(ZodError)
+    expect(() => schema.parse('=?iso-8859-1?q?=61=62=63?=collab@psres.net')).toThrowError(ZodError)
 
-    expect(() =>
-      schema.parse('=?utf-7?b?JkFHWUFid0J2QUdJQVlRQnkt?=@psres.net'),
-    ).toThrowError(ZodError)
+    expect(() => schema.parse('=?utf-7?b?JkFHWUFid0J2QUdJQVlRQnkt?=@psres.net')).toThrowError(ZodError)
 
-    expect(() =>
-      schema.parse('=?x?q?collab=40invalid.com=3e=00?=open.gov.sg'),
-    ).toThrowError(ZodError)
+    expect(() => schema.parse('=?x?q?collab=40invalid.com=3e=00?=open.gov.sg')).toThrowError(ZodError)
   })
 
   it('should clean up unnecessary whitespace', () => {
@@ -147,9 +115,7 @@ describe('EmailValidator that disallows subdomains (by default)', () => {
 describe('EmailValidator with invalid options', () => {
   it('should throw an error for invalid options', () => {
     // @ts-expect-error Testing invalid options
-    expect(() => createEmailSchema({ domains: ['gov.sg'] })).toThrowError(
-      OptionsError,
-    )
+    expect(() => createEmailSchema({ domains: ['gov.sg'] })).toThrowError(OptionsError)
   })
 
   it('should not throw an error when missing options', () => {

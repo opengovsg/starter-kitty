@@ -28,3 +28,6 @@ jobs:
 
       - name: Lint 🛀
         run: pnpm lint
+
+      - name: Check for formatting 🧹
+        run: pnpm format:check

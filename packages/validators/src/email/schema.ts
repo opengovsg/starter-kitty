@@ -18,15 +18,11 @@ const createValidationSchema = (options: ParsedEmailValidatorOptions) =>
       }
       return parsed
     })
-    .refine((parsed) => isValidEmail(parsed, options.domains), {
+    .refine(parsed => isValidEmail(parsed, options.domains), {
       message: 'Domain not allowed',
     })
-    .transform((parsed) => parsed.address)
+    .transform(parsed => parsed.address)
 
 export const toSchema = (options: ParsedEmailValidatorOptions) => {
-  return z
-    .string()
-    .trim()
-    .email({ message: 'Invalid email address' })
-    .pipe(createValidationSchema(options))
+  return z.string().trim().email({ message: 'Invalid email address' }).pipe(createValidationSchema(options))
 }

@@ -3,11 +3,7 @@ import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
 import { UrlValidationError } from '@/url/errors'
-import {
-  defaultOptions,
-  optionsSchema,
-  UrlValidatorOptions,
-} from '@/url/options'
+import { defaultOptions, optionsSchema, UrlValidatorOptions } from '@/url/options'
 import { createUrlSchema } from '@/url/schema'
 
 /**

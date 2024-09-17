@@ -20,9 +20,7 @@ export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
   }
 
   if (new URL(baseOrigin).origin !== normalizedUrl.origin) {
-    throw new UrlValidationError(
-      `Invalid URL: ${url} is not on the same origin as base URL ${baseOrigin.href}`,
-    )
+    throw new UrlValidationError(`Invalid URL: ${url} is not on the same origin as base URL ${baseOrigin.href}`)
   }
   return normalizedUrl
 }
@@ -31,14 +29,11 @@ export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
 const resolveNextDynamicRoute = (url: URL): URL => {
   const pathname = url.pathname
   const query = new URLSearchParams(url.search)
-  const resolvedPathname = pathname.replace(
-    DYNAMIC_ROUTE_SEGMENT_REGEX,
-    (_, name: string) => {
-      const value = query.get(name) || ''
-      query.delete(name)
-      return value
-    },
-  )
+  const resolvedPathname = pathname.replace(DYNAMIC_ROUTE_SEGMENT_REGEX, (_, name: string) => {
+    const value = query.get(name) || ''
+    query.delete(name)
+    return value
+  })
 
   const result = new URL(url.href)
   result.pathname = resolvedPathname
@@ -47,13 +42,11 @@ const resolveNextDynamicRoute = (url: URL): URL => {
 
 export const isSafeUrl = (url: URL, whitelist: UrlValidatorWhitelist) => {
   // only allow whitelisted protocols
-  if (
-    !whitelist.protocols.some((protocol) => url.protocol === `${protocol}:`)
-  ) {
+  if (!whitelist.protocols.some(protocol => url.protocol === `${protocol}:`)) {
     return false
   }
   // only allow whitelisted hosts
-  if (whitelist.hosts && !whitelist.hosts.some((host) => url.host === host)) {
+  if (whitelist.hosts && !whitelist.hosts.some(host => url.host === host)) {
     return false
   }
   // don't allow dynamic routes

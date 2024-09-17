@@ -14,9 +14,7 @@ import { toSchema } from '@/email/schema'
  *
  * @public
  */
-export const createEmailSchema = (
-  options: EmailValidatorOptions = {},
-): ZodSchema<string> => {
+export const createEmailSchema = (options: EmailValidatorOptions = {}): ZodSchema<string> => {
   const result = optionsSchema.safeParse(options)
   if (result.success) {
     return toSchema(result.data)
