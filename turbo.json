@@ -8,7 +8,7 @@
       "dependsOn": ["build"]
     },
     "build:docs": {
-      "dependsOn": ["^build:docs", "build:report"]
+      "dependsOn": ["^build:report", "^build:docs"]
     },
     "lint": {
       "dependsOn": ["^lint"]
