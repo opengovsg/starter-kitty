@@ -10,7 +10,8 @@
     "lint": "turbo lint",
     "test": "turbo test",
     "ci:report": "turbo ci:report",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "turbo format",
+    "format:check": "turbo format:check"
   },
   "devDependencies": {
     "prettier": "^3.2.5",

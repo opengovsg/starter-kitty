@@ -21,7 +21,7 @@ export interface PathValidatorOptions {
 }
 
 export const optionsSchema = z.object({
-  basePath: z.string().refine((basePath) => {
+  basePath: z.string().refine(basePath => {
     return basePath === path.resolve(basePath) && path.isAbsolute(basePath)
   }, 'The base path must be an absolute path'),
 })

@@ -13,9 +13,7 @@ describe('UrlValidator with default options', () => {
   })
 
   it('should throw an error when the protocol is not http or https', () => {
-    expect(() => validator.parse('ftp://example.com')).toThrow(
-      UrlValidationError,
-    )
+    expect(() => validator.parse('ftp://example.com')).toThrow(UrlValidationError)
   })
 
   it('should allow any host when no host whitelist is provided', () => {
@@ -29,24 +27,14 @@ describe('UrlValidator with default options', () => {
   })
 
   it('should not allow Next.js dynamic routes', () => {
-    expect(() => validator.parse('https://example.com/[[...slug]]')).toThrow(
-      UrlValidationError,
-    )
-    expect(() => validator.parse('https://example.com/[[slug]]')).toThrow(
-      UrlValidationError,
-    )
-    expect(() => validator.parse('https://example.com/[x]?x=1')).toThrow(
-      UrlValidationError,
-    )
+    expect(() => validator.parse('https://example.com/[[...slug]]')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://example.com/[[slug]]')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://example.com/[x]?x=1')).toThrow(UrlValidationError)
   })
 
   it('should prevent XSS attacks', () => {
-    expect(
-      () => validator.parse('javascript&colonalert(/xss/)').protocol,
-    ).toThrow(UrlValidationError)
-    expect(() => validator.parse('javascript:alert(/xss/)')).toThrow(
-      UrlValidationError,
-    )
+    expect(() => validator.parse('javascript&colonalert(/xss/)').protocol).toThrow(UrlValidationError)
+    expect(() => validator.parse('javascript:alert(/xss/)')).toThrow(UrlValidationError)
   })
 })
 
@@ -64,12 +52,8 @@ describe('UrlValidator with custom protocol whitelist', () => {
   })
 
   it('should throw an error when the protocol is not on the whitelist', () => {
-    expect(() => validator.parse('ftp://example.com')).toThrow(
-      UrlValidationError,
-    )
-    expect(() => validator.parse('javascript:alert()')).toThrow(
-      UrlValidationError,
-    )
+    expect(() => validator.parse('ftp://example.com')).toThrow(UrlValidationError)
+    expect(() => validator.parse('javascript:alert()')).toThrow(UrlValidationError)
   })
 })
 
@@ -86,9 +70,7 @@ describe('UrlValidator with custom host whitelist', () => {
   })
 
   it('should throw an error when the host is not on the whitelist', () => {
-    expect(() => validator.parse('https://open.gov.sg')).toThrow(
-      UrlValidationError,
-    )
+    expect(() => validator.parse('https://open.gov.sg')).toThrow(UrlValidationError)
   })
 })
 
@@ -104,50 +86,34 @@ describe('UrlValidator with base URL', () => {
   })
 
   it('should throw an error when the URL is not on the same origin as the base URL', () => {
-    expect(() => validator.parse('https://open.gov.sg')).toThrow(
-      UrlValidationError,
-    )
+    expect(() => validator.parse('https://open.gov.sg')).toThrow(UrlValidationError)
   })
 
   it('should prevent XSS attacks', () => {
-    expect(validator.parse('javascript&colonalert(/xss/)').protocol).toBe(
-      'https:',
-    )
-    expect(() => validator.parse('javascript:alert(/xss/)')).toThrow(
-      UrlValidationError,
-    )
+    expect(validator.parse('javascript&colonalert(/xss/)').protocol).toBe('https:')
+    expect(() => validator.parse('javascript:alert(/xss/)')).toThrow(UrlValidationError)
   })
 
   it('should not allow Next.js dynamic routes', () => {
-    expect(() =>
-      validator.parse('/[[x]]https:/[y]/example.com/[[x]]/?x&y'),
-    ).toThrow(UrlValidationError)
+    expect(() => validator.parse('/[[x]]https:/[y]/example.com/[[x]]/?x&y')).toThrow(UrlValidationError)
   })
 
   it('should not allow Next.js dynamic routes', () => {
-    expect(() =>
-      validator.parse('/[[x]]javascript:alert(1337)/[y]/[z]?x&y&z'),
-    ).toThrow(UrlValidationError)
+    expect(() => validator.parse('/[[x]]javascript:alert(1337)/[y]/[z]?x&y&z')).toThrow(UrlValidationError)
   })
 })
 
 describe('UrlValidator with invalid options', () => {
   it('should throw an error when the base URL is not a valid URL', () => {
-    expect(() => new UrlValidator({ baseOrigin: 'invalid' })).toThrow(
-      OptionsError,
-    )
+    expect(() => new UrlValidator({ baseOrigin: 'invalid' })).toThrow(OptionsError)
   })
 
   it('should throw an error when the base URL protocol is not http or https', () => {
-    expect(() => new UrlValidator({ baseOrigin: 'ftp://example.com' })).toThrow(
-      OptionsError,
-    )
+    expect(() => new UrlValidator({ baseOrigin: 'ftp://example.com' })).toThrow(OptionsError)
   })
 
   it('should throw an error when the base URL has a path', () => {
-    expect(
-      () => new UrlValidator({ baseOrigin: 'https://example.com/path' }),
-    ).toThrow(OptionsError)
+    expect(() => new UrlValidator({ baseOrigin: 'https://example.com/path' })).toThrow(OptionsError)
   })
 })
 

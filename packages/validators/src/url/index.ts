@@ -3,12 +3,8 @@ import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
 import { UrlValidationError } from '@/url/errors'
-import {
-  defaultOptions,
-  optionsSchema,
-  UrlValidatorOptions,
-} from '@/url/options'
-import { toSchema } from '@/url/schema'
+import { defaultOptions, optionsSchema, UrlValidatorOptions } from '@/url/options'
+import { createUrlSchema } from '@/url/schema'
 
 /**
  * Parses URLs according to WHATWG standards and validates against a whitelist of allowed protocols and hostnames,
