@@ -133,15 +133,9 @@ describe('createUrlSchema', () => {
   })
 
   it('should throw an error when the options are invalid', () => {
-    expect(() => createUrlSchema({ baseOrigin: 'invalid' })).toThrow(
-      OptionsError,
-    )
-    expect(() => createUrlSchema({ baseOrigin: 'ftp://example.com' })).toThrow(
-      OptionsError,
-    )
-    expect(() =>
-      createUrlSchema({ baseOrigin: 'https://example.com/path' }),
-    ).toThrow(OptionsError)
+    expect(() => createUrlSchema({ baseOrigin: 'invalid' })).toThrow(OptionsError)
+    expect(() => createUrlSchema({ baseOrigin: 'ftp://example.com' })).toThrow(OptionsError)
+    expect(() => createUrlSchema({ baseOrigin: 'https://example.com/path' })).toThrow(OptionsError)
   })
 
   it('should not throw an error when the options are valid', () => {

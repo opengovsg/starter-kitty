@@ -4,7 +4,7 @@ import { fromError } from 'zod-validation-error'
 import { OptionsError } from '@/common/errors'
 import { UrlValidationError } from '@/url/errors'
 import { defaultOptions, optionsSchema, UrlValidatorOptions } from '@/url/options'
-import { createUrlSchema } from '@/url/schema'
+import { toSchema } from '@/url/schema'
 
 /**
  * Parses URLs according to WHATWG standards and validates against a whitelist of allowed protocols and hostnames,
@@ -74,9 +74,7 @@ export class UrlValidator {
  *
  * @public
  */
-export const createUrlSchema = (
-  options: UrlValidatorOptions = defaultOptions,
-): ZodSchema<URL, ZodTypeDef, string> => {
+export const createUrlSchema = (options: UrlValidatorOptions = defaultOptions): ZodSchema<URL, ZodTypeDef, string> => {
   const result = optionsSchema.safeParse({ ...defaultOptions, ...options })
   if (result.success) {
     return toSchema(result.data)
