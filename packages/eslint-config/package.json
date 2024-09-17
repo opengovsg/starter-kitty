@@ -1,5 +1,6 @@
 {
   "name": "@opengovsg/eslint-config-starter-kitty",
+  "version": "0.0.0",
   "private": true,
   "files": [
     "index.js"
