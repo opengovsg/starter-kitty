@@ -21,3 +21,5 @@ export const createEmailSchema = (options: EmailValidatorOptions = {}): ZodSchem
   }
   throw new OptionsError(fromError(result.error).toString())
 }
+
+export type { EmailValidatorOptions } from '@/email/options'

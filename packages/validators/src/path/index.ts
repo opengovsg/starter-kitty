@@ -21,3 +21,5 @@ export const createPathSchema = (options: PathValidatorOptions): ZodSchema<strin
   }
   throw new OptionsError(fromError(result.error).toString())
 }
+
+export type { PathValidatorOptions } from '@/path/options'

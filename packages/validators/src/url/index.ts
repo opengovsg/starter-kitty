@@ -81,3 +81,6 @@ export const createUrlSchema = (options: UrlValidatorOptions = defaultOptions): 
   }
   throw new OptionsError(fromError(result.error).toString())
 }
+
+export type * from '@/url/errors'
+export type { UrlValidatorOptions } from '@/url/options'

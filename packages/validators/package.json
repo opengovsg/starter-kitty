@@ -3,9 +3,33 @@
   "version": "1.2.4",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "exports": {
+    "./url": {
+      "types": "./dist/url/index.d.ts",
+      "default": "./dist/url/index.js"
+    },
+    "./path": {
+      "types": "./dist/path/index.d.ts",
+      "default": "./dist/path/index.js"
+    },
+    "./email": {
+      "types": "./dist/email/index.d.ts",
+      "default": "./dist/email/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "url": [
+        "./dist/url/index.d.ts"
+      ],
+      "path": [
+        "./dist/path/index.d.ts"
+      ],
+      "email": [
+        "./dist/email/index.d.ts"
+      ]
+    }
+  },
   "scripts": {
     "build": "tsc && tsc-alias",
     "build:report": "api-extractor run --local --verbose",

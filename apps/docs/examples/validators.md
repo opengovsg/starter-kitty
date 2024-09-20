@@ -9,7 +9,7 @@ npm i --save @opengovsg/starter-kitty-validators
 ## Path Validation
 
 ```javascript
-import { createPathSchema } from '@opengovsg/starter-kitty-validators'
+import { createPathSchema } from '@opengovsg/starter-kitty-validators/path'
 
 const pathSchema = createPathSchema({
   basePath: '/app/content',
@@ -21,7 +21,7 @@ const contentSubmissionSchema = z.object({
   content: z.string(),
 })
 
-type ContentSubmission = z.infer<typeof contentSchema>
+type ContentSubmission = z.infer<typeof contentSubmissionSchema>
 ```
 
 `fullPermalink`, when resolved relative to the working directory of the Node process, must lie within `/app/content`.
@@ -29,7 +29,7 @@ type ContentSubmission = z.infer<typeof contentSchema>
 ## Email Validation
 
 ```javascript
-import { createEmailSchema } from '@opengovsg/starter-kitty-validators'
+import { createEmailSchema } from '@opengovsg/starter-kitty-validators/email'
 
 const emailSchema = createEmailSchema({
   domains: [{ domain: 'gov.sg', includeSubdomains: true }],
@@ -47,8 +47,10 @@ type FormValues = z.infer<typeof formSchema>
 
 ## URL Validation
 
+Validating a post-login redirect URL provided in a query parameter:
+
 ```javascript
-import { UrlValidator } from '@opengovsg/starter-kitty-validators'
+import { UrlValidator } from '@opengovsg/starter-kitty-validators/url'
 
 const validator = new UrlValidator({
   whitelist: {
@@ -58,8 +60,6 @@ const validator = new UrlValidator({
 })
 ```
 
-Validating a post-login redirect URL provided in a query parameter:
-
 ```javascript
 try {
   router.push(validator.parse(redirectUrl))
@@ -68,33 +68,25 @@ try {
 }
 ```
 
-Consider using the validator as part of a Zod schema to validate the URL and fall back to a default URL if the URL is invalid.
+Using the validator as part of a Zod schema to validate the URL and fall back to a default URL if the URL is invalid:
 
 ```javascript
-const baseUrl = getBaseUrl()
+import { createUrlSchema } from '@opengovsg/starter-kitty-validators/url'
 
-const validator = new UrlValidator({
-  baseOrigin: new URL(baseUrl).origin,
-  whitelist: {
-    protocols: ['http', 'https'],
-    hosts: [new URL(baseUrl).host],
-  },
-})
+const baseUrl = new URL(getBaseUrl())
 
 export const callbackUrlSchema = z
   .string()
   .optional()
   .default(HOME)
-  .transform((url, ctx) => {
-    try {
-      return validator.parse(url)
-    } catch (error) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: (error as Error).message,
-      })
-      return z.NEVER
-    }
-  })
-  .catch(new URL(HOME, baseUrl))
+  .pipe(
+    createUrlSchema({
+      baseOrigin: baseUrl.origin,
+      whitelist: {
+        protocols: ['http', 'https'],
+        hosts: [baseUrl.host],
+      },
+    }),
+  )
+  .catch(new URL(HOME, baseUrl.origin))
 ```
