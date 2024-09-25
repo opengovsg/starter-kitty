@@ -28,6 +28,7 @@ build
 dist
 cache
 temp/
+tsdoc-metadata.json
 
 # Debug
 npm-debug.log*
