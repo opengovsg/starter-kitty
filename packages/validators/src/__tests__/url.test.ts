@@ -78,7 +78,7 @@ describe('UrlValidator with disallowHostnames', () => {
   const validator = new UrlValidator({
     whitelist: {
       protocols: ['http', 'https'],
-      disallowHostnames: true
+      disallowHostnames: true,
     },
   })
 
@@ -98,13 +98,12 @@ describe('UrlValidator with disallowHostnames', () => {
   })
 })
 
-
 describe('UrlValidator with both hosts and disallowHostnames', () => {
   const validator = new UrlValidator({
     whitelist: {
       protocols: ['http', 'https'],
       hosts: ['example.com', 'localhost'],
-      disallowHostnames: true
+      disallowHostnames: true,
     },
   })
 
@@ -187,7 +186,7 @@ describe('createUrlSchema', () => {
         whitelist: {
           protocols: ['http', 'https'],
           hosts: ['example.com'],
-          disallowHostnames: true
+          disallowHostnames: true,
         },
       }),
     ).not.toThrow()

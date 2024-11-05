@@ -57,7 +57,7 @@ export const isSafeUrl = (url: URL, whitelist: UrlValidatorWhitelist) => {
       return false
     }
   }
-  
+
   // don't allow dynamic routes
   if (resolveNextDynamicRoute(url).href !== url.href) {
     return false

@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const defaultOptions = {
   whitelist: {
     protocols: ['http', 'https'],
-    disallowHostnames: false
+    disallowHostnames: false,
   },
 }
 
@@ -24,10 +24,10 @@ export const whitelistSchema = z.object({
    * Whether to disallow hostnames as valid URLs.
    * For example, if disallowHostnames is set to `true`, https://localhost/somepath will be invalid.
    * This option is IGNORED if hosts is provided.
-   * 
+   *
    * @defaultValue false
    */
-  disallowHostnames: z.boolean().optional()
+  disallowHostnames: z.boolean().optional(),
 })
 
 /**
