@@ -2,6 +2,7 @@ import { UrlValidationError } from '@/url/errors'
 import { UrlValidatorWhitelist } from '@/url/options'
 
 const DYNAMIC_ROUTE_SEGMENT_REGEX = /\[\[?([^\]]+)\]?\]/g
+const IS_NOT_HOSTNAME_REGEX = /[^.]+\.[^.]+/g
 
 export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
   if (!baseOrigin) {
@@ -45,10 +46,18 @@ export const isSafeUrl = (url: URL, whitelist: UrlValidatorWhitelist) => {
   if (!whitelist.protocols.some(protocol => url.protocol === `${protocol}:`)) {
     return false
   }
-  // only allow whitelisted hosts
-  if (whitelist.hosts && !whitelist.hosts.some(host => url.host === host)) {
-    return false
+  if (whitelist.hosts) {
+    // only allow whitelisted hosts
+    if (!whitelist.hosts.some(host => url.host === host)) {
+      return false
+    }
+  } else {
+    // no hosts provided
+    if (whitelist.disallowHostnames && !url.host.match(IS_NOT_HOSTNAME_REGEX)) {
+      return false
+    }
   }
+  
   // don't allow dynamic routes
   if (resolveNextDynamicRoute(url).href !== url.href) {
     return false

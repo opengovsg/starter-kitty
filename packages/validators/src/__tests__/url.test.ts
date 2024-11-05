@@ -74,6 +74,49 @@ describe('UrlValidator with custom host whitelist', () => {
   })
 })
 
+describe('UrlValidator with disallowHostnames', () => {
+  const validator = new UrlValidator({
+    whitelist: {
+      protocols: ['http', 'https'],
+      disallowHostnames: true
+    },
+  })
+
+  it('should not throw an error with a proper domain', () => {
+    expect(() => validator.parse('https://example.com')).not.toThrow()
+  })
+
+  it('should throw an error with a hostname', () => {
+    expect(() => validator.parse('https://tld')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://.tld')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://tld.')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://.tld.')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://tld/')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://.tld/')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://tld./')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://.tld./')).toThrow(UrlValidationError)
+  })
+})
+
+
+describe('UrlValidator with both hosts and disallowHostnames', () => {
+  const validator = new UrlValidator({
+    whitelist: {
+      protocols: ['http', 'https'],
+      hosts: ['example.com', 'localhost'],
+      disallowHostnames: true
+    },
+  })
+
+  it('should not throw an error when the host is on the whitelist', () => {
+    expect(() => validator.parse('https://example.com')).not.toThrow()
+  })
+
+  it('should ignore the disallowHostnames option', () => {
+    expect(() => validator.parse('https://localhost')).not.toThrow()
+  })
+})
+
 describe('UrlValidator with base URL', () => {
   const validator = new UrlValidator({
     baseOrigin: 'https://example.com',
@@ -144,6 +187,7 @@ describe('createUrlSchema', () => {
         whitelist: {
           protocols: ['http', 'https'],
           hosts: ['example.com'],
+          disallowHostnames: true
         },
       }),
     ).not.toThrow()
