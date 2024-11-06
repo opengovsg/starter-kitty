@@ -143,6 +143,18 @@ describe('UrlValidator with base URL', () => {
   it('should not allow Next.js dynamic routes', () => {
     expect(() => validator.parse('/[[x]]javascript:alert(1337)/[y]/[z]?x&y&z')).toThrow(UrlValidationError)
   })
+
+  it('should not allow Next.js dynamic routes', () => {
+    expect(() =>
+      validator.parse('/[[x]x]]https://[y]y]//example.com/[[/[[x]x]]/y?x=[[x]&x]x&%2F[[x=[[/[[x]&y=[y]&y]y='),
+    ).toThrow(UrlValidationError)
+  })
+
+  it('should not allow Next.js dynamic routes', () => {
+    expect(() => validator.parse('/[[x]x]]javascript:alert(1)%2F%2F/[[/[[x]x]]/y?x=[[x]&x]x&%2F[[x=[[/[[x]')).toThrow(
+      UrlValidationError,
+    )
+  })
 })
 
 describe('UrlValidator with invalid options', () => {
