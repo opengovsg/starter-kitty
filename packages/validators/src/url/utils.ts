@@ -1,8 +1,7 @@
 import { UrlValidationError } from '@/url/errors'
 import { UrlValidatorWhitelist } from '@/url/options'
 
-// regex from https://github.com/vercel/next.js/blob/8cb8edb686ec8ddf7e24c69545d11175fcb9df02/packages/next/src/shared/lib/router/utils/is-dynamic.ts#L7
-const DYNAMIC_ROUTE_SEGMENT_REGEX = /\/\[[^/]+?\](?=\/|$)/
+const DYNAMIC_ROUTE_SEGMENT_REGEX = /\[\[?([^\]]+)\]?\]/g
 const IS_NOT_HOSTNAME_REGEX = /[^.]+\.[^.]+/g
 
 export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
@@ -27,8 +26,19 @@ export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
   return normalizedUrl
 }
 
-export const isDynamicRoute = (url: URL): boolean => {
-  return DYNAMIC_ROUTE_SEGMENT_REGEX.test(url.pathname)
+/* As of Next.js 14.2.5, router.push() resolves dynamic routes using query parameters. */
+const resolveNextDynamicRoute = (url: URL): URL => {
+  const pathname = url.pathname
+  const query = new URLSearchParams(url.search)
+  const resolvedPathname = pathname.replace(DYNAMIC_ROUTE_SEGMENT_REGEX, (_, name: string) => {
+    const value = query.get(name) || ''
+    query.delete(name)
+    return value
+  })
+
+  const result = new URL(url.href)
+  result.pathname = resolvedPathname
+  return result
 }
 
 export const isSafeUrl = (url: URL, whitelist: UrlValidatorWhitelist) => {
@@ -49,7 +59,7 @@ export const isSafeUrl = (url: URL, whitelist: UrlValidatorWhitelist) => {
   }
 
   // don't allow dynamic routes
-  if (isDynamicRoute(url)) {
+  if (resolveNextDynamicRoute(url).href !== url.href) {
     return false
   }
   return true
