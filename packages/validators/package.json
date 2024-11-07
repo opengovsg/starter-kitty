@@ -4,6 +4,10 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
     "./url": {
       "types": "./dist/url/index.d.ts",
       "default": "./dist/url/index.js"
@@ -19,6 +23,9 @@
   },
   "typesVersions": {
     "*": {
+      ".": [
+        "./dist/index.d.ts"
+      ],
       "url": [
         "./dist/url/index.d.ts"
       ],
