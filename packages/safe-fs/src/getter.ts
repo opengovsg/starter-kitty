@@ -1,4 +1,4 @@
-import fs from 'node:fs'
+import fs from 'fs'
 
 import PARAMS_TO_SANITIZE from '@/params'
 import { sanitizePath } from '@/sanitizers'

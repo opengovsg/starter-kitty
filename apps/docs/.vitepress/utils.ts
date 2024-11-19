@@ -1,5 +1,5 @@
-import fs from 'node:fs'
-import path from 'node:path'
+import fs from 'fs'
+import path from 'path'
 
 export const scanDir = (dir: string) => {
   let res = fs.readdirSync(path.resolve(__dirname, `../${dir}`)).filter(item => !item.startsWith('.')) as string[]

@@ -1,4 +1,4 @@
-import path from 'node:path'
+import path from 'path'
 
 export const isSafePath = (absPath: string, basePath: string): boolean => {
   // check for poison null bytes
