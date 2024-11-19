@@ -63,22 +63,21 @@ export class UrlValidator {
    * Parses a URL string with a fallback option.
    *
    * @param url - The URL to validate
-   * @param fallbackUrl - The fallback URL to return if the URL is invalid. This is NOT validated.
+   * @param fallbackUrl - The fallback URL to return if the URL is invalid.
    * @throws {@link UrlValidationError} if the URL is invalid and fallbackUrl is not provided.
    * @returns The URL object if the URL is valid, else the fallbackUrl (if provided).
    *
    * @public
    */
-  parse<T extends string | URL>(url: string, fallbackUrl: T): URL | T
+  parse(url: string, fallbackUrl: string | URL): URL
   parse(url: string): URL
   parse(url: string, fallbackUrl: undefined): URL
-  parse<T extends string | URL>(url: string, fallbackUrl?: T): URL | T {
+  parse(url: string, fallbackUrl?: string | URL): URL {
     try {
       return this.#parse(url)
     } catch (error) {
       if (error instanceof UrlValidationError && fallbackUrl !== undefined) {
         // URL validation failed, return the fallback URL
-        // This is NOT validated.
         return this.#parse(fallbackUrl instanceof URL ? fallbackUrl.href : fallbackUrl)
       }
       // otherwise rethrow
@@ -90,16 +89,16 @@ export class UrlValidator {
    * Parses a URL string and returns the pathname with a fallback option.
    *
    * @param url - The URL to validate and extract pathname from
-   * @param fallbackUrl - The fallback URL to use if the URL is invalid. This is NOT validated.
+   * @param fallbackUrl - The fallback URL to use if the URL is invalid.
    * @throws {@link UrlValidationError} if the URL is invalid and fallbackUrl is not provided.
    * @returns The pathname of the URL or the fallback URL
    *
    * @public
    */
-  parsePathname<T extends string | URL>(url: string, fallbackUrl: T): string
+  parsePathname(url: string, fallbackUrl: string | URL): string
   parsePathname(url: string): string
   parsePathname(url: string, fallbackUrl: undefined): string
-  parsePathname<T extends string | URL>(url: string, fallbackUrl?: T): string {
+  parsePathname(url: string, fallbackUrl?: string | URL): string {
     const parsedUrl = fallbackUrl ? this.parse(url, fallbackUrl) : this.parse(url)
     if (parsedUrl instanceof URL) return parsedUrl.pathname
     return parsedUrl

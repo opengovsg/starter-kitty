@@ -249,7 +249,7 @@ describe('UrlValidatorOptions.parsePathname', () => {
 
   it('should fallback to fallbackUrl if it is provided', () => {
     const pathname = validator.parsePathname('https://b.com/hello', 'bye')
-    expect(pathname).toStrictEqual('bye')
+    expect(pathname).toStrictEqual('/bye')
   })
 })
 
