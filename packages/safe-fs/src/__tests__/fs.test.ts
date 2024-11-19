@@ -1,7 +1,6 @@
 import fs from 'fs'
-import path from 'path'
-
 import { vol } from 'memfs'
+import path from 'path'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createGetter } from '@/getter'
