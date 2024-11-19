@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { OptionsError } from '@/common/errors'
-import { createUrlSchema, UrlValidator } from '@/index'
+import { createUrlSchema, RelUrlValidator, UrlValidator } from '@/index'
 import { UrlValidationError } from '@/url/errors'
 
 describe('UrlValidator with default options', () => {
@@ -168,6 +168,88 @@ describe('UrlValidator with invalid options', () => {
 
   it('should throw an error when the base URL has a path', () => {
     expect(() => new UrlValidator({ baseOrigin: 'https://example.com/path' })).toThrow(OptionsError)
+  })
+})
+
+describe('RelUrlValidator with string origin', () => {
+  const validator = new RelUrlValidator('https://a.com')
+
+  it('should parse a valid absolute URL', () => {
+    const url = validator.parse('https://a.com/hello')
+    expect(url).toBeInstanceOf(URL)
+  })
+
+  it('should throw an error on invalid URL', () => {
+    expect(() => validator.parse('https://b.com/hello')).toThrow(UrlValidationError)
+  })
+
+  it('should parse a valid relative URL', () => {
+    const url = validator.parse('hello')
+    expect(url).toBeInstanceOf(URL)
+    expect(url.href).toStrictEqual('https://a.com/hello')
+  })
+
+  it('should parse a valid relative URL', () => {
+    const url = validator.parse('/hello')
+    expect(url).toBeInstanceOf(URL)
+    expect(url.href).toStrictEqual('https://a.com/hello')
+  })
+
+  it('should parse a valid relative URL', () => {
+    const url = validator.parse('/hello?q=3')
+    expect(url).toBeInstanceOf(URL)
+    expect(url.href).toStrictEqual('https://a.com/hello?q=3')
+  })
+
+  it('should throw an error when the protocol is not http or https', () => {
+    expect(() => validator.parse('ftp://a.com')).toThrow(UrlValidationError)
+  })
+})
+
+describe('UrlValidatorOptions.parsePathname', () => {
+  const validator = new RelUrlValidator('https://a.com')
+
+  it('should extract the pathname of a valid URL', () => {
+    const pathname = validator.parsePathname('hello')
+    expect(pathname).toStrictEqual('/hello')
+  })
+
+  it('should extract the pathname of a valid URL', () => {
+    const pathname = validator.parsePathname('/hello')
+    expect(pathname).toStrictEqual('/hello')
+  })
+
+  it('should extract the pathname of a valid URL', () => {
+    const pathname = validator.parsePathname('/hello?q=3#123')
+    expect(pathname).toStrictEqual('/hello')
+  })
+
+  it('should extract the pathname of a valid URL', () => {
+    const pathname = validator.parsePathname('/hello?q=3#123/what')
+    expect(pathname).toStrictEqual('/hello')
+  })
+
+  it('should extract the pathname of a valid URL', () => {
+    const pathname = validator.parsePathname('https://a.com/hello?q=3#123/what')
+    expect(pathname).toStrictEqual('/hello')
+  })
+
+  it('should extract the pathname of a valid URL', () => {
+    const pathname = validator.parsePathname('https://a.com/hello/world')
+    expect(pathname).toStrictEqual('/hello/world')
+  })
+
+  it('should throw an error when the URL is on a different domain', () => {
+    expect(() => validator.parsePathname('https://b.com/hello/')).toThrow(UrlValidationError)
+  })
+
+  it('should throw an error when the path is a NextJS dynamic path', () => {
+    expect(() => validator.parsePathname('https://a.com/hello/[id]?id=3')).toThrow(UrlValidationError)
+  })
+
+  it('should fallback to fallbackUrl if it is provided', () => {
+    const pathname = validator.parsePathname('https://b.com/hello', 'bye')
+    expect(pathname).toStrictEqual('bye')
   })
 })
 

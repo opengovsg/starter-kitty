@@ -52,20 +52,32 @@ Validating a post-login redirect URL provided in a query parameter:
 ```javascript
 import { UrlValidator } from '@opengovsg/starter-kitty-validators/url'
 
+const validator = new RelUrlValidator(window.location.origin)
+```
+
+```javascript
+const fallbackUrl = '/home'
+window.location.pathname = validator.parsePathname(redirectUrl, fallbackUrl)
+
+// alternatively
+router.push(validator.parsePathname(redirectUrl, fallbackUrl))
+```
+
+For more control you can create the UrlValidator instance yourself and invoke .parse
+
+```javascript
+import { UrlValidator } from '@opengovsg/starter-kitty-validators/url'
+
 const validator = new UrlValidator({
   whitelist: {
     protocols: ['http', 'https', 'mailto'],
     hosts: ['open.gov.sg'],
   },
 })
-```
 
-```javascript
-try {
-  router.push(validator.parse(redirectUrl))
-} catch (error) {
-  router.push('/home')
-}
+...
+
+validator.parse(userInput)
 ```
 
 Using the validator as part of a Zod schema to validate the URL and fall back to a default URL if the URL is invalid:
