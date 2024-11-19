@@ -1,4 +1,4 @@
-import { string, ZodError, ZodSchema, ZodTypeDef } from 'zod'
+import { ZodError, ZodSchema, ZodTypeDef } from 'zod'
 import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
