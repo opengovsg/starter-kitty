@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-vi.mock('node:fs', async () => {
+vi.mock('fs', async () => {
   const memfs: { fs: typeof fs } = await vi.importActual('memfs')
 
   return {
@@ -10,7 +10,7 @@ vi.mock('node:fs', async () => {
   }
 })
 
-vi.mock('node:fs/promises', async () => {
+vi.mock('fs/promises', async () => {
   const memfs: { fs: typeof fs } = await vi.importActual('memfs')
 
   return {
