@@ -34,24 +34,19 @@ export class UrlValidator {
    * @public
    */
   constructor(options: UrlValidatorOptions = defaultOptions) {
-    const result = optionsSchema.safeParse({ ...defaultOptions, ...options })
-    if (result.success) {
-      this.schema = toSchema(result.data)
-      return
-    }
-    throw new OptionsError(fromError(result.error).toString())
+    this.schema = createUrlSchema(options)
   }
 
   /**
-   * Parses a URL string.
+   * Parses a URL string
    *
    * @param url - The URL to validate
-   * @throws {@link UrlValidationError} If the URL is invalid
+   * @throws {@link UrlValidationError} if the URL is invalid.
    * @returns The URL object if the URL is valid
    *
-   * @public
+   * @internal
    */
-  parse(url: string): URL {
+  #parse(url: string): URL {
     const result = this.schema.safeParse(url)
     if (result.success) {
       return result.data
@@ -59,8 +54,81 @@ export class UrlValidator {
     if (result.error instanceof ZodError) {
       throw new UrlValidationError(fromError(result.error).toString())
     } else {
+      // should only be UrlValidationError
       throw result.error
     }
+  }
+
+  /**
+   * Parses a URL string with a fallback option.
+   *
+   * @param url - The URL to validate
+   * @param fallbackUrl - The fallback URL to return if the URL is invalid. This is NOT validated.
+   * @throws {@link UrlValidationError} if the URL is invalid and fallbackUrl is not provided.
+   * @returns The URL object if the URL is valid, else the fallbackUrl (if provided).
+   *
+   * @public
+   */
+  parse<T extends string | URL>(url: string, fallbackUrl: T): URL | T
+  parse(url: string): URL
+  parse(url: string, fallbackUrl: undefined): URL
+  parse<T extends string | URL>(url: string, fallbackUrl?: T): URL | T {
+    try {
+      return this.#parse(url)
+    } catch (error) {
+      if (error instanceof UrlValidationError && fallbackUrl !== undefined) {
+        // URL validation failed, return the fallback URL
+        // This is NOT validated.
+        return fallbackUrl
+      }
+      // otherwise rethrow
+      throw error
+    }
+  }
+
+  /**
+   * Parses a URL string and returns the pathname with a fallback option.
+   *
+   * @param url - The URL to validate and extract pathname from
+   * @param fallbackUrl - The fallback URL to use if the URL is invalid. This is NOT validated.
+   * @throws {@link UrlValidationError} if the URL is invalid and fallbackUrl is not provided.
+   * @returns The pathname of the URL or the fallback URL
+   *
+   * @public
+   */
+  parsePathname<T extends string | URL>(url: string, fallbackUrl: T): string
+  parsePathname(url: string): string
+  parsePathname(url: string, fallbackUrl: undefined): string
+  parsePathname<T extends string | URL>(url: string, fallbackUrl?: T): string {
+    const parsedUrl = fallbackUrl ? this.parse(url, fallbackUrl) : this.parse(url)
+    if (parsedUrl instanceof URL) return parsedUrl.pathname
+    return parsedUrl
+  }
+}
+
+/**
+ * Parses URLs according to WHATWG standards and validates against a given origin.
+ *
+ * @public
+ */
+export class RelUrlValidator extends UrlValidator {
+  /**
+   * Creates a new RelUrlValidator instance which only allows relative URLs.
+   *
+   * @param origin - The base origin against which relative URLs will be resolved. Must be a valid absolute URL (e.g., 'https://example.com').
+   * @throws TypeError If the provided origin is not a valid URL.
+   *
+   * @public
+   */
+  constructor(origin: string | URL) {
+    const urlObject = new URL(origin)
+    super({
+      baseOrigin: urlObject.origin,
+      whitelist: {
+        protocols: ['http', 'https'],
+        hosts: [urlObject.host],
+      },
+    })
   }
 }
 
