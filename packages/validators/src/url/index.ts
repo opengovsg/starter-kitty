@@ -1,4 +1,4 @@
-import { ZodError, ZodSchema, ZodTypeDef } from 'zod'
+import { string, ZodError, ZodSchema, ZodTypeDef } from 'zod'
 import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
@@ -79,7 +79,7 @@ export class UrlValidator {
       if (error instanceof UrlValidationError && fallbackUrl !== undefined) {
         // URL validation failed, return the fallback URL
         // This is NOT validated.
-        return fallbackUrl
+        return this.#parse(fallbackUrl instanceof URL ? fallbackUrl.href : fallbackUrl)
       }
       // otherwise rethrow
       throw error
