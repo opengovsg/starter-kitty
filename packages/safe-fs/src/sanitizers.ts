@@ -1,5 +1,5 @@
-import { PathLike } from 'node:fs'
-import path from 'node:path'
+import { PathLike } from 'fs'
+import path from 'path'
 
 const LEADING_DOT_SLASH_REGEX = /^(\.\.(\/|\\|$))+/
 

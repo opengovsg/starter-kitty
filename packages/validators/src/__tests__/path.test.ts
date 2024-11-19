@@ -1,4 +1,4 @@
-import path from 'node:path'
+import path from 'path'
 
 import { describe, expect, it } from 'vitest'
 import { ZodError } from 'zod'

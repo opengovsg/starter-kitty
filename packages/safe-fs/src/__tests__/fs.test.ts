@@ -1,5 +1,5 @@
-import fs from 'node:fs'
-import path from 'node:path'
+import fs from 'fs'
+import path from 'path'
 
 import { vol } from 'memfs'
 import { beforeEach, describe, expect, it } from 'vitest'
