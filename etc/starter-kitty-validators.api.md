@@ -50,12 +50,12 @@ export class UrlValidationError extends Error {
 // @public
 export class UrlValidator {
     constructor(options?: UrlValidatorOptions);
-    parse<T extends string | URL>(url: string, fallbackUrl: T): URL | T;
+    parse(url: string, fallbackUrl: string | URL): URL;
     // (undocumented)
     parse(url: string): URL;
     // (undocumented)
     parse(url: string, fallbackUrl: undefined): URL;
-    parsePathname<T extends string | URL>(url: string, fallbackUrl: T): string;
+    parsePathname(url: string, fallbackUrl: string | URL): string;
     // (undocumented)
     parsePathname(url: string): string;
     // (undocumented)
