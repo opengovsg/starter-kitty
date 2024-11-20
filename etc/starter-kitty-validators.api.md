@@ -38,6 +38,11 @@ export interface PathValidatorOptions {
 }
 
 // @public
+export class RelUrlValidator extends UrlValidator {
+    constructor(origin: string | URL);
+}
+
+// @public
 export class UrlValidationError extends Error {
     constructor(message: string);
 }
@@ -45,7 +50,16 @@ export class UrlValidationError extends Error {
 // @public
 export class UrlValidator {
     constructor(options?: UrlValidatorOptions);
+    parse<T extends string | URL>(url: string, fallbackUrl: T): URL | T;
+    // (undocumented)
     parse(url: string): URL;
+    // (undocumented)
+    parse(url: string, fallbackUrl: undefined): URL;
+    parsePathname<T extends string | URL>(url: string, fallbackUrl: T): string;
+    // (undocumented)
+    parsePathname(url: string): string;
+    // (undocumented)
+    parsePathname(url: string, fallbackUrl: undefined): string;
 }
 
 // @public
