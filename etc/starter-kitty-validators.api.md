@@ -22,51 +22,51 @@ export const createUrlSchema: (options?: UrlValidatorOptions) => ZodSchema<URL, 
 // @public
 export interface EmailValidatorOptions {
     domains?: {
-        domain: string
-        includeSubdomains?: boolean
-    }[]
+        domain: string;
+        includeSubdomains?: boolean;
+    }[];
 }
 
 // @public
 export class OptionsError extends Error {
-    constructor(message: string)
+    constructor(message: string);
 }
 
 // @public
 export interface PathValidatorOptions {
-    basePath: string
+    basePath: string;
 }
 
 // @public
 export class RelUrlValidator extends UrlValidator {
-    constructor(origin: string | URL)
+    constructor(origin: string | URL);
 }
 
 // @public
 export class UrlValidationError extends Error {
-    constructor(message: string)
+    constructor(message: string);
 }
 
 // @public
 export class UrlValidator {
-    constructor(options?: UrlValidatorOptions)
-    parse(url: any, fallbackUrl: string | URL): URL
+    constructor(options?: UrlValidatorOptions);
+    parse(url: any, fallbackUrl: string | URL): URL;
     // (undocumented)
-    parse(url: any): URL
+    parse(url: any): URL;
     // (undocumented)
-    parse(url: any, fallbackUrl: undefined): URL
-    parsePathname(url: any, fallbackUrl: string | URL): string
+    parse(url: any, fallbackUrl: undefined): URL;
+    parsePathname(url: any, fallbackUrl: string | URL): string;
     // (undocumented)
-    parsePathname(url: any): string
+    parsePathname(url: any): string;
     // (undocumented)
-    parsePathname(url: any, fallbackUrl: undefined): string
+    parsePathname(url: any, fallbackUrl: undefined): string;
 }
 
 // @public
 export interface UrlValidatorOptions {
-    baseOrigin?: string
+    baseOrigin?: string;
     // Warning: (ae-forgotten-export) The symbol "UrlValidatorWhitelist" needs to be exported by the entry point index.d.ts
-    whitelist?: UrlValidatorWhitelist
+    whitelist?: UrlValidatorWhitelist;
 }
 
 ```
