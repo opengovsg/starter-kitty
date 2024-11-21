@@ -13,6 +13,8 @@ import { toSchema } from '@/url/schema'
  * @public
  */
 export class UrlValidator {
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  // parse functions perform type coercion, so input can be any
   private schema
 
   /**
@@ -46,8 +48,8 @@ export class UrlValidator {
    *
    * @internal
    */
-  #parse(url: string): URL {
-    const result = this.schema.safeParse(url)
+  #parse(url: any): URL {
+    const result = url instanceof URL ? this.schema.safeParse(url.href) : this.schema.safeParse(url)
     if (result.success) {
       return result.data
     }
@@ -69,10 +71,10 @@ export class UrlValidator {
    *
    * @public
    */
-  parse(url: string, fallbackUrl: string | URL): URL
-  parse(url: string): URL
-  parse(url: string, fallbackUrl: undefined): URL
-  parse(url: string, fallbackUrl?: string | URL): URL {
+  parse(url: any, fallbackUrl: string | URL): URL
+  parse(url: any): URL
+  parse(url: any, fallbackUrl: undefined): URL
+  parse(url: any, fallbackUrl?: string | URL): URL {
     try {
       return this.#parse(url)
     } catch (error) {
@@ -95,10 +97,10 @@ export class UrlValidator {
    *
    * @public
    */
-  parsePathname(url: string, fallbackUrl: string | URL): string
-  parsePathname(url: string): string
-  parsePathname(url: string, fallbackUrl: undefined): string
-  parsePathname(url: string, fallbackUrl?: string | URL): string {
+  parsePathname(url: any, fallbackUrl: string | URL): string
+  parsePathname(url: any): string
+  parsePathname(url: any, fallbackUrl: undefined): string
+  parsePathname(url: any, fallbackUrl?: string | URL): string {
     const parsedUrl = fallbackUrl ? this.parse(url, fallbackUrl) : this.parse(url)
     if (parsedUrl instanceof URL) return parsedUrl.pathname
     return parsedUrl

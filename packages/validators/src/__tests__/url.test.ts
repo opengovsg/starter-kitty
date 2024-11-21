@@ -36,6 +36,12 @@ describe('UrlValidator with default options', () => {
     expect(() => validator.parse('javascript&colonalert(/xss/)').protocol).toThrow(UrlValidationError)
     expect(() => validator.parse('javascript:alert(/xss/)')).toThrow(UrlValidationError)
   })
+
+  it('should throw an error when given an invalid type', () => {
+    expect(() => validator.parse(123)).toThrow(UrlValidationError)
+    expect(() => validator.parse(undefined)).toThrow(UrlValidationError)
+    expect(() => validator.parse(['1', '2'])).toThrow(UrlValidationError)
+  })
 })
 
 describe('UrlValidator with custom protocol whitelist', () => {
