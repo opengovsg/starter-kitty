@@ -14,7 +14,7 @@ import { toSchema } from '@/url/schema'
  */
 export class UrlValidator {
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  // parse functions perform type coercion, so input can be any
+  // parse functions perform type checking, so input can be any
   private schema
 
   /**
@@ -42,7 +42,7 @@ export class UrlValidator {
   /**
    * Parses a URL string
    *
-   * @param url - The URL to validate
+   * @param url - The URL to validate, expects string | URL
    * @throws {@link UrlValidationError} if the URL is invalid.
    * @returns The URL object if the URL is valid
    *
@@ -64,7 +64,7 @@ export class UrlValidator {
   /**
    * Parses a URL string with a fallback option.
    *
-   * @param url - The URL to validate
+   * @param url - The URL to validate, expects string | URL
    * @param fallbackUrl - The fallback URL to return if the URL is invalid.
    * @throws {@link UrlValidationError} if the URL is invalid and fallbackUrl is not provided.
    * @returns The URL object if the URL is valid, else the fallbackUrl (if provided).
@@ -90,7 +90,7 @@ export class UrlValidator {
   /**
    * Parses a URL string and returns the pathname with a fallback option.
    *
-   * @param url - The URL to validate and extract pathname from
+   * @param url - The URL to validate and extract pathname from, expects string | URL
    * @param fallbackUrl - The fallback URL to use if the URL is invalid.
    * @throws {@link UrlValidationError} if the URL is invalid and fallbackUrl is not provided.
    * @returns The pathname of the URL or the fallback URL
