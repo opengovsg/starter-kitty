@@ -18,9 +18,9 @@ print_success() {
 # Run initial commands
 pnpm lint:fix || { print_error "pnpm lint:fix failed"; exit 1; }
 pnpm lint || { print_error "pnpm lint failed"; exit 1; }
-pnpm build || { print_error "pnpm build failed"; exit 1; }
 pnpm format || { print_error "pnpm format failed"; exit 1; }
 pnpm format:check || { print_error "pnpm format:check failed"; exit 1; }
+pnpm turbo build --force || { print_error "pnpm turbo build --force failed"; exit 1; }
 
 # Change directory to packages
 cd packages || exit 1
