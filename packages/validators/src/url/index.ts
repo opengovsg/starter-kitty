@@ -13,6 +13,8 @@ import { toSchema } from '@/url/schema'
  * @public
  */
 export class UrlValidator {
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  // parse functions perform type checking, so input can be any
   private schema
 
   /**
@@ -40,14 +42,14 @@ export class UrlValidator {
   /**
    * Parses a URL string
    *
-   * @param url - The URL to validate
+   * @param url - The URL to validate, expects string | URL
    * @throws {@link UrlValidationError} if the URL is invalid.
    * @returns The URL object if the URL is valid
    *
    * @internal
    */
-  #parse(url: string): URL {
-    const result = this.schema.safeParse(url)
+  #parse(url: any): URL {
+    const result = url instanceof URL ? this.schema.safeParse(url.href) : this.schema.safeParse(url)
     if (result.success) {
       return result.data
     }
@@ -62,17 +64,17 @@ export class UrlValidator {
   /**
    * Parses a URL string with a fallback option.
    *
-   * @param url - The URL to validate
+   * @param url - The URL to validate, expects string | URL
    * @param fallbackUrl - The fallback URL to return if the URL is invalid.
    * @throws {@link UrlValidationError} if the URL is invalid and fallbackUrl is not provided.
    * @returns The URL object if the URL is valid, else the fallbackUrl (if provided).
    *
    * @public
    */
-  parse(url: string, fallbackUrl: string | URL): URL
-  parse(url: string): URL
-  parse(url: string, fallbackUrl: undefined): URL
-  parse(url: string, fallbackUrl?: string | URL): URL {
+  parse(url: any, fallbackUrl: string | URL): URL
+  parse(url: any): URL
+  parse(url: any, fallbackUrl: undefined): URL
+  parse(url: any, fallbackUrl?: string | URL): URL {
     try {
       return this.#parse(url)
     } catch (error) {
@@ -88,17 +90,17 @@ export class UrlValidator {
   /**
    * Parses a URL string and returns the pathname with a fallback option.
    *
-   * @param url - The URL to validate and extract pathname from
+   * @param url - The URL to validate and extract pathname from, expects string | URL
    * @param fallbackUrl - The fallback URL to use if the URL is invalid.
    * @throws {@link UrlValidationError} if the URL is invalid and fallbackUrl is not provided.
    * @returns The pathname of the URL or the fallback URL
    *
    * @public
    */
-  parsePathname(url: string, fallbackUrl: string | URL): string
-  parsePathname(url: string): string
-  parsePathname(url: string, fallbackUrl: undefined): string
-  parsePathname(url: string, fallbackUrl?: string | URL): string {
+  parsePathname(url: any, fallbackUrl: string | URL): string
+  parsePathname(url: any): string
+  parsePathname(url: any, fallbackUrl: undefined): string
+  parsePathname(url: any, fallbackUrl?: string | URL): string {
     const parsedUrl = fallbackUrl ? this.parse(url, fallbackUrl) : this.parse(url)
     if (parsedUrl instanceof URL) return parsedUrl.pathname
     return parsedUrl
