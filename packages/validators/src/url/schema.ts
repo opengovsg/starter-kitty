@@ -48,6 +48,11 @@ export const toSchema = (options: ParsedUrlValidatorOptions) => {
           }
         }
 
+        // don't allow pathname with double slashes
+        if (url.pathname.replace(/\\/g, '/').startsWith('//')) {
+          return false
+        }
+
         // don't allow dynamic routes
         if (isDynamicRoute(url)) {
           return false
