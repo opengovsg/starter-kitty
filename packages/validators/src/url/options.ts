@@ -1,9 +1,16 @@
 import { z } from 'zod'
 
+export const lowercase = 'abcdefghijklmnopqrstuvwxyz'
+export const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+export const digits = '0123456789'
+export const alnum = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+export const defaultAllowedChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_/'
+
 export const defaultOptions = {
   whitelist: {
     protocols: ['http', 'https'],
     disallowHostnames: false,
+    allowedCharactersInPath: defaultAllowedChars,
   },
 }
 
@@ -28,6 +35,14 @@ export const whitelistSchema = z.object({
    * @defaultValue false
    */
   disallowHostnames: z.boolean().optional(),
+  /**
+   * Which characters are allowed in the URL path.
+   * Use empty string to allow all characters.
+   * If your protocol is mailto, you will need to include "\@" here.
+   *
+   * @defaultValue 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_/'
+   */
+  allowedCharactersInPath: z.string().optional().default(defaultAllowedChars),
 })
 
 /**
@@ -61,7 +76,7 @@ export interface UrlValidatorOptions {
  *
  * @public
  */
-export type UrlValidatorWhitelist = z.infer<typeof whitelistSchema>
+export type UrlValidatorWhitelist = z.input<typeof whitelistSchema>
 
 export const optionsSchema = z.object({
   baseOrigin: z
