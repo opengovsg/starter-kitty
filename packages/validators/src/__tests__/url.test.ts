@@ -33,6 +33,13 @@ describe('UrlValidator with default options', () => {
     expect(() => validator.parse('/path')).toThrow(UrlValidationError)
   })
 
+  it('should not allow double slashes in pathnames', () => {
+    expect(() => validator.parse('https://example.com//test')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://example.com\\\\test')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://example.com/\\test')).toThrow(UrlValidationError)
+    expect(() => validator.parse('https://example.com\\/test')).toThrow(UrlValidationError)
+  })
+
   it('should not allow Next.js dynamic routes', () => {
     expect(() => validator.parse('https://example.com/[[...slug]]')).toThrow(UrlValidationError)
     expect(() => validator.parse('https://example.com/[[slug]]')).toThrow(UrlValidationError)
