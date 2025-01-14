@@ -1,8 +1,7 @@
 import { UrlValidationError } from '@/url/errors'
+import { isDynamicRoute } from '@/url/nextjs-dynamic-route'
 import { UrlValidatorWhitelist } from '@/url/options'
 
-// regex from https://github.com/vercel/next.js/blob/8cb8edb686ec8ddf7e24c69545d11175fcb9df02/packages/next/src/shared/lib/router/utils/is-dynamic.ts#L7
-const DYNAMIC_ROUTE_SEGMENT_REGEX = /\/\[[^/]+?\](?=\/|$)/
 const IS_NOT_HOSTNAME_REGEX = /[^.]+\.[^.]+/g
 
 export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
@@ -25,10 +24,6 @@ export const resolveRelativeUrl = (url: string, baseOrigin?: URL): URL => {
     throw new UrlValidationError(`Invalid URL: ${url} is not on the same origin as base URL ${baseOrigin.href}`)
   }
   return normalizedUrl
-}
-
-export const isDynamicRoute = (url: URL): boolean => {
-  return DYNAMIC_ROUTE_SEGMENT_REGEX.test(url.pathname)
 }
 
 export const isSafeUrl = (url: URL, whitelist: UrlValidatorWhitelist) => {
