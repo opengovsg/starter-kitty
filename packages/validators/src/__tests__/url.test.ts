@@ -393,7 +393,7 @@ describe('createUrlSchema', () => {
     const schema = createUrlSchema({
       whitelist: {
         protocols: ['http', 'https', 'mailto'],
-        validPathRegex: /^[a-zA-Z0-9.-_/@]*$/,
+        validPathRegex: /^[a-zA-Z0-9._\-/@]*$/,
       },
     })
     expect(() => schema.parse('mailto:contact@example.com')).not.toThrow()
