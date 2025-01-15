@@ -34,7 +34,7 @@ export const whitelistSchema = z.object({
    *
    * @defaultValue false
    */
-  disallowHostnames: z.boolean().optional(),
+  disallowHostnames: z.boolean().optional().default(false),
   /**
    * Which characters are allowed in the URL path.
    * Use empty string to allow all characters.
