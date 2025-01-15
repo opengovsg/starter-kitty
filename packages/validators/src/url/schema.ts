@@ -1,16 +1,12 @@
 import { z } from 'zod'
 
 import { ParsedUrlValidatorOptions } from '@/url/options'
-import { createAllowedCharsSchema, getErrorMessage, IS_NOT_HOSTNAME_REGEX, resolveRelativeUrl } from '@/url/utils'
+import { getErrorMessage, IS_NOT_HOSTNAME_REGEX, resolveRelativeUrl } from '@/url/utils'
 
 import { isDynamicRoute } from './nextjs-dynamic-route'
 
 export const toSchema = (options: ParsedUrlValidatorOptions) => {
   const { whitelist } = options
-
-  // create and cache this zod schema beforehand
-  const zAllowedCharsString = createAllowedCharsSchema(whitelist.allowedCharactersInPath)
-
   return z
     .string()
     .transform((url, ctx) => {
@@ -31,8 +27,8 @@ export const toSchema = (options: ParsedUrlValidatorOptions) => {
           return false
         }
         // only allow whitelisted characters in the path
-        const onlyHasAllowedChars = zAllowedCharsString.safeParse(url.pathname).success
-        if (!onlyHasAllowedChars) {
+        const conformsToPathRegex = z.string().regex(options.whitelist.validPathRegex).safeParse(url.pathname).success
+        if (!conformsToPathRegex) {
           return false
         }
 
