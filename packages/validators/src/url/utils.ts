@@ -24,7 +24,7 @@ export const createAllowedCharsSchema = (allowedChars: string): z.ZodType<string
 
   const schema = z.string().refine(
     (str: string) => {
-      return Array.from(str).every(c=>allowed.has(c))
+      return Array.from(str).every(c => allowed.has(c))
     },
     {
       message: `Every character must be in ${allowedChars}`,
