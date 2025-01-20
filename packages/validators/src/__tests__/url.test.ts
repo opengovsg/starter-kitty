@@ -4,7 +4,7 @@ import { ZodError } from 'zod'
 import { OptionsError } from '@/common/errors'
 import { createUrlSchema, RelUrlValidator, UrlValidator } from '@/index'
 import { UrlValidationError } from '@/url/errors'
-import { defaultValidPathRegex } from '@/url/options'
+import { defaultAllowedChars } from '@/url/options'
 
 describe('UrlValidator with default options', () => {
   const validator = new UrlValidator()
@@ -63,7 +63,7 @@ describe('UrlValidator with custom protocol whitelist', () => {
   const validator = new UrlValidator({
     whitelist: {
       protocols: ['http', 'https'],
-      validPathRegex: /.*/, // allow all characters for tests
+      allowedCharactersInPath: '', // blank to allow all characters for tests
     },
   })
 
@@ -84,7 +84,7 @@ describe('UrlValidator with custom host whitelist', () => {
     whitelist: {
       protocols: ['http', 'https'],
       hosts: ['example.com'],
-      validPathRegex: /.*/, // allow all characters for tests
+      allowedCharactersInPath: '', // blank to allow all characters
     },
   })
 
@@ -102,7 +102,7 @@ describe('UrlValidator with disallowHostnames', () => {
     whitelist: {
       protocols: ['http', 'https'],
       disallowHostnames: true,
-      validPathRegex: /.*/, // allow all characters for tests
+      allowedCharactersInPath: '', // blank to allow all characters for tests
     },
   })
 
@@ -133,7 +133,7 @@ describe('UrlValidator with both hosts and disallowHostnames', () => {
       protocols: ['http', 'https'],
       hosts: ['example.com', 'localhost'],
       disallowHostnames: true,
-      validPathRegex: /.*/, // allow all characters for tests
+      allowedCharactersInPath: '', // blank to allow all characters for tests
     },
   })
 
@@ -156,7 +156,7 @@ describe('UrlValidator with base URL', () => {
     baseOrigin: 'https://example.com',
     whitelist: {
       protocols: ['http', 'https'], // default
-      validPathRegex: /.*/, // allow all characters for tests
+      allowedCharactersInPath: '', // blank to allow all characters for tests
     },
   })
 
@@ -200,11 +200,11 @@ describe('UrlValidator with base URL', () => {
   })
 })
 
-describe('UrlValidator with valid path regex', () => {
+describe('UrlValidator with a whitelist of allowed characters in the path', () => {
   const validator = new UrlValidator({
     whitelist: {
       protocols: ['http', 'https'],
-      validPathRegex: /^[abc123/]*$/,
+      allowedCharactersInPath: 'abc123/',
     },
   })
   it('should parse a valid URL', () => {
@@ -217,12 +217,12 @@ describe('UrlValidator with valid path regex', () => {
     expect(url).toBeInstanceOf(URL)
   })
 
-  it('should throw an error when the path does not conform to path regex', () => {
+  it('should throw an error when the path contains disallowed characters', () => {
     expect(() => validator.parse('https://example.com/abc1234')).toThrow(UrlValidationError)
   })
 })
 
-describe('UrlValidator with the default valid path regex', () => {
+describe('UrlValidator with the default whitelist', () => {
   const validator = new UrlValidator({})
 
   it('should parse a valid URL', () => {
@@ -235,7 +235,7 @@ describe('UrlValidator with the default valid path regex', () => {
     expect(url).toBeInstanceOf(URL)
   })
 
-  it('should throw an error when the path does not conform to path regex', () => {
+  it('should throw an error when the path contains disallowed characters', () => {
     expect(() => validator.parse('https://example.com/1@23')).toThrow(UrlValidationError)
   })
 
@@ -393,7 +393,7 @@ describe('createUrlSchema', () => {
     const schema = createUrlSchema({
       whitelist: {
         protocols: ['http', 'https', 'mailto'],
-        validPathRegex: /^[a-zA-Z0-9._\-/@]*$/,
+        allowedCharactersInPath: defaultAllowedChars + '@',
       },
     })
     expect(() => schema.parse('mailto:contact@example.com')).not.toThrow()
@@ -412,7 +412,7 @@ describe('createUrlSchema', () => {
           protocols: ['http', 'https'],
           hosts: ['example.com'],
           disallowHostnames: true,
-          validPathRegex: defaultValidPathRegex,
+          allowedCharactersInPath: defaultAllowedChars,
         },
       }),
     ).not.toThrow()

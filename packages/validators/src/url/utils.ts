@@ -1,4 +1,43 @@
+import { z } from 'zod'
+
 import { UrlValidationError } from '@/url/errors'
+
+/**
+ * Creates a Zod schema that validates a string to ensure all characters are within the allowed characters set.
+ *
+ * @param allowedChars - A string containing all allowed characters. If this is blank, the schema will always pass.
+ * @returns A Zod schema that validates a string to ensure all characters are within the allowed characters set.
+ *
+ * @example
+ * ```typescript
+ * const schema = createAllowedCharsSchema('abc123');
+ * schema.parse('abc'); // Valid
+ * schema.parse('a1b2c3'); // Valid
+ * schema.parse('abcd'); // Throws an error
+ * ```
+ */
+export const createAllowedCharsSchema = (allowedChars: string): z.ZodType<string> => {
+  if (!allowedChars) {
+    return z.string()
+  }
+  const allowed = new Set(Array.from(allowedChars))
+
+  const schema = z.string().refine(
+    (str: string) => {
+      for (const char of str) {
+        if (!allowed.has(char)) {
+          return false
+        }
+      }
+      return true
+    },
+    {
+      message: `Every character must be in ${allowedChars}`,
+    },
+  )
+
+  return schema
+}
 
 export const IS_NOT_HOSTNAME_REGEX = /[^.]+\.[^.]+/g
 
