@@ -3,7 +3,7 @@ import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
 import { UrlValidationError } from '@/url/errors'
-import { defaultOptions, optionsSchema, UrlValidatorOptions } from '@/url/options'
+import { defaultAllowedChars, defaultOptions, optionsSchema, UrlValidatorOptions } from '@/url/options'
 import { toSchema } from '@/url/schema'
 
 /**
@@ -128,6 +128,7 @@ export class RelUrlValidator extends UrlValidator {
       whitelist: {
         protocols: ['http', 'https'],
         hosts: [urlObject.host],
+        allowedCharactersInPath: defaultAllowedChars,
       },
     })
   }
