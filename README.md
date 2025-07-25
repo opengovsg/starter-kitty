@@ -12,5 +12,4 @@ Please refer to the [documentation website](https://kit.open.gov.sg/) for detail
 
 ## Packages
 
-- [`@opengovsg/starter-kitty-fs`](./packages/safe-fs/): Safe file system operations.
 - [`@opengovsg/starter-kitty-validators`](./packages/validators/): Common input validators.

@@ -29,9 +29,6 @@ importers:
 
   apps/docs:
     devDependencies:
-      '@opengovsg/starter-kitty-fs':
-        specifier: workspace:*
-        version: link:../../packages/safe-fs
       '@opengovsg/starter-kitty-validators':
         specifier: workspace:*
         version: link:../../packages/validators
@@ -89,36 +86,6 @@ importers:
       typescript:
         specifier: ^5.3.3
         version: 5.4.5
-
-  packages/safe-fs:
-    devDependencies:
-      '@opengovsg/eslint-config-starter-kitty':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@opengovsg/prettier-config-starter-kitty':
-        specifier: workspace:*
-        version: link:../prettier-config
-      '@swc/core':
-        specifier: ^1.6.13
-        version: 1.6.13
-      '@types/node':
-        specifier: ^18.19.47
-        version: 18.19.47
-      memfs:
-        specifier: ^4.11.1
-        version: 4.11.1
-      tsc-alias:
-        specifier: ^1.8.10
-        version: 1.8.10
-      tsup:
-        specifier: ^8.1.0
-        version: 8.1.0(@swc/core@1.6.13)(postcss@8.5.1)(ts-node@10.9.1(@swc/core@1.6.13)(@types/node@18.19.47)(typescript@5.4.5))(typescript@5.4.5)
-      typescript:
-        specifier: ^5.4.5
-        version: 5.4.5
-      vitest:
-        specifier: ^2.0.2
-        version: 2.0.2(@types/node@18.19.47)(yaml@2.4.5)
 
   packages/validators:
     dependencies:
