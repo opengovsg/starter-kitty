@@ -1,8 +1,0 @@
-{
-  "root": true,
-  "extends": ["@opengovsg/eslint-config-starter-kitty/index.js"],
-  "parser": "@typescript-eslint/parser",
-  "parserOptions": {
-    "project": true,
-  },
-}
