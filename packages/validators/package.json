@@ -37,6 +37,10 @@
       ]
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/opengovsg/starter-kitty"
+  },
   "scripts": {
     "build": "tsc && tsc-alias",
     "build:report": "api-extractor run --local --verbose",
