@@ -57,7 +57,7 @@
     "@opengovsg/eslint-config-starter-kitty": "workspace:*",
     "@opengovsg/prettier-config-starter-kitty": "workspace:*",
     "@swc/core": "^1.6.13",
-    "@types/node": "^18",
+    "@types/node": "^20",
     "tsc-alias": "^1.8.10",
     "typescript": "^5.4.5",
     "vitest": "^4.0.6"
