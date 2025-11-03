@@ -27,7 +27,6 @@ jobs:
           node-version: lts/*
           cache: pnpm
           registry-url: "https://registry.npmjs.org/"
-          scope: "@opengovsg"
 
       - run: npx changelogithub
         env:
@@ -38,13 +37,6 @@ jobs:
 
       - name: 🔨 Build
         run: pnpm build
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: lts/*
-          cache: pnpm
-          registry-url: "https://npm.pkg.github.com/"
-          scope: "@opengovsg"
 
       - name: Publish to NPM
         run: pnpm -r publish --no-git-checks --tag latest --access public
