@@ -1,5 +1,5 @@
 import { ParsedMailbox, parseOneAddress } from 'email-addresses'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 import { ParsedEmailValidatorOptions } from '@/email/options'
 import { isValidEmail } from '@/email/utils'

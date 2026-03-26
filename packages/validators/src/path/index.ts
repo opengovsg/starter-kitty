@@ -1,4 +1,4 @@
-import { ZodSchema } from 'zod'
+import { z } from 'zod/v4'
 import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
@@ -14,7 +14,7 @@ import { toSchema } from '@/path/schema'
  *
  * @public
  */
-export const createPathSchema = (options: PathValidatorOptions): ZodSchema<string> => {
+export const createPathSchema = (options: PathValidatorOptions): z.ZodType<string> => {
   const result = optionsSchema.safeParse(options)
   if (result.success) {
     return toSchema(result.data)

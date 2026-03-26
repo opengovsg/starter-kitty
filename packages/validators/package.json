@@ -1,6 +1,6 @@
 {
   "name": "@opengovsg/starter-kitty-validators",
-  "version": "1.2.14",
+  "version": "1.3.0-beta.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -52,12 +52,15 @@
     "test": "vitest",
     "ci:report": "api-extractor run --verbose"
   },
+  "peerDependencies": {
+    "zod": "^3.25.0 || ^4.0.0"
+  },
   "dependencies": {
     "email-addresses": "^5.0.0",
-    "zod": "^3.23.8",
-    "zod-validation-error": "^3.3.0"
+    "zod-validation-error": "^5.0.0"
   },
   "devDependencies": {
+    "zod": "^3.25.0 || ^4.0.0",
     "@opengovsg/eslint-config-starter-kitty": "workspace:*",
     "@opengovsg/prettier-config-starter-kitty": "workspace:*",
     "@swc/core": "^1.6.13",

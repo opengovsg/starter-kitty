@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ZodError } from 'zod'
+import { ZodError } from 'zod/v4'
 
 import { OptionsError } from '@/common/errors'
 import { createUrlSchema, RelUrlValidator, UrlValidator } from '@/index'

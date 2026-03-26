@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 import { ParsedUrlValidatorOptions } from '@/url/options'
 import { createAllowedCharsSchema, getErrorMessage, IS_NOT_HOSTNAME_REGEX, resolveRelativeUrl } from '@/url/utils'

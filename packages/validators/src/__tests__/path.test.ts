@@ -1,6 +1,6 @@
 import path from 'path'
 import { describe, expect, it } from 'vitest'
-import { ZodError } from 'zod'
+import { ZodError } from 'zod/v4'
 
 import { OptionsError } from '@/common/errors'
 import { createPathSchema } from '@/index'

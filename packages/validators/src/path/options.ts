@@ -1,5 +1,5 @@
 import path from 'path'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 /**
  * The options to use for path validation.

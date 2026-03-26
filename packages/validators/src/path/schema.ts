@@ -1,5 +1,5 @@
 import path from 'path'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 import { ParsedPathValidatorOptions } from '@/path/options'
 import { isSafePath } from '@/path/utils'

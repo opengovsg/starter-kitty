@@ -1,4 +1,4 @@
-import { ZodError, ZodSchema, ZodTypeDef } from 'zod'
+import { z } from 'zod/v4'
 import { fromError } from 'zod-validation-error'
 
 import { OptionsError } from '@/common/errors'
@@ -53,7 +53,7 @@ export class UrlValidator {
     if (result.success) {
       return result.data
     }
-    if (result.error instanceof ZodError) {
+    if (result.error instanceof z.ZodError) {
       throw new UrlValidationError(fromError(result.error).toString())
     } else {
       // should only be UrlValidationError
@@ -144,7 +144,7 @@ export class RelUrlValidator extends UrlValidator {
  *
  * @public
  */
-export const createUrlSchema = (options: UrlValidatorOptions = defaultOptions): ZodSchema<URL, ZodTypeDef, string> => {
+export const createUrlSchema = (options: UrlValidatorOptions = defaultOptions): z.ZodType<URL, string> => {
   const result = optionsSchema.safeParse({ ...defaultOptions, ...options })
   if (result.success) {
     return toSchema(result.data)
