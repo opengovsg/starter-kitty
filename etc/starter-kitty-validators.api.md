@@ -6,18 +6,16 @@
 
 /// <reference types="node" />
 
-import { z } from 'zod';
-import { ZodSchema } from 'zod';
-import { ZodTypeDef } from 'zod';
+import { z } from 'zod/v4';
 
 // @public
-export const createEmailSchema: (options?: EmailValidatorOptions) => ZodSchema<string>;
+export const createEmailSchema: (options?: EmailValidatorOptions) => z.ZodType<string>;
 
 // @public
-export const createPathSchema: (options: PathValidatorOptions) => ZodSchema<string>;
+export const createPathSchema: (options: PathValidatorOptions) => z.ZodType<string>;
 
 // @public
-export const createUrlSchema: (options?: UrlValidatorOptions) => ZodSchema<URL, ZodTypeDef, string>;
+export const createUrlSchema: (options?: UrlValidatorOptions) => z.ZodType<URL, string>;
 
 // @public
 export interface EmailValidatorOptions {

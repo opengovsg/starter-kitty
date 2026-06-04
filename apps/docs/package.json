@@ -1,5 +1,6 @@
 {
   "name": "@opengovsg/starter-kitty-docs",
+  "private": true,
   "description": "Documentation for Starter Kitty",
   "main": "index.js",
   "scripts": {
