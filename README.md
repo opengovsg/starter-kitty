@@ -34,9 +34,17 @@ Releases are managed with [Changesets](https://github.com/changesets/changesets)
 
 ### Prerelease (beta) mode
 
-The repo is currently in Changesets **pre mode** (tag `beta`), so released versions are cut as `…-beta.N`. The pre-mode state is the committed `.changeset/pre.json` file — it is a shared, repo-wide switch, not a per-developer setting.
+Changesets supports a [**pre mode**](https://github.com/changesets/changesets/blob/main/docs/prereleases.md) for cutting prerelease versions (e.g. `1.4.0-beta.0`) instead of stable ones. Pre mode is toggled by the presence of a committed `.changeset/pre.json` file — it is a shared, repo-wide switch, not a per-developer setting. To check the current state, look for `.changeset/pre.json`: if it exists with `"mode": "pre"`, the repo is in prerelease mode.
 
-To cut a **stable** release, exit pre mode and commit the change:
+To **enter** prerelease mode (subsequent releases become `…-beta.N`):
+
+```bash
+pnpm changeset pre enter beta
+git add .changeset/pre.json
+git commit -m "chore: enter changesets pre mode"
+```
+
+To **exit** prerelease mode and return to stable releases:
 
 ```bash
 pnpm changeset pre exit   # flips .changeset/pre.json to "exit" mode only
@@ -44,7 +52,7 @@ git add .changeset/pre.json
 git commit -m "chore: exit changesets pre mode"
 ```
 
-Once that lands on `develop`, the next "Version Packages" PR resolves to stable versions (e.g. `1.3.0-beta.3` → `1.4.0`) published under the `latest` dist-tag. To start a new prerelease cycle later, run `pnpm changeset pre enter beta` and commit.
+Once the change lands on `develop`, the next "Version Packages" PR resolves versions accordingly — prerelease versions (`…-beta.N`, published under the `beta` dist-tag) while in pre mode, or stable versions (e.g. `1.3.0-beta.3` → `1.4.0`, published under `latest`) once exited.
 
 > [!NOTE]
 > Always use the `pnpm changeset pre enter`/`exit` commands rather than hand-editing `pre.json`. Treat entering and exiting pre mode as deliberate, coordinated release decisions, since the switch affects the whole repo.
