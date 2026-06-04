@@ -12,16 +12,21 @@
     "test": "turbo test",
     "ci:report": "turbo ci:report",
     "format": "turbo format",
-    "format:check": "turbo format:check"
+    "format:check": "turbo format:check",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.5.2",
+    "@changesets/cli": "^2.29.8",
     "prettier": "^3.2.5",
     "turbo": "^2.0.6",
     "typescript": "^5.4.5"
   },
   "packageManager": "pnpm@9.4.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19.0"
   },
   "pnpm": {
     "overrides": {
