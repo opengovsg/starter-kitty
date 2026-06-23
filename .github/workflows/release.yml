@@ -10,6 +10,10 @@ on:
         description: "Create snapshot release"
         type: boolean
         default: false
+      packages:
+        description: "Packages to snapshot (npm name or dir, comma/space separated). Leave empty for all packages with a changeset."
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -47,9 +51,20 @@ jobs:
       - name: 🔨 Build
         run: pnpm build
 
+      # When specific packages are requested, snapshot-version only those by
+      # passing `--ignore` for every other publishable workspace package.
+      # `changeset publish` then only publishes the packages that received a
+      # snapshot version. Empty input => snapshot all packages with changesets.
+      - name: Resolve snapshot scope
+        id: scope
+        env:
+          PACKAGES: ${{ github.event.inputs.packages }}
+        run: |
+          node .github/scripts/snapshot-ignore.js >> "$GITHUB_OUTPUT"
+
       - name: Publish snapshot to NPM
         run: |
-          pnpm changeset version --snapshot snapshot
+          pnpm changeset version --snapshot snapshot ${{ steps.scope.outputs.ignore_args }}
           pnpm changeset publish --tag snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
