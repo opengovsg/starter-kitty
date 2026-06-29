@@ -1,9 +1,9 @@
 name: Linting
 
 on:
+  pull_request:
   push:
-    branches-ignore:
-      - develop
+    branches: [develop]
 
 jobs:
   lint:
