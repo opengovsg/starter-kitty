@@ -1,0 +1,57 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`output fixtures (snapshots) > error line with an error 1`] = `
+{
+  "action": "charge",
+  "env": "development",
+  "error": {
+    "kind": "Error",
+    "message": "upstream down",
+    "stack": "<stack>",
+    "type": "Object",
+  },
+  "hostname": "<hostname>",
+  "level": "ERROR",
+  "message": "Payment failed",
+  "path": "/api/pay",
+  "pid": "<pid>",
+  "service": "starter-kitty",
+  "timestamp": "<timestamp>",
+  "version": "0.0.0",
+}
+`;
+
+exports[`output fixtures (snapshots) > info line 1`] = `
+{
+  "action": "getWidget",
+  "context": {
+    "widgetId": "w_123",
+  },
+  "env": "development",
+  "hostname": "<hostname>",
+  "level": "INFO",
+  "message": "Widget fetched",
+  "path": "/api/widgets",
+  "pid": "<pid>",
+  "service": "starter-kitty",
+  "source": "trpc",
+  "timestamp": "<timestamp>",
+  "version": "0.0.0",
+}
+`;
+
+exports[`output fixtures (snapshots) > notice (audit) line 1`] = `
+{
+  "action": "login",
+  "env": "development",
+  "hostname": "<hostname>",
+  "level": "NOTICE",
+  "message": "User logged in",
+  "path": "/api/login",
+  "pid": "<pid>",
+  "service": "starter-kitty",
+  "timestamp": "<timestamp>",
+  "user_id": "u_1",
+  "version": "0.0.0",
+}
+`;
