@@ -12,6 +12,7 @@
  * @packageDocumentation
  */
 
+export type * from './audit/types.js'
 export { serializeError } from './error.js'
 export * from './logger.js'
 export * from './types.js'

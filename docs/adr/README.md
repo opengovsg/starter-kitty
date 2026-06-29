@@ -16,3 +16,4 @@ Files are numbered sequentially: `NNNN-kebab-case-title.md`.
 | [0004](./0004-scope-not-pino-child.md)          | Scoping is `scope`, not `child`              | Accepted |
 | [0005](./0005-no-redaction-in-base-logger.md)   | No redaction in the base logger              | Accepted |
 | [0006](./0006-pluggable-error-serialization.md) | Pluggable error serialisation; no error type | Accepted |
+| [0007](./0007-fixed-shape-audit-helpers.md)     | Fixed-shape audit helpers                    | Accepted |

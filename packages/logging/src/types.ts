@@ -1,3 +1,5 @@
+import type { AuditLogger } from './audit/types.js'
+
 /**
  * The shape of a single log call: a `message`, an optional `action` naming the
  * operation, and optional structured `context`, `error`, and `merged` fields.
@@ -127,6 +129,13 @@ export interface Logger {
    * page-worthy). Carries the `error` that caused the failure.
    */
   error(input: LogInput): void
+
+  /**
+   * The fixed-shape **audit** helpers — `audit.<category>.<event>(…)` — for
+   * recording compliance-auditable events with a type-enforced shape. Server
+   * side only; absent from {@link BasicLogger}. See {@link AuditLogger}.
+   */
+  readonly audit: AuditLogger
 }
 
 /**

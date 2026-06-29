@@ -2,6 +2,8 @@ import type { DestinationStream } from 'pino'
 import { destination, pino } from 'pino'
 import { PinoPretty } from 'pino-pretty'
 
+import { createAuditLogger } from './audit/index.js'
+import type { AuditLogger } from './audit/types.js'
 import { serializeContext } from './context.js'
 import { getCauseFromUnknown, serializeError } from './error.js'
 import type { Logger, LogInput } from './types.js'
@@ -249,6 +251,8 @@ class LoggerImpl implements Logger {
   private context: NonNullable<LogInput['context']> | null
   /** The most-specific action in scope (the leaf). Per-call `action` still wins. */
   private action: string | null
+  /** Lazily-built, memoised `audit` namespace; see the `audit` getter. */
+  private _audit?: AuditLogger
 
   constructor(
     logger: ReturnType<typeof bindChild>,
@@ -286,6 +290,21 @@ class LoggerImpl implements Logger {
   setContext(options: { context: LogInput['context'] }) {
     this.context = mergeContext(this.context, options.context)
     return this
+  }
+
+  /**
+   * The audit helper namespace. Built on first access and memoised, so a logger
+   * that emits no audit event pays nothing (ADR-0007). The injected callbacks
+   * read scope and action *at call time*, so they track `setAction` mutations.
+   */
+  get audit(): AuditLogger {
+    return (this._audit ??= createAuditLogger({
+      bindings: () => this.logger.bindings(),
+      emit: (level, fields, message) => {
+        this.logger[level](fields, message)
+      },
+      action: () => this.action ?? undefined,
+    }))
   }
 
   debug(input: Omit<LogInput, 'error'>) {

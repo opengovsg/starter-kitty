@@ -5,6 +5,60 @@
 ```ts
 
 // @public
+export interface AccountCreatedInput extends AuditInputBase {
+    targetUserId: string;
+}
+
+// @public
+export interface AccountDeactivatedInput extends AuditInputBase {
+    reason?: string;
+    targetUserId: string;
+}
+
+// @public
+export interface AccountDeletedInput extends AuditInputBase {
+    targetUserId: string;
+}
+
+// @public
+export interface AccountModifiedInput extends AuditInputBase {
+    changedFields: string[];
+    targetUserId: string;
+}
+
+// @public
+export interface ApiKeyChangedInput extends AuditInputBase {
+    action: 'created' | 'rotated' | 'revoked';
+    keyId: string;
+    targetUserId: string;
+}
+
+// @public
+export type AuditContext = Record<string, unknown>;
+
+// @public
+export interface AuditInputBase {
+    context?: AuditContext;
+    messageOverride?: string;
+}
+
+// @public
+export interface AuditLogger {
+    authn: AuthnAudit;
+    userManagement: UserManagementAudit;
+}
+
+// @public
+export interface AuthnAudit {
+    loginFailed(input: LoginFailedInput): void;
+    loginSucceeded(input: LoginSucceededInput): void;
+    sessionCreated(input: SessionCreatedInput): void;
+    sessionTerminated(input: SessionTerminatedInput): void;
+    sessionTimedOut(input: SessionTimedOutInput): void;
+    tokenReused(input: TokenReusedInput): void;
+}
+
+// @public
 export interface BasicLogger<Input extends Partial<LogInput> = LogInput> {
     debug: (_: Omit<Input, 'error'>) => void;
     error: (_: Input) => void;
@@ -23,6 +77,7 @@ export const createLogging: (config: LoggingConfig) => CreateLogger;
 
 // @public
 export interface Logger {
+    readonly audit: AuditLogger;
     debug(input: Omit<LogInput, 'error'>): void;
     error(input: LogInput): void;
     info(input: Omit<LogInput, 'error'>): void;
@@ -61,6 +116,16 @@ export interface LoggingConfig {
 }
 
 // @public
+export interface LoginFailedInput extends AuditInputBase {
+    attemptCount: number;
+    privileged: boolean;
+    reason: string;
+    role?: string;
+    userId?: string;
+    username: string;
+}
+
+// @public
 export interface LogInput {
     action?: string;
     context?: {
@@ -74,10 +139,55 @@ export interface LogInput {
 }
 
 // @public
+export interface LoginSucceededInput extends AuditInputBase {
+    privileged: boolean;
+    role: string;
+    sessionId?: string;
+    userId: string;
+    username?: string;
+}
+
+// @public
 export type LogLevel = 'silent' | 'debug' | 'info' | 'notice' | 'warn' | 'error';
 
 // @public
+export interface MfaSettingChangedInput extends AuditInputBase {
+    change: string;
+    targetUserId: string;
+}
+
+// @public
+export interface PasswordResetInput extends AuditInputBase {
+    initiatedBy: 'self' | 'admin';
+    targetUserId: string;
+}
+
+// @public
+export interface RoleChangedInput extends AuditInputBase {
+    newRoles: string[];
+    oldRoles: string[];
+    targetUserId: string;
+}
+
+// @public
 export function serializeError(err: Error): Record<string, unknown>;
+
+// @public
+export interface SessionCreatedInput extends AuditInputBase {
+    sessionId: string;
+}
+
+// @public
+export interface SessionTerminatedInput extends AuditInputBase {
+    reason: string;
+    sessionId: string;
+}
+
+// @public
+export interface SessionTimedOutInput extends AuditInputBase {
+    sessionId: string;
+    userId: string;
+}
 
 // @public
 export interface SystemLoggerOptions {
@@ -89,6 +199,24 @@ export interface SystemLoggerOptions {
     source?: string | null;
     traceId?: string | null;
     userId?: string;
+}
+
+// @public
+export interface TokenReusedInput extends AuditInputBase {
+    sessionId?: string;
+    tokenId: string;
+}
+
+// @public
+export interface UserManagementAudit {
+    accountCreated(input: AccountCreatedInput): void;
+    accountDeactivated(input: AccountDeactivatedInput): void;
+    accountDeleted(input: AccountDeletedInput): void;
+    accountModified(input: AccountModifiedInput): void;
+    apiKeyChanged(input: ApiKeyChangedInput): void;
+    mfaSettingChanged(input: MfaSettingChangedInput): void;
+    passwordReset(input: PasswordResetInput): void;
+    roleChanged(input: RoleChangedInput): void;
 }
 
 // @public

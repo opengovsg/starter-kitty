@@ -209,3 +209,101 @@ export const createBaseLogger = createLogging({
 The base logger does **not** reach into an error's `context` property. If you
 want an error's metadata in the queryable top-level `context`, pass it
 explicitly: `logger.error({ error, context: { ...} })`.
+
+## Audit events
+
+The server `Logger` carries an **`audit`** namespace for compliance-auditable
+business events — "who did what to which critical resource" — drawn from a
+**closed, governed taxonomy** (authentication, user management, data access, …).
+Unlike a routine log line, each audit event has a **fixed, type-enforced shape**:
+required fields are mandatory at compile time, shared identity (`user_id`,
+`client_ip`) is read from the bound scope, and the helper stamps three Controlled
+wire fields — `audit: true` (the marker your sink routes to WORM/immutable
+storage), `category`, and `event`.
+
+```ts
+const logger = createBaseLogger({
+  path: '/login',
+  traceId: req.headers.get('x-trace-id'),
+  clientIp: req.headers.get('cf-connecting-ip'),
+  userAgent: req.headers.get('user-agent'),
+})
+
+logger.scope({ action: 'verifyOtp' }).audit.authn.loginSucceeded({
+  userId: 'u_1',
+  role: 'admin',
+  privileged: true,
+  username: 'jane',
+  sessionId: 's_1',
+})
+```
+
+```json
+{
+  "level": "NOTICE",
+  "message": "Login succeeded",
+  "audit": true,
+  "category": "authn",
+  "event": "loginSucceeded",
+  "action": "verifyOtp",
+  "user_id": "u_1",
+  "client_ip": "1.2.3.4",
+  "context": { "role": "admin", "privileged": true, "username": "jane", "session_id": "s_1" }
+}
+```
+
+- **Call shape:** `logger.audit.<category>.<event>(input)`. `category` and `event`
+  are real path segments (autocomplete-grouped) **and** the wire facet values —
+  there is no abbreviation layer.
+- **Canonical facets are promoted**, not buried: `userId` becomes the top-level
+  `user_id`, not `context.user_id`. Event-specific fields land in `context`
+  (emitted `snake_case`).
+- **Level is fixed per event**, drawn from `{ notice, warn }` — most events are
+  `notice` (the audit rung), security-relevant denials are `warn`; never `error`
+  (an audit event is not an operation failure). Keep the production `level` at
+  `notice` or lower so audit lines survive (see **Retention** above).
+- **Server-only.** `audit` lives on the full `Logger`, not on `BasicLogger`, so
+  shared/client code cannot emit audit events. It is built lazily — a request
+  that emits none pays nothing.
+- **Secrets are unrepresentable by shape** — passwords, raw tokens, and raw API
+  keys are simply never fields. Identifiers that may be PII (`user_id`,
+  `username`, …) stay raw and are scrubbed at the **sink**, not in-process.
+- **Scope-read fields are asserted at emit:** when an event reads `user_id` /
+  `client_ip` from the scope and it is missing, the helper emits a loud
+  diagnostic line rather than a silently-incomplete audit record.
+
+See [ADR-0007](../../docs/adr/0007-fixed-shape-audit-helpers.md) for the design.
+Every input additionally accepts `context?` (extra business fields, merged into
+`context`) and `messageOverride?` (each event has a stable default message —
+override only when a call site needs a more specific one); both are omitted from
+the per-event tables below.
+
+### Categories
+
+#### `authn` — authentication & session
+
+| Event               | Level    | Required fields                                                              |
+| ------------------- | -------- | ---------------------------------------------------------------------------- |
+| `loginSucceeded`    | `notice` | `userId`, `role`, `privileged` _(opt: `username`, `sessionId`)_              |
+| `loginFailed`       | `notice` | `username`, `reason`, `attemptCount`, `privileged` _(opt: `userId`, `role`)_ |
+| `sessionCreated`    | `notice` | `sessionId`                                                                  |
+| `sessionTerminated` | `notice` | `sessionId`, `reason`                                                        |
+| `sessionTimedOut`   | `notice` | `userId`, `sessionId`                                                        |
+| `tokenReused`       | `warn`   | `tokenId` _(opt: `sessionId`)_                                               |
+
+#### `userManagement` — user & permission management
+
+Acts on a **target** account (`targetUserId`, emitted as `context.target_user_id`)
+that is usually distinct from the **actor** (the request's scope `user_id`).
+Events log _what_ changed — field/role names and id references — never the values.
+
+| Event                | Level    | Required fields                        |
+| -------------------- | -------- | -------------------------------------- |
+| `accountCreated`     | `notice` | `targetUserId`                         |
+| `accountModified`    | `notice` | `targetUserId`, `changedFields`        |
+| `accountDeactivated` | `notice` | `targetUserId` _(opt: `reason`)_       |
+| `accountDeleted`     | `notice` | `targetUserId`                         |
+| `roleChanged`        | `notice` | `targetUserId`, `oldRoles`, `newRoles` |
+| `mfaSettingChanged`  | `notice` | `targetUserId`, `change`               |
+| `apiKeyChanged`      | `notice` | `targetUserId`, `keyId`, `action`      |
+| `passwordReset`      | `notice` | `targetUserId`, `initiatedBy`          |

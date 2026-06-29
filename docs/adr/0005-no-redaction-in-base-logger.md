@@ -16,7 +16,7 @@ Two technical facts make this much harder than it appears in the base logger:
 1. **pino `redact` is path/key-based only.** It censors values at enumerated
    object paths (`a.b.c`, `stuff[*].secret`, one wildcard per path) with a
    `censor` replacement. It has **no value/pattern matching** — it cannot find an
-   NRIC, email, or phone number by inspecting a *value*. So the PII half of the
+   NRIC, email, or phone number by inspecting a _value_. So the PII half of the
    proposal is impossible via `redact` by construction.
 
 2. **The base logger's `context` is arbitrary-shaped.** Business data is an
@@ -27,7 +27,7 @@ Two technical facts make this much harder than it appears in the base logger:
 Given (2), every in-base redaction strategy is a bad trade:
 
 - **Path-based (pino `redact`)** only catches the paths you enumerate, to one
-  wildcard's depth. Deeper secrets slip through — a *false sense of safety*,
+  wildcard's depth. Deeper secrets slip through — a _false sense of safety_,
   which is worse than none.
 - **Any-depth key redaction** needs a custom serializer that walks every log
   object on every line — a per-line CPU cost the package has deliberately
@@ -42,11 +42,14 @@ Given (2), every in-base redaction strategy is a bad trade:
 The base logger does **not** redact. No `redact` paths are baked into the
 default config, and no value-scrubbing is performed.
 
-Redaction is deferred to the planned **fixed-shape helper loggers** (the future
-direction in [ADR-0003](./0003-canonical-log-wire-schema.md)). Once a helper
-fixes the shape of its `context`, redaction becomes tractable: a small,
-enumerable set of known paths, complete coverage (no arbitrary depth), and
-bounded, predictable cost. That is where censoring secret keys belongs.
+Handling of secrets is deferred to the planned **fixed-shape helper loggers**
+(the future direction in [ADR-0003](./0003-canonical-log-wire-schema.md), now
+realised in [ADR-0007](./0007-fixed-shape-audit-helpers.md)). Once a helper fixes
+the shape of its `context`, secrets are handled not by _censoring_ but by
+_exclusion_: a secret simply is not a field, so it cannot be passed and cannot
+leak — stronger than path-based redaction and at zero cost. The helpers perform
+no value transformation (ADR-0007 records why an in-helper hashing leg was
+designed and rejected).
 
 PII, if and when it must be handled, belongs at the **sink** (e.g. Datadog
 Sensitive Data Scanner — centrally-defined pattern rules applied at ingestion,
@@ -63,9 +66,10 @@ Redaction is a safety net, not the mechanism that makes logging safe.
 - The cost of safe logging sits with the caller (don't log secrets/PII) and,
   later, with fixed-shape helpers and the sink — not with a per-line scrubber in
   the hot path.
-- When the fixed-shape helpers land, they own the curated, reviewed redaction
-  list (the "shared asset"), scoped to their known fields. This ADR should be
-  revisited then to point at that implementation.
+- The fixed-shape helpers (ADR-0007) keep secrets out **by shape** rather than
+  by a censor list, and leave PII to the sink. There is no curated redaction list
+  to own — the "shared asset" turned out to be the _closed event schemas_
+  themselves, which make secrets unrepresentable.
 - If a future need forces base-logger redaction despite the above (e.g. a
   compliance mandate), it reopens the performance trade in (2) explicitly,
   rather than being added silently.
