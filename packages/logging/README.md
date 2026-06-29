@@ -319,3 +319,14 @@ the data itself.
 | `dataAccessed`     | `notice` | `resourceType`, `resourceId`, `accessType`, `classification`                          |
 | `recordDownloaded` | `notice` | `resourceId`, `classification`, `sizeBytes`, `method` _(opt: `resourceType`, `role`)_ |
 | `bulkExported`     | `notice` | `destination`, `classification`, `recordCount` _(opt: `filters`)_                     |
+
+#### `configChange` — application & security-configuration changes
+
+Admin actions, downstream of auth: actor `user_id` and `client_ip` are
+scope-read. Log _what_ changed (and old/new values when non-sensitive), never
+secrets.
+
+| Event                   | Level    | Required fields                                         |
+| ----------------------- | -------- | ------------------------------------------------------- |
+| `securityConfigChanged` | `notice` | `setting` _(opt: `oldValue`, `newValue`)_               |
+| `policyChanged`         | `notice` | `policyType` _(opt: `summary`, `oldValue`, `newValue`)_ |

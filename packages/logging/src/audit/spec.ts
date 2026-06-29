@@ -211,3 +211,29 @@ export const DATA_ACCESS_SPECS = {
     },
   }),
 } satisfies Record<string, EventSpec>
+
+const configChange = (event: string, spec: Omit<EventSpec, 'category' | 'event'>): EventSpec => ({
+  category: 'configChange',
+  event,
+  ...spec,
+})
+
+// Admin actions: actor (`user_id`) and `client_ip` are scope-read. Log the
+// setting/policy and old/new values (callers keep secrets out — values are config).
+/** Application function & security-configuration change event specs. */
+export const CONFIG_CHANGE_SPECS = {
+  securityConfigChanged: configChange('securityConfigChanged', {
+    level: 'notice',
+    message: 'Security configuration changed',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: { setting: 'setting', oldValue: 'old_value', newValue: 'new_value' },
+  }),
+  policyChanged: configChange('policyChanged', {
+    level: 'notice',
+    message: 'Policy changed',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: { policyType: 'policy_type', summary: 'summary', oldValue: 'old_value', newValue: 'new_value' },
+  }),
+} satisfies Record<string, EventSpec>

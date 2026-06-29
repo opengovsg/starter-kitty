@@ -45,6 +45,7 @@ export interface AuditInputBase {
 // @public
 export interface AuditLogger {
     authn: AuthnAudit;
+    configChange: ConfigChangeAudit;
     dataAccess: DataAccessAudit;
     userManagement: UserManagementAudit;
 }
@@ -73,6 +74,12 @@ export interface BulkExportedInput extends AuditInputBase {
     destination: string;
     filters?: AuditContext;
     recordCount: number;
+}
+
+// @public
+export interface ConfigChangeAudit {
+    policyChanged(input: PolicyChangedInput): void;
+    securityConfigChanged(input: SecurityConfigChangedInput): void;
 }
 
 // @public
@@ -187,6 +194,14 @@ export interface PasswordResetInput extends AuditInputBase {
 }
 
 // @public
+export interface PolicyChangedInput extends AuditInputBase {
+    newValue?: unknown;
+    oldValue?: unknown;
+    policyType: string;
+    summary?: string;
+}
+
+// @public
 export interface RecordDownloadedInput extends AuditInputBase {
     classification: string;
     method: string;
@@ -201,6 +216,13 @@ export interface RoleChangedInput extends AuditInputBase {
     newRoles: string[];
     oldRoles: string[];
     targetUserId: string;
+}
+
+// @public
+export interface SecurityConfigChangedInput extends AuditInputBase {
+    newValue?: unknown;
+    oldValue?: unknown;
+    setting: string;
 }
 
 // @public

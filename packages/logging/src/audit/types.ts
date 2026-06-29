@@ -19,6 +19,8 @@ export interface AuditLogger {
   userManagement: UserManagementAudit
   /** Data access, movement & export events. */
   dataAccess: DataAccessAudit
+  /** Application function & security-configuration change events. */
+  configChange: ConfigChangeAudit
 }
 
 /**
@@ -279,4 +281,44 @@ export interface BulkExportedInput extends AuditInputBase {
   recordCount: number
   /** The filters/parameters that scoped the export. */
   filters?: AuditContext
+}
+
+/**
+ * Application function & security-configuration change audit events
+ * (category `configChange`). Includes the org-level policy changes deferred
+ * from `userManagement` (password/access policy, ACLs, retention, logging).
+ *
+ * Admin actions, downstream of auth: actor `user_id` and `client_ip` are
+ * scope-read. Log *what* changed (and old/new values when non-sensitive),
+ * never secrets.
+ *
+ * @public
+ */
+export interface ConfigChangeAudit {
+  /** A security/compliance-affecting configuration setting changed. Fires at `notice`. */
+  securityConfigChanged(input: SecurityConfigChangedInput): void
+  /** An application policy changed (ACL, retention, logging, password, access). Fires at `notice`. */
+  policyChanged(input: PolicyChangedInput): void
+}
+
+/** Input for {@link ConfigChangeAudit.securityConfigChanged}. @public */
+export interface SecurityConfigChangedInput extends AuditInputBase {
+  /** The setting that changed, e.g. `session_timeout`, `mfa_required`. */
+  setting: string
+  /** The previous value, if non-sensitive and useful. */
+  oldValue?: unknown
+  /** The new value, if non-sensitive and useful. */
+  newValue?: unknown
+}
+
+/** Input for {@link ConfigChangeAudit.policyChanged}. @public */
+export interface PolicyChangedInput extends AuditInputBase {
+  /** The kind of policy, e.g. `acl`, `retention`, `logging`, `password`, `access`. */
+  policyType: string
+  /** A short human summary of the change, if useful. */
+  summary?: string
+  /** The previous value, if non-sensitive and useful. */
+  oldValue?: unknown
+  /** The new value, if non-sensitive and useful. */
+  newValue?: unknown
 }

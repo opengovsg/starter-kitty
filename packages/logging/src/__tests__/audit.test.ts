@@ -278,3 +278,37 @@ describe('audit.dataAccess', () => {
     expect(diagnostic).toMatchObject({ event: 'dataAccessed', context: { missing_scope: ['user_id', 'client_ip'] } })
   })
 })
+
+describe('audit.configChange', () => {
+  const reqLogger = () =>
+    createBaseLogger({
+      traceId: null,
+      path: '/admin/settings',
+      clientIp: '1.2.3.4',
+      userAgent: 'jest',
+      userId: 'admin_1',
+    })
+
+  it('records a security config change with old/new values in context', () => {
+    reqLogger().audit.configChange.securityConfigChanged({
+      setting: 'session_timeout',
+      oldValue: 30,
+      newValue: 15,
+    })
+    const line = at(0)
+    expect(line).toMatchObject({
+      audit: true,
+      category: 'configChange',
+      event: 'securityConfigChanged',
+      user_id: 'admin_1',
+      context: { setting: 'session_timeout', old_value: 30, new_value: 15 },
+    })
+  })
+
+  it('records a policy change and omits absent optional values', () => {
+    reqLogger().audit.configChange.policyChanged({ policyType: 'retention', summary: '30d -> 90d' })
+    const line = at(0)
+    expect(line.context).toMatchObject({ policy_type: 'retention', summary: '30d -> 90d' })
+    expect(line.context as Record<string, unknown>).not.toHaveProperty('old_value')
+  })
+})
