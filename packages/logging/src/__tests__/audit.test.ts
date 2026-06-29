@@ -228,3 +228,53 @@ describe('audit.userManagement', () => {
     expect(diagnostic).toMatchObject({ event: 'accountDeleted', context: { missing_scope: ['user_id'] } })
   })
 })
+
+describe('audit.dataAccess', () => {
+  const reqLogger = () =>
+    createBaseLogger({ traceId: null, path: '/data', clientIp: '1.2.3.4', userAgent: 'jest', userId: 'u_1' })
+
+  it('records a data access with resource and classification in context', () => {
+    reqLogger().audit.dataAccess.dataAccessed({
+      resourceType: 'citizen_record',
+      resourceId: 'r_1',
+      accessType: 'read',
+      classification: 'confidential',
+    })
+    const line = at(0)
+    expect(line).toMatchObject({
+      audit: true,
+      category: 'dataAccess',
+      event: 'dataAccessed',
+      user_id: 'u_1',
+      context: {
+        resource_type: 'citizen_record',
+        resource_id: 'r_1',
+        access_type: 'read',
+        classification: 'confidential',
+      },
+    })
+  })
+
+  it('records a bulk export with filters nested in context', () => {
+    reqLogger().audit.dataAccess.bulkExported({
+      destination: 's3://exports',
+      classification: 'restricted',
+      recordCount: 1200,
+      filters: { status: 'active', region: 'sg' },
+    })
+    expect(at(0).context).toMatchObject({
+      destination: 's3://exports',
+      classification: 'restricted',
+      record_count: 1200,
+      filters: { status: 'active', region: 'sg' },
+    })
+  })
+
+  it('emits a diagnostic when the actor is missing from scope', () => {
+    createBaseLogger
+      .system({ traceId: null, path: '/job' })
+      .audit.dataAccess.dataAccessed({ resourceType: 't', resourceId: 'r', accessType: 'read', classification: 'pii' })
+    const diagnostic = entries().find(l => l.message === 'Audit event missing required scope field')
+    expect(diagnostic).toMatchObject({ event: 'dataAccessed', context: { missing_scope: ['user_id', 'client_ip'] } })
+  })
+})

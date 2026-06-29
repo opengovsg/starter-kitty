@@ -1,6 +1,6 @@
 import type { AuditDeps } from './emit.js'
 import { emitAudit } from './emit.js'
-import { AUTHN_SPECS, USER_MANAGEMENT_SPECS } from './spec.js'
+import { AUTHN_SPECS, DATA_ACCESS_SPECS, USER_MANAGEMENT_SPECS } from './spec.js'
 import type { AuditLogger } from './types.js'
 
 export type { AuditDeps } from './emit.js'
@@ -30,5 +30,10 @@ export const createAuditLogger = (deps: AuditDeps): AuditLogger => ({
     mfaSettingChanged: input => emitAudit(deps, USER_MANAGEMENT_SPECS.mfaSettingChanged, input),
     apiKeyChanged: input => emitAudit(deps, USER_MANAGEMENT_SPECS.apiKeyChanged, input),
     passwordReset: input => emitAudit(deps, USER_MANAGEMENT_SPECS.passwordReset, input),
+  },
+  dataAccess: {
+    dataAccessed: input => emitAudit(deps, DATA_ACCESS_SPECS.dataAccessed, input),
+    recordDownloaded: input => emitAudit(deps, DATA_ACCESS_SPECS.recordDownloaded, input),
+    bulkExported: input => emitAudit(deps, DATA_ACCESS_SPECS.bulkExported, input),
   },
 })

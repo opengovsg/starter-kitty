@@ -17,6 +17,8 @@ export interface AuditLogger {
   authn: AuthnAudit
   /** User & permission management events. */
   userManagement: UserManagementAudit
+  /** Data access, movement & export events. */
+  dataAccess: DataAccessAudit
 }
 
 /**
@@ -219,4 +221,62 @@ export interface PasswordResetInput extends AuditInputBase {
   targetUserId: string
   /** Who initiated the reset — the account holder, or an administrator. */
   initiatedBy: 'self' | 'admin'
+}
+
+/**
+ * Data access, movement & export audit events (category `dataAccess`).
+ *
+ * Downstream of authentication: the acting `user_id` and `client_ip` are
+ * scope-read. Log *what* was accessed — resource type/id, classification — never
+ * the data itself.
+ *
+ * @public
+ */
+export interface DataAccessAudit {
+  /** PII/confidential data was accessed. Fires at `notice`. */
+  dataAccessed(input: DataAccessedInput): void
+  /** A file/record was downloaded. Fires at `notice`. */
+  recordDownloaded(input: RecordDownloadedInput): void
+  /** A bulk data export was performed. Fires at `notice`. */
+  bulkExported(input: BulkExportedInput): void
+}
+
+/** Input for {@link DataAccessAudit.dataAccessed}. @public */
+export interface DataAccessedInput extends AuditInputBase {
+  /** The kind of resource accessed, e.g. `citizen_record`. */
+  resourceType: string
+  /** The accessed resource's identifier. */
+  resourceId: string
+  /** What was done with the data, e.g. `read`, `view`, `query` — distinct from the top-level `action`. */
+  accessType: string
+  /** The data's classification, e.g. `confidential`, `restricted`, `pii`. */
+  classification: string
+}
+
+/** Input for {@link DataAccessAudit.recordDownloaded}. @public */
+export interface RecordDownloadedInput extends AuditInputBase {
+  /** The downloaded resource's identifier. */
+  resourceId: string
+  /** The data's classification. */
+  classification: string
+  /** Size of the download in bytes. */
+  sizeBytes: number
+  /** How it was downloaded, e.g. `csv`, `pdf`, `api`. */
+  method: string
+  /** The kind of resource, if useful. */
+  resourceType?: string
+  /** The acting user's role, if known. */
+  role?: string
+}
+
+/** Input for {@link DataAccessAudit.bulkExported}. @public */
+export interface BulkExportedInput extends AuditInputBase {
+  /** Where the export was sent, e.g. an email, bucket, or download channel. */
+  destination: string
+  /** The data's classification. */
+  classification: string
+  /** How many records were exported. */
+  recordCount: number
+  /** The filters/parameters that scoped the export. */
+  filters?: AuditContext
 }

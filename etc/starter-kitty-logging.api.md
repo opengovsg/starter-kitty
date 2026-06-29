@@ -45,6 +45,7 @@ export interface AuditInputBase {
 // @public
 export interface AuditLogger {
     authn: AuthnAudit;
+    dataAccess: DataAccessAudit;
     userManagement: UserManagementAudit;
 }
 
@@ -67,6 +68,14 @@ export interface BasicLogger<Input extends Partial<LogInput> = LogInput> {
 }
 
 // @public
+export interface BulkExportedInput extends AuditInputBase {
+    classification: string;
+    destination: string;
+    filters?: AuditContext;
+    recordCount: number;
+}
+
+// @public
 export interface CreateLogger {
     (options: LoggerOptions): Logger;
     system(options: SystemLoggerOptions): Logger;
@@ -74,6 +83,21 @@ export interface CreateLogger {
 
 // @public
 export const createLogging: (config: LoggingConfig) => CreateLogger;
+
+// @public
+export interface DataAccessAudit {
+    bulkExported(input: BulkExportedInput): void;
+    dataAccessed(input: DataAccessedInput): void;
+    recordDownloaded(input: RecordDownloadedInput): void;
+}
+
+// @public
+export interface DataAccessedInput extends AuditInputBase {
+    accessType: string;
+    classification: string;
+    resourceId: string;
+    resourceType: string;
+}
 
 // @public
 export interface Logger {
@@ -160,6 +184,16 @@ export interface MfaSettingChangedInput extends AuditInputBase {
 export interface PasswordResetInput extends AuditInputBase {
     initiatedBy: 'self' | 'admin';
     targetUserId: string;
+}
+
+// @public
+export interface RecordDownloadedInput extends AuditInputBase {
+    classification: string;
+    method: string;
+    resourceId: string;
+    resourceType?: string;
+    role?: string;
+    sizeBytes: number;
 }
 
 // @public

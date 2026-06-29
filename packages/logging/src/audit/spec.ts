@@ -161,3 +161,53 @@ export const USER_MANAGEMENT_SPECS = {
     contextFields: { targetUserId: 'target_user_id', initiatedBy: 'initiated_by' },
   }),
 } satisfies Record<string, EventSpec>
+
+const dataAccess = (event: string, spec: Omit<EventSpec, 'category' | 'event'>): EventSpec => ({
+  category: 'dataAccess',
+  event,
+  ...spec,
+})
+
+// Downstream of auth: actor (`user_id`) and `client_ip` are scope-read. Events
+// log what was accessed (resource type/id, classification), never the data.
+/** Data access, movement & export event specs. */
+export const DATA_ACCESS_SPECS = {
+  dataAccessed: dataAccess('dataAccessed', {
+    level: 'notice',
+    message: 'Data accessed',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: {
+      resourceType: 'resource_type',
+      resourceId: 'resource_id',
+      accessType: 'access_type',
+      classification: 'classification',
+    },
+  }),
+  recordDownloaded: dataAccess('recordDownloaded', {
+    level: 'notice',
+    message: 'Record downloaded',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: {
+      resourceId: 'resource_id',
+      classification: 'classification',
+      sizeBytes: 'size_bytes',
+      method: 'method',
+      resourceType: 'resource_type',
+      role: 'role',
+    },
+  }),
+  bulkExported: dataAccess('bulkExported', {
+    level: 'notice',
+    message: 'Bulk data exported',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: {
+      destination: 'destination',
+      classification: 'classification',
+      recordCount: 'record_count',
+      filters: 'filters',
+    },
+  }),
+} satisfies Record<string, EventSpec>

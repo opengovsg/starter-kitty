@@ -307,3 +307,15 @@ Events log _what_ changed — field/role names and id references — never the v
 | `mfaSettingChanged`  | `notice` | `targetUserId`, `change`               |
 | `apiKeyChanged`      | `notice` | `targetUserId`, `keyId`, `action`      |
 | `passwordReset`      | `notice` | `targetUserId`, `initiatedBy`          |
+
+#### `dataAccess` — data access, movement & export
+
+Downstream of authentication: the acting `user_id` and `client_ip` are
+scope-read. Log _what_ was accessed — resource type/id, classification — never
+the data itself.
+
+| Event              | Level    | Required fields                                                                       |
+| ------------------ | -------- | ------------------------------------------------------------------------------------- |
+| `dataAccessed`     | `notice` | `resourceType`, `resourceId`, `accessType`, `classification`                          |
+| `recordDownloaded` | `notice` | `resourceId`, `classification`, `sizeBytes`, `method` _(opt: `resourceType`, `role`)_ |
+| `bulkExported`     | `notice` | `destination`, `classification`, `recordCount` _(opt: `filters`)_                     |
