@@ -353,3 +353,17 @@ worked). Application _errors_ go through the base `error()`, not here.
 | `accessDenied`              | `warn` | `resource`, `reason` _(opt: `userId`, `attemptedAction`)_ |
 | `privilegeEscalationDenied` | `warn` | `attemptedRole`, `reason` _(opt: `targetUserId`)_         |
 | `sensitiveActionBlocked`    | `warn` | `blockedAction`, `reason`                                 |
+
+#### `resource` — entity lifecycle
+
+The **mutation** side of generic business entities (forms, projects, documents,
+…) — complements `dataAccess` (read/export) and `userManagement` (accounts).
+Downstream of auth: the actor `user_id` and `client_ip` are scope-read. Log the
+resource type/id and _what_ changed (field names), never the contents.
+
+| Event                  | Level    | Required fields                                                               |
+| ---------------------- | -------- | ----------------------------------------------------------------------------- |
+| `created`              | `notice` | `resourceType`, `resourceId`                                                  |
+| `updated`              | `notice` | `resourceType`, `resourceId`, `changedFields`                                 |
+| `deleted`              | `notice` | `resourceType`, `resourceId` _(opt: `reason`)_                                |
+| `ownershipTransferred` | `notice` | `resourceType`, `resourceId`, `fromOwnerId`, `toOwnerId` _(opt: `ownerType`)_ |

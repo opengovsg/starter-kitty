@@ -65,6 +65,7 @@ export interface AuditLogger {
     configChange: ConfigChangeAudit;
     dataAccess: DataAccessAudit;
     failures: FailuresAudit;
+    resource: ResourceAudit;
     userManagement: UserManagementAudit;
 }
 
@@ -213,6 +214,15 @@ export interface MfaSettingChangedInput extends AuditInputBase {
 }
 
 // @public
+export interface OwnershipTransferredInput extends AuditInputBase {
+    fromOwnerId: string;
+    ownerType?: string;
+    resourceId: string;
+    resourceType: string;
+    toOwnerId: string;
+}
+
+// @public
 export interface PasswordResetInput extends AuditInputBase {
     initiatedBy: 'self' | 'admin';
     targetUserId: string;
@@ -241,6 +251,34 @@ export interface RecordDownloadedInput extends AuditInputBase {
     resourceType?: string;
     role?: string;
     sizeBytes: number;
+}
+
+// @public
+export interface ResourceAudit {
+    created(input: ResourceCreatedInput): void;
+    deleted(input: ResourceDeletedInput): void;
+    ownershipTransferred(input: OwnershipTransferredInput): void;
+    updated(input: ResourceUpdatedInput): void;
+}
+
+// @public
+export interface ResourceCreatedInput extends AuditInputBase {
+    resourceId: string;
+    resourceType: string;
+}
+
+// @public
+export interface ResourceDeletedInput extends AuditInputBase {
+    reason?: string;
+    resourceId: string;
+    resourceType: string;
+}
+
+// @public
+export interface ResourceUpdatedInput extends AuditInputBase {
+    changedFields: string[];
+    resourceId: string;
+    resourceType: string;
 }
 
 // @public

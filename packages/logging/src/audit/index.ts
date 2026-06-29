@@ -6,6 +6,7 @@ import {
   CONFIG_CHANGE_SPECS,
   DATA_ACCESS_SPECS,
   FAILURES_SPECS,
+  RESOURCE_SPECS,
   USER_MANAGEMENT_SPECS,
 } from './spec.js'
 import type { AuditLogger } from './types.js'
@@ -57,5 +58,11 @@ export const createAuditLogger = (deps: AuditDeps): AuditLogger => ({
     accessDenied: input => emitAudit(deps, FAILURES_SPECS.accessDenied, input),
     privilegeEscalationDenied: input => emitAudit(deps, FAILURES_SPECS.privilegeEscalationDenied, input),
     sensitiveActionBlocked: input => emitAudit(deps, FAILURES_SPECS.sensitiveActionBlocked, input),
+  },
+  resource: {
+    created: input => emitAudit(deps, RESOURCE_SPECS.created, input),
+    updated: input => emitAudit(deps, RESOURCE_SPECS.updated, input),
+    deleted: input => emitAudit(deps, RESOURCE_SPECS.deleted, input),
+    ownershipTransferred: input => emitAudit(deps, RESOURCE_SPECS.ownershipTransferred, input),
   },
 })

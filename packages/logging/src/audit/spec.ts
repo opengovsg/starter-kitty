@@ -310,3 +310,49 @@ export const FAILURES_SPECS = {
     contextFields: { blockedAction: 'blocked_action', reason: 'reason' },
   }),
 } satisfies Record<string, EventSpec>
+
+const resource = (event: string, spec: Omit<EventSpec, 'category' | 'event'>): EventSpec => ({
+  category: 'resource',
+  event,
+  ...spec,
+})
+
+// Generic entity lifecycle (the mutation side; `dataAccess` is the read side).
+// Downstream admin/owner actions: actor (`user_id`) and `client_ip` scope-read.
+/** Resource/entity lifecycle event specs. */
+export const RESOURCE_SPECS = {
+  created: resource('created', {
+    level: 'notice',
+    message: 'Resource created',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: { resourceType: 'resource_type', resourceId: 'resource_id' },
+  }),
+  updated: resource('updated', {
+    level: 'notice',
+    message: 'Resource updated',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: { resourceType: 'resource_type', resourceId: 'resource_id', changedFields: 'changed_fields' },
+  }),
+  deleted: resource('deleted', {
+    level: 'notice',
+    message: 'Resource deleted',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: { resourceType: 'resource_type', resourceId: 'resource_id', reason: 'reason' },
+  }),
+  ownershipTransferred: resource('ownershipTransferred', {
+    level: 'notice',
+    message: 'Resource ownership transferred',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: {
+      resourceType: 'resource_type',
+      resourceId: 'resource_id',
+      fromOwnerId: 'from_owner_id',
+      toOwnerId: 'to_owner_id',
+      ownerType: 'owner_type',
+    },
+  }),
+} satisfies Record<string, EventSpec>

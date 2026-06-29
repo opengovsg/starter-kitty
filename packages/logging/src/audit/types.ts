@@ -25,6 +25,8 @@ export interface AuditLogger {
   apiUsage: ApiUsageAudit
   /** Security failures — handled, security-relevant denials. */
   failures: FailuresAudit
+  /** Resource/entity lifecycle — create, update, delete, ownership transfer. */
+  resource: ResourceAudit
 }
 
 /**
@@ -426,4 +428,68 @@ export interface SensitiveActionBlockedInput extends AuditInputBase {
   blockedAction: string
   /** Why it was blocked. */
   reason: string
+}
+
+/**
+ * Resource/entity lifecycle audit events (category `resource`).
+ *
+ * The **mutation** side of generic business entities (forms, projects,
+ * documents, …) — complements `dataAccess` (the read/export side) and
+ * `userManagement` (accounts specifically). Downstream of auth: the actor
+ * (`user_id`) and `client_ip` are scope-read. Log the resource type/id and
+ * *what* changed (field names), never the contents.
+ *
+ * @public
+ */
+export interface ResourceAudit {
+  /** A resource was created. Fires at `notice`. */
+  created(input: ResourceCreatedInput): void
+  /** A resource was updated. Fires at `notice`. */
+  updated(input: ResourceUpdatedInput): void
+  /** A resource was deleted. Fires at `notice`. */
+  deleted(input: ResourceDeletedInput): void
+  /** A resource's ownership was transferred to another user. Fires at `notice`. */
+  ownershipTransferred(input: OwnershipTransferredInput): void
+}
+
+/** Input for {@link ResourceAudit.created}. @public */
+export interface ResourceCreatedInput extends AuditInputBase {
+  /** The kind of resource, e.g. `form`, `project`, `document`. */
+  resourceType: string
+  /** The resource's identifier. */
+  resourceId: string
+}
+
+/** Input for {@link ResourceAudit.updated}. @public */
+export interface ResourceUpdatedInput extends AuditInputBase {
+  /** The kind of resource, e.g. `form`, `project`, `document`. */
+  resourceType: string
+  /** The resource's identifier. */
+  resourceId: string
+  /** The names of the fields that changed — never their values. */
+  changedFields: string[]
+}
+
+/** Input for {@link ResourceAudit.deleted}. @public */
+export interface ResourceDeletedInput extends AuditInputBase {
+  /** The kind of resource, e.g. `form`, `project`, `document`. */
+  resourceType: string
+  /** The resource's identifier. */
+  resourceId: string
+  /** Why it was deleted (and/or soft vs hard), if useful. */
+  reason?: string
+}
+
+/** Input for {@link ResourceAudit.ownershipTransferred}. @public */
+export interface OwnershipTransferredInput extends AuditInputBase {
+  /** The kind of resource, e.g. `form`, `project`, `document`. */
+  resourceType: string
+  /** The resource's identifier. */
+  resourceId: string
+  /** The previous owner — an opaque reference (user, team, org, …), not necessarily a user. Emitted as `context.from_owner_id`. */
+  fromOwnerId: string
+  /** The new owner — an opaque reference (user, team, org, …). Emitted as `context.to_owner_id`. */
+  toOwnerId: string
+  /** What kind of owner, if useful, e.g. `user`, `team`, `org`. Emitted as `context.owner_type`. */
+  ownerType?: string
 }

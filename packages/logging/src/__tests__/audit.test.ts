@@ -391,3 +391,44 @@ describe('audit.failures', () => {
     expect(lines[0]).not.toHaveProperty('user_id')
   })
 })
+
+describe('audit.resource', () => {
+  const reqLogger = () =>
+    createBaseLogger({ traceId: null, path: '/forms', clientIp: '1.2.3.4', userAgent: 'jest', userId: 'u_1' })
+
+  it('records a resource update with changed field names in context', () => {
+    reqLogger().audit.resource.updated({ resourceType: 'form', resourceId: 'f_1', changedFields: ['title', 'status'] })
+    const line = at(0)
+    expect(line).toMatchObject({
+      level: 'NOTICE',
+      audit: true,
+      category: 'resource',
+      event: 'updated',
+      user_id: 'u_1',
+      context: { resource_type: 'form', resource_id: 'f_1', changed_fields: ['title', 'status'] },
+    })
+  })
+
+  it('records an ownership transfer with from/to in context (actor stays the doer)', () => {
+    reqLogger().audit.resource.ownershipTransferred({
+      resourceType: 'form',
+      resourceId: 'f_1',
+      fromOwnerId: 'team_a',
+      toOwnerId: 'team_b',
+      ownerType: 'team',
+    })
+    const line = at(0)
+    expect(line).toMatchObject({
+      event: 'ownershipTransferred',
+      user_id: 'u_1', // the actor who performed the transfer
+      context: {
+        resource_type: 'form',
+        resource_id: 'f_1',
+        from_owner_id: 'team_a',
+        to_owner_id: 'team_b',
+        owner_type: 'team',
+      },
+    })
+    expect(line).not.toHaveProperty('from_owner_id') // from/to live in context, not root
+  })
+})
