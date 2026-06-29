@@ -346,3 +346,48 @@ describe('audit.apiUsage', () => {
     expect(at(0).context).toMatchObject({ endpoint: '/api/admin/export', method: 'POST', params: { scope: 'all' } })
   })
 })
+
+describe('audit.failures', () => {
+  it('fires denials at warn', () => {
+    createBaseLogger({
+      traceId: null,
+      path: '/admin',
+      clientIp: '1.2.3.4',
+      userAgent: 'jest',
+      userId: 'u_1',
+    }).audit.failures.privilegeEscalationDenied({
+      attemptedRole: 'admin',
+      reason: 'not_permitted',
+      targetUserId: 'u_2',
+    })
+    const line = at(0)
+    expect(line).toMatchObject({
+      level: 'WARN',
+      audit: true,
+      category: 'failures',
+      event: 'privilegeEscalationDenied',
+      user_id: 'u_1',
+      context: { attempted_role: 'admin', reason: 'not_permitted', target_user_id: 'u_2' },
+    })
+  })
+
+  it('allows accessDenied without an authenticated actor (only client_ip required)', () => {
+    createBaseLogger({
+      traceId: null,
+      path: '/admin',
+      clientIp: '1.2.3.4',
+      userAgent: 'jest',
+    }).audit.failures.accessDenied({
+      resource: '/admin',
+      reason: 'unauthenticated',
+    })
+    const lines = entries()
+    expect(lines).toHaveLength(1) // no missing-scope diagnostic (user_id not required)
+    expect(lines[0]).toMatchObject({
+      level: 'WARN',
+      event: 'accessDenied',
+      context: { resource: '/admin', reason: 'unauthenticated' },
+    })
+    expect(lines[0]).not.toHaveProperty('user_id')
+  })
+})

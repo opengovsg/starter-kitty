@@ -1,6 +1,13 @@
 import type { AuditDeps } from './emit.js'
 import { emitAudit } from './emit.js'
-import { API_USAGE_SPECS, AUTHN_SPECS, CONFIG_CHANGE_SPECS, DATA_ACCESS_SPECS, USER_MANAGEMENT_SPECS } from './spec.js'
+import {
+  API_USAGE_SPECS,
+  AUTHN_SPECS,
+  CONFIG_CHANGE_SPECS,
+  DATA_ACCESS_SPECS,
+  FAILURES_SPECS,
+  USER_MANAGEMENT_SPECS,
+} from './spec.js'
 import type { AuditLogger } from './types.js'
 
 export type { AuditDeps } from './emit.js'
@@ -45,5 +52,10 @@ export const createAuditLogger = (deps: AuditDeps): AuditLogger => ({
     tokenRefreshed: input => emitAudit(deps, API_USAGE_SPECS.tokenRefreshed, input),
     tokenInvalidated: input => emitAudit(deps, API_USAGE_SPECS.tokenInvalidated, input),
     sensitiveEndpointAccessed: input => emitAudit(deps, API_USAGE_SPECS.sensitiveEndpointAccessed, input),
+  },
+  failures: {
+    accessDenied: input => emitAudit(deps, FAILURES_SPECS.accessDenied, input),
+    privilegeEscalationDenied: input => emitAudit(deps, FAILURES_SPECS.privilegeEscalationDenied, input),
+    sensitiveActionBlocked: input => emitAudit(deps, FAILURES_SPECS.sensitiveActionBlocked, input),
   },
 })

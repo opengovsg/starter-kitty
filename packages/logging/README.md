@@ -342,3 +342,14 @@ anomalous at log time; that is a sink/SIEM concern _over_ these lines.
 | `tokenRefreshed`            | `notice` | `tokenId`                              |
 | `tokenInvalidated`          | `notice` | `tokenId`, `reason`                    |
 | `sensitiveEndpointAccessed` | `notice` | `endpoint`, `method` _(opt: `params`)_ |
+
+#### `failures` — handled security denials
+
+_Handled_, security-relevant denials, so they fire at `warn` (the control
+worked). Application _errors_ go through the base `error()`, not here.
+
+| Event                       | Level  | Required fields                                           |
+| --------------------------- | ------ | --------------------------------------------------------- |
+| `accessDenied`              | `warn` | `resource`, `reason` _(opt: `userId`, `attemptedAction`)_ |
+| `privilegeEscalationDenied` | `warn` | `attemptedRole`, `reason` _(opt: `targetUserId`)_         |
+| `sensitiveActionBlocked`    | `warn` | `blockedAction`, `reason`                                 |

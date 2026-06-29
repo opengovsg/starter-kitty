@@ -23,6 +23,8 @@ export interface AuditLogger {
   configChange: ConfigChangeAudit
   /** API usage events — token lifecycle and sensitive-endpoint access. */
   apiUsage: ApiUsageAudit
+  /** Security failures — handled, security-relevant denials. */
+  failures: FailuresAudit
 }
 
 /**
@@ -377,4 +379,51 @@ export interface SensitiveEndpointAccessedInput extends AuditInputBase {
   method: string
   /** Request parameters — caller-sanitised; keep secrets/PII out. */
   params?: AuditContext
+}
+
+/**
+ * Security failure audit events (category `failures`) — *handled*, security-
+ * relevant denials, so they fire at `warn` (the control worked). Application
+ * *errors* go through the base `error()`; anomaly/abuse detection is a sink
+ * concern (ADR-0007).
+ *
+ * @public
+ */
+export interface FailuresAudit {
+  /** An unauthorized access attempt was denied. Fires at `warn`. */
+  accessDenied(input: AccessDeniedInput): void
+  /** A privilege-escalation attempt was denied. Fires at `warn`. */
+  privilegeEscalationDenied(input: PrivilegeEscalationDeniedInput): void
+  /** A sensitive action was blocked (e.g. a blocked export). Fires at `warn`. */
+  sensitiveActionBlocked(input: SensitiveActionBlockedInput): void
+}
+
+/** Input for {@link FailuresAudit.accessDenied}. @public */
+export interface AccessDeniedInput extends AuditInputBase {
+  /** What access was denied to, e.g. `/admin`, `record:r_1`. */
+  resource: string
+  /** Why access was denied, e.g. `insufficient_role`, `not_owner`. */
+  reason: string
+  /** The acting user, if authenticated (an attempt may be unauthenticated). Promoted to `user_id`. */
+  userId?: string
+  /** The action that was attempted, if useful. */
+  attemptedAction?: string
+}
+
+/** Input for {@link FailuresAudit.privilegeEscalationDenied}. @public */
+export interface PrivilegeEscalationDeniedInput extends AuditInputBase {
+  /** The role/permission the actor tried to gain. */
+  attemptedRole: string
+  /** Why it was denied. */
+  reason: string
+  /** The account targeted, if the escalation was on another user. Emitted as `context.target_user_id`. */
+  targetUserId?: string
+}
+
+/** Input for {@link FailuresAudit.sensitiveActionBlocked}. @public */
+export interface SensitiveActionBlockedInput extends AuditInputBase {
+  /** The action that was blocked, e.g. `bulk_export`, `delete_account`. */
+  blockedAction: string
+  /** Why it was blocked. */
+  reason: string
 }

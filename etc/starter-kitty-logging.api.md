@@ -5,6 +5,14 @@
 ```ts
 
 // @public
+export interface AccessDeniedInput extends AuditInputBase {
+    attemptedAction?: string;
+    reason: string;
+    resource: string;
+    userId?: string;
+}
+
+// @public
 export interface AccountCreatedInput extends AuditInputBase {
     targetUserId: string;
 }
@@ -56,6 +64,7 @@ export interface AuditLogger {
     authn: AuthnAudit;
     configChange: ConfigChangeAudit;
     dataAccess: DataAccessAudit;
+    failures: FailuresAudit;
     userManagement: UserManagementAudit;
 }
 
@@ -113,6 +122,13 @@ export interface DataAccessedInput extends AuditInputBase {
     classification: string;
     resourceId: string;
     resourceType: string;
+}
+
+// @public
+export interface FailuresAudit {
+    accessDenied(input: AccessDeniedInput): void;
+    privilegeEscalationDenied(input: PrivilegeEscalationDeniedInput): void;
+    sensitiveActionBlocked(input: SensitiveActionBlockedInput): void;
 }
 
 // @public
@@ -211,6 +227,13 @@ export interface PolicyChangedInput extends AuditInputBase {
 }
 
 // @public
+export interface PrivilegeEscalationDeniedInput extends AuditInputBase {
+    attemptedRole: string;
+    reason: string;
+    targetUserId?: string;
+}
+
+// @public
 export interface RecordDownloadedInput extends AuditInputBase {
     classification: string;
     method: string;
@@ -232,6 +255,12 @@ export interface SecurityConfigChangedInput extends AuditInputBase {
     newValue?: unknown;
     oldValue?: unknown;
     setting: string;
+}
+
+// @public
+export interface SensitiveActionBlockedInput extends AuditInputBase {
+    blockedAction: string;
+    reason: string;
 }
 
 // @public

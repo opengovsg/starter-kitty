@@ -277,3 +277,36 @@ export const API_USAGE_SPECS = {
     contextFields: { endpoint: 'endpoint', method: 'method', params: 'params' },
   }),
 } satisfies Record<string, EventSpec>
+
+const failures = (event: string, spec: Omit<EventSpec, 'category' | 'event'>): EventSpec => ({
+  category: 'failures',
+  event,
+  ...spec,
+})
+
+// Handled security denials — all `warn` (the control fired). `accessDenied` may
+// be unauthenticated, so `userId` is optional/promoted; the rest are scope-read.
+/** Security failure event specs. */
+export const FAILURES_SPECS = {
+  accessDenied: failures('accessDenied', {
+    level: 'warn',
+    message: 'Access denied',
+    promote: { userId: 'user_id' },
+    requiredScope: ['client_ip'],
+    contextFields: { resource: 'resource', reason: 'reason', attemptedAction: 'attempted_action' },
+  }),
+  privilegeEscalationDenied: failures('privilegeEscalationDenied', {
+    level: 'warn',
+    message: 'Privilege escalation denied',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: { attemptedRole: 'attempted_role', reason: 'reason', targetUserId: 'target_user_id' },
+  }),
+  sensitiveActionBlocked: failures('sensitiveActionBlocked', {
+    level: 'warn',
+    message: 'Sensitive action blocked',
+    promote: {},
+    requiredScope: ['user_id', 'client_ip'],
+    contextFields: { blockedAction: 'blocked_action', reason: 'reason' },
+  }),
+} satisfies Record<string, EventSpec>
