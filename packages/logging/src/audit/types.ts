@@ -21,6 +21,8 @@ export interface AuditLogger {
   dataAccess: DataAccessAudit
   /** Application function & security-configuration change events. */
   configChange: ConfigChangeAudit
+  /** API usage events — token lifecycle and sensitive-endpoint access. */
+  apiUsage: ApiUsageAudit
 }
 
 /**
@@ -321,4 +323,58 @@ export interface PolicyChangedInput extends AuditInputBase {
   oldValue?: unknown
   /** The new value, if non-sensitive and useful. */
   newValue?: unknown
+}
+
+/**
+ * API usage audit events (category `apiUsage`).
+ *
+ * Covers API token lifecycle and access to sensitive endpoints. Anomaly/abuse
+ * detection is intentionally absent — the app does not know a call is anomalous
+ * at log time; that is a sink/SIEM concern *over* these lines (ADR-0007).
+ *
+ * @public
+ */
+export interface ApiUsageAudit {
+  /** An API token was issued. Fires at `notice`. */
+  tokenIssued(input: TokenIssuedInput): void
+  /** An API token was refreshed. Fires at `notice`. */
+  tokenRefreshed(input: TokenRefreshedInput): void
+  /** An API token was invalidated/revoked. Fires at `notice`. */
+  tokenInvalidated(input: TokenInvalidatedInput): void
+  /** A sensitive endpoint was accessed. Fires at `notice`. */
+  sensitiveEndpointAccessed(input: SensitiveEndpointAccessedInput): void
+}
+
+/** Input for {@link ApiUsageAudit.tokenIssued}. @public */
+export interface TokenIssuedInput extends AuditInputBase {
+  /** The subject the token was issued for. Promoted to `user_id`. */
+  userId: string
+  /** The token's identifier — a reference, never the token value. */
+  tokenId: string
+  /** The scopes/permissions granted, if any. */
+  scopes?: string[]
+}
+
+/** Input for {@link ApiUsageAudit.tokenRefreshed}. @public */
+export interface TokenRefreshedInput extends AuditInputBase {
+  /** The refreshed token's identifier (a reference, not the token value). */
+  tokenId: string
+}
+
+/** Input for {@link ApiUsageAudit.tokenInvalidated}. @public */
+export interface TokenInvalidatedInput extends AuditInputBase {
+  /** The invalidated token's identifier (a reference, not the token value). */
+  tokenId: string
+  /** Why it was invalidated, e.g. `revoked`, `expired`, `rotated`. */
+  reason: string
+}
+
+/** Input for {@link ApiUsageAudit.sensitiveEndpointAccessed}. @public */
+export interface SensitiveEndpointAccessedInput extends AuditInputBase {
+  /** The endpoint accessed, e.g. `/api/admin/export`. */
+  endpoint: string
+  /** The HTTP method. */
+  method: string
+  /** Request parameters — caller-sanitised; keep secrets/PII out. */
+  params?: AuditContext
 }

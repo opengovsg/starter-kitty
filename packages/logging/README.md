@@ -330,3 +330,15 @@ secrets.
 | ----------------------- | -------- | ------------------------------------------------------- |
 | `securityConfigChanged` | `notice` | `setting` _(opt: `oldValue`, `newValue`)_               |
 | `policyChanged`         | `notice` | `policyType` _(opt: `summary`, `oldValue`, `newValue`)_ |
+
+#### `apiUsage` — API token lifecycle & sensitive-endpoint access
+
+Anomaly/abuse detection is intentionally absent — the app does not know a call is
+anomalous at log time; that is a sink/SIEM concern _over_ these lines.
+
+| Event                       | Level    | Required fields                        |
+| --------------------------- | -------- | -------------------------------------- |
+| `tokenIssued`               | `notice` | `userId`, `tokenId` _(opt: `scopes`)_  |
+| `tokenRefreshed`            | `notice` | `tokenId`                              |
+| `tokenInvalidated`          | `notice` | `tokenId`, `reason`                    |
+| `sensitiveEndpointAccessed` | `notice` | `endpoint`, `method` _(opt: `params`)_ |

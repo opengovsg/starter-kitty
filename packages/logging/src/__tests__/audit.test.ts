@@ -312,3 +312,37 @@ describe('audit.configChange', () => {
     expect(line.context as Record<string, unknown>).not.toHaveProperty('old_value')
   })
 })
+
+describe('audit.apiUsage', () => {
+  it('promotes the issued-for subject to user_id on tokenIssued', () => {
+    createBaseLogger({
+      traceId: null,
+      path: '/oauth/token',
+      clientIp: '1.2.3.4',
+      userAgent: 'jest',
+    }).audit.apiUsage.tokenIssued({ userId: 'svc_1', tokenId: 'tok_1', scopes: ['read', 'write'] })
+    const line = at(0)
+    expect(line).toMatchObject({
+      audit: true,
+      category: 'apiUsage',
+      event: 'tokenIssued',
+      user_id: 'svc_1',
+      context: { token_id: 'tok_1', scopes: ['read', 'write'] },
+    })
+  })
+
+  it('records sensitive-endpoint access with sanitised params in context', () => {
+    createBaseLogger({
+      traceId: null,
+      path: '/api',
+      clientIp: '1.2.3.4',
+      userAgent: 'jest',
+      userId: 'u_1',
+    }).audit.apiUsage.sensitiveEndpointAccessed({
+      endpoint: '/api/admin/export',
+      method: 'POST',
+      params: { scope: 'all' },
+    })
+    expect(at(0).context).toMatchObject({ endpoint: '/api/admin/export', method: 'POST', params: { scope: 'all' } })
+  })
+})

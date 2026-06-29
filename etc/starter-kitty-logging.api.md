@@ -34,6 +34,14 @@ export interface ApiKeyChangedInput extends AuditInputBase {
 }
 
 // @public
+export interface ApiUsageAudit {
+    sensitiveEndpointAccessed(input: SensitiveEndpointAccessedInput): void;
+    tokenInvalidated(input: TokenInvalidatedInput): void;
+    tokenIssued(input: TokenIssuedInput): void;
+    tokenRefreshed(input: TokenRefreshedInput): void;
+}
+
+// @public
 export type AuditContext = Record<string, unknown>;
 
 // @public
@@ -44,6 +52,7 @@ export interface AuditInputBase {
 
 // @public
 export interface AuditLogger {
+    apiUsage: ApiUsageAudit;
     authn: AuthnAudit;
     configChange: ConfigChangeAudit;
     dataAccess: DataAccessAudit;
@@ -226,6 +235,13 @@ export interface SecurityConfigChangedInput extends AuditInputBase {
 }
 
 // @public
+export interface SensitiveEndpointAccessedInput extends AuditInputBase {
+    endpoint: string;
+    method: string;
+    params?: AuditContext;
+}
+
+// @public
 export function serializeError(err: Error): Record<string, unknown>;
 
 // @public
@@ -255,6 +271,24 @@ export interface SystemLoggerOptions {
     source?: string | null;
     traceId?: string | null;
     userId?: string;
+}
+
+// @public
+export interface TokenInvalidatedInput extends AuditInputBase {
+    reason: string;
+    tokenId: string;
+}
+
+// @public
+export interface TokenIssuedInput extends AuditInputBase {
+    scopes?: string[];
+    tokenId: string;
+    userId: string;
+}
+
+// @public
+export interface TokenRefreshedInput extends AuditInputBase {
+    tokenId: string;
 }
 
 // @public
