@@ -286,8 +286,8 @@ the per-event tables below.
 | ------------------- | -------- | ---------------------------------------------------------------------------- |
 | `loginSucceeded`    | `notice` | `userId`, `role`, `privileged` _(opt: `username`, `sessionId`)_              |
 | `loginFailed`       | `notice` | `username`, `reason`, `attemptCount`, `privileged` _(opt: `userId`, `role`)_ |
-| `sessionCreated`    | `notice` | `sessionId`                                                                  |
-| `sessionTerminated` | `notice` | `sessionId`, `reason`                                                        |
+| `sessionCreated`    | `notice` | `userId`, `sessionId`                                                        |
+| `sessionTerminated` | `notice` | `userId`, `sessionId`, `reason`                                              |
 | `sessionTimedOut`   | `notice` | `userId`, `sessionId`                                                        |
 | `tokenReused`       | `warn`   | `tokenId` _(opt: `sessionId`)_                                               |
 

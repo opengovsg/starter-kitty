@@ -314,12 +314,14 @@ export function serializeError(err: Error): Record<string, unknown>;
 // @public
 export interface SessionCreatedInput extends AuditInputBase {
     sessionId: string;
+    userId: string;
 }
 
 // @public
 export interface SessionTerminatedInput extends AuditInputBase {
     reason: string;
     sessionId: string;
+    userId: string;
 }
 
 // @public

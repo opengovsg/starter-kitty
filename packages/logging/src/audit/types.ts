@@ -107,12 +107,16 @@ export interface LoginFailedInput extends AuditInputBase {
 
 /** Input for {@link AuthnAudit.sessionCreated}. @public */
 export interface SessionCreatedInput extends AuditInputBase {
+  /** The session owner. Promoted to `user_id` (the session being created is what would bind it to scope). */
+  userId: string
   /** Session identifier (a non-impersonatable reference, not the bearer token). */
   sessionId: string
 }
 
 /** Input for {@link AuthnAudit.sessionTerminated}. @public */
 export interface SessionTerminatedInput extends AuditInputBase {
+  /** The session owner. Promoted to `user_id` (termination may run outside request scope). */
+  userId: string
   /** The session being ended (a reference, not the bearer token). */
   sessionId: string
   /** Why the session ended, e.g. `logout`, `revoked`. */
