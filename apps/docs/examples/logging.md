@@ -65,13 +65,13 @@ Pass a stable `message` plus structured fields; put business data in `context`
 
 ## Choosing a level
 
-| Level    | Use when                                                                      | Carries `error`? |
-| -------- | ----------------------------------------------------------------------------- | ---------------- |
-| `error`  | An operation failed and a human likely needs to investigate.                  | Yes              |
-| `warn`   | Something is off but was handled/recovered and needs no immediate action.     | Optional         |
-| `notice` | A significant or auditable business event (auth, ownership, permissions).     | No               |
-| `info`   | Routine, expected business events forming the normal activity trail.          | No               |
-| `debug`  | Verbose diagnostic detail useful only while actively debugging.               | No               |
+| Level    | Use when                                                                  | Carries `error`? |
+| -------- | ------------------------------------------------------------------------- | ---------------- |
+| `error`  | An operation failed and a human likely needs to investigate.              | Yes              |
+| `warn`   | Something is off but was handled/recovered and needs no immediate action. | Optional         |
+| `notice` | A significant or auditable business event (auth, ownership, permissions). | No               |
+| `info`   | Routine, expected business events forming the normal activity trail.      | No               |
+| `debug`  | Verbose diagnostic detail useful only while actively debugging.           | No               |
 
 `notice` is the audit rung. It sits below `warn` in syslog ordering, so keep the
 production `level` at `notice` or lower and filter at the sink, or audit lines
@@ -139,15 +139,15 @@ on the server `Logger` only.
 Every event also accepts `context?` (merged extra fields) and `messageOverride?`.
 The categories and their events:
 
-| Category         | Purpose                                  | Events                                                                                                                          |
-| ---------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `authn`          | Authentication & session                 | `loginSucceeded`, `loginFailed`, `sessionCreated`, `sessionTerminated`, `sessionTimedOut`, `tokenReused`                       |
-| `userManagement` | User & permission management             | `accountCreated`, `accountModified`, `accountDeactivated`, `accountDeleted`, `roleChanged`, `mfaSettingChanged`, `apiKeyChanged`, `passwordReset` |
-| `dataAccess`     | Data access, movement & export           | `dataAccessed`, `recordDownloaded`, `bulkExported`                                                                             |
-| `configChange`   | App & security-configuration changes     | `securityConfigChanged`, `policyChanged`                                                                                       |
-| `apiUsage`       | API token lifecycle & sensitive access   | `tokenIssued`, `tokenRefreshed`, `tokenInvalidated`, `sensitiveEndpointAccessed`                                               |
-| `failures`       | Handled security denials (`warn`)        | `accessDenied`, `privilegeEscalationDenied`, `sensitiveActionBlocked`                                                          |
-| `resource`       | Entity lifecycle (mutations)             | `created`, `updated`, `deleted`, `ownershipTransferred`                                                                        |
+| Category         | Purpose                                | Events                                                                                                                                            |
+| ---------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `authn`          | Authentication & session               | `loginSucceeded`, `loginFailed`, `sessionCreated`, `sessionTerminated`, `sessionTimedOut`, `tokenReused`                                          |
+| `userManagement` | User & permission management           | `accountCreated`, `accountModified`, `accountDeactivated`, `accountDeleted`, `roleChanged`, `mfaSettingChanged`, `apiKeyChanged`, `passwordReset` |
+| `dataAccess`     | Data access, movement & export         | `dataAccessed`, `recordDownloaded`, `bulkExported`                                                                                                |
+| `configChange`   | App & security-configuration changes   | `securityConfigChanged`, `policyChanged`                                                                                                          |
+| `apiUsage`       | API token lifecycle & sensitive access | `tokenIssued`, `tokenRefreshed`, `tokenInvalidated`, `sensitiveEndpointAccessed`                                                                  |
+| `failures`       | Handled security denials (`warn`)      | `accessDenied`, `privilegeEscalationDenied`, `sensitiveActionBlocked`                                                                             |
+| `resource`       | Entity lifecycle (mutations)           | `created`, `updated`, `deleted`, `ownershipTransferred`                                                                                           |
 
 See the [`@opengovsg/starter-kitty-logging` README](https://github.com/opengovsg/starter-kitty/blob/develop/packages/logging/README.md)
 for each event's required fields.
