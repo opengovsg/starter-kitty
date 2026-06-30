@@ -1,5 +1,20 @@
 # @opengovsg/starter-kitty-logging
 
+## 0.2.0
+
+### Minor Changes
+
+- [#74](https://github.com/opengovsg/starter-kitty/pull/74) [`ed16afe`](https://github.com/opengovsg/starter-kitty/commit/ed16afefce63ef4e84e7e63e349a2598a5a454c3) Thanks [@karrui](https://github.com/karrui)! - Promote `userId` to the canonical `user_id` facet on `sessionCreated` and
+  `sessionTerminated`, aligning them with their sibling `sessionTimedOut`. These
+  session events establish or operate on the bound identity, so `user_id` cannot
+  be assumed present in request scope: `sessionCreated` is the very call that
+  binds it, and termination may run outside a request (admin revoke, sweep).
+  Identity is therefore payload-borne - `userId` is now a required input field,
+  promoted to `user_id`, and only `client_ip` is required in scope.
+
+  Breaking for existing callers: `sessionCreated` and `sessionTerminated` now
+  require a `userId` argument.
+
 ## 0.1.1
 
 ### Patch Changes
