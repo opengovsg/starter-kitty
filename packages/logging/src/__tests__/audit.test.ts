@@ -392,6 +392,62 @@ describe('audit.failures', () => {
   })
 })
 
+describe('audit context composition (ADR-0008)', () => {
+  const reqLogger = () =>
+    createBaseLogger({ traceId: null, path: '/data', clientIp: '1.2.3.4', userAgent: 'jest', userId: 'u_1' })
+
+  it('merges the logger scoped context into the audit line', () => {
+    reqLogger()
+      .scope({ action: 'readRecord', context: { tenant_id: 't_1' } })
+      .audit.dataAccess.dataAccessed({
+        resourceType: 'citizen_record',
+        resourceId: 'r_1',
+        accessType: 'read',
+        classification: 'confidential',
+      })
+    // tenant_id came from scope; event fields ride alongside it.
+    expect(at(0).context).toMatchObject({
+      tenant_id: 't_1',
+      resource_type: 'citizen_record',
+      resource_id: 'r_1',
+    })
+  })
+
+  it('merges context set after the audit namespace is accessed (call-time read)', () => {
+    const log = reqLogger().scope({ action: 'readRecord', context: { a: 1 } })
+    void log.audit // memoise the namespace first
+    log.setContext({ context: { b: 2 } })
+    log.audit.dataAccess.dataAccessed({ resourceType: 't', resourceId: 'r', accessType: 'read', classification: 'pii' })
+    expect(at(0).context).toMatchObject({ a: 1, b: 2 })
+  })
+
+  it('lets a per-call context key override a scoped one (more specific wins)', () => {
+    reqLogger()
+      .scope({ action: 'readRecord', context: { classification: 'public' } })
+      .audit.dataAccess.dataAccessed({
+        resourceType: 't',
+        resourceId: 'r',
+        accessType: 'read',
+        classification: 'restricted',
+      })
+    // event/per-call field wins over the ambient scoped key of the same name.
+    expect((at(0).context as Record<string, unknown>).classification).toBe('restricted')
+  })
+
+  it('runs the Context guard over the merged audit context', () => {
+    reqLogger()
+      .scope({ action: 'readRecord', context: { huge: 'x'.repeat(200_001) } })
+      .audit.dataAccess.dataAccessed({ resourceType: 't', resourceId: 'r', accessType: 'read', classification: 'pii' })
+
+    const lines = entries()
+    // The guard drops the oversized bag and diagnoses it, then the event line
+    // carries the marker instead of a malformed context.
+    expect(lines.some(l => l.message === 'Log context is too large')).toBe(true)
+    const event = lines.find(l => l.event === 'dataAccessed')
+    expect(event?.context).toEqual({ logger: '[Context removed]' })
+  })
+})
+
 describe('audit.resource', () => {
   const reqLogger = () =>
     createBaseLogger({ traceId: null, path: '/forms', clientIp: '1.2.3.4', userAgent: 'jest', userId: 'u_1' })
