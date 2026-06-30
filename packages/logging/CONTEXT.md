@@ -30,8 +30,12 @@ _Avoid_: sanitiser, validator, limiter
 A compliance-auditable business event — "who did what to which critical
 resource" — drawn from a **closed, externally-governed taxonomy**
 (authentication, permission change, data export, …), not from developer
-convenience. Unlike a routine log line, its **Context** shape is _fixed and
-enforced_, and it is the unit that redaction and audit-retention apply to.
+convenience. Unlike a routine log line, its _required_ **Context** fields are
+fixed and enforced at the type level; beyond those, the logger's scoped
+**Context** and per-call **Context** merge in (low→high: scoped, event fields,
+per-call) and pass the same **Context guard** as any line. "Enforced" means the
+required keys are guaranteed, not that the bag is closed. It is the unit that
+redaction and audit-retention apply to.
 _Avoid_: audit log (ambiguous with the log store), event (too broad)
 
 **Audit helper**:

@@ -301,7 +301,13 @@ class LoggerImpl implements Logger {
     return (this._audit ??= createAuditLogger({
       bindings: () => this.logger.bindings(),
       emit: (level, fields, message) => {
-        this.logger[level](fields, message)
+        // Pull the audit-assembled context out, merge the logger's scoped
+        // context beneath it, and run the same guard the routine path uses
+        // (ADR-0008). `emitAudit` stays ignorant of scope, pino, and the guard;
+        // controlled fields + promoted facets in `rest` pass straight through.
+        const { context: ownContext, ...rest } = fields
+        const context = this.guardContext(rest.action as string | undefined, ownContext as LogInput['context'])
+        this.logger[level]({ ...rest, context }, message)
       },
       action: () => this.action ?? undefined,
     }))
@@ -352,18 +358,25 @@ class LoggerImpl implements Logger {
     // Per-call action wins over the scoped leaf; omitted entirely when neither is
     // set (the `action` key is then absent from the line, not `''`).
     const action = input.action ?? this.action ?? undefined
+    const context = this.guardContext(action, input.context)
+    return { ...input, action, context }
+  }
 
-    const merged = mergeContext(this.context, input.context) ?? undefined
-
-    // The Context guard owns oversized/unserialisable handling; we just attach
-    // scope to its diagnostic lines and emit them. These bypass formatInput
-    // (they go straight to the transport), so the guard never recurses.
+  /**
+   * Merge the logger's scoped context beneath the line's own context, run it
+   * through the Context guard, and emit the guard's diagnostic lines (attaching
+   * `action`). Returns the safe context to attach. Shared by the routine path
+   * ({@link formatInput}) and the audit `emit` closure (ADR-0008), so scoped
+   * context and the guard apply identically to both. The diagnostic lines bypass
+   * this method (they go straight to the transport), so the guard never recurses.
+   */
+  private guardContext(action: string | undefined, ownContext: LogInput['context']): LogInput['context'] {
+    const merged = mergeContext(this.context, ownContext) ?? undefined
     const { context, emissions } = serializeContext(merged)
     for (const emission of emissions) {
       this.logger[emission.level]({ action, context: emission.context }, emission.message)
     }
-
-    return { ...input, action, context }
+    return context
   }
 }
 

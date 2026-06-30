@@ -1,7 +1,7 @@
 # 7. Fixed-shape audit helpers
 
 Date: 2026-06-24
-Status: Accepted
+Status: Accepted (amended by ADR-0008: audit lines compose scoped context)
 
 ## Context
 
