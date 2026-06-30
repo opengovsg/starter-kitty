@@ -1,5 +1,16 @@
 # @opengovsg/starter-kitty-logging
 
+## 0.1.1
+
+### Patch Changes
+
+- [#71](https://github.com/opengovsg/starter-kitty/pull/71) [`b7891dd`](https://github.com/opengovsg/starter-kitty/commit/b7891dd490a1120fa0cd93bd8bccfaadadcd9594) Thanks [@karrui](https://github.com/karrui)! - Merge the logger's scoped context into audit lines
+
+  `logger.scope({ context }).audit.*({ context })` now merges the scoped context
+  into the emitted audit line (low to high: scoped, event fields, per-call),
+  instead of dropping it. The merged context passes the same Context guard as a
+  routine line. See ADR-0008.
+
 ## 0.1.0
 
 ### Minor Changes
