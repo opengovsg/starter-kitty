@@ -63,15 +63,19 @@ export const AUTHN_SPECS = {
   sessionCreated: authn('sessionCreated', {
     level: 'notice',
     message: 'Session created',
-    promote: {},
-    requiredScope: ['user_id', 'client_ip'],
+    promote: { userId: 'user_id' },
+    // sessionCreated establishes the bound identity, so user_id cannot already be
+    // in request scope when it fires; it is payload-borne, like sessionTimedOut.
+    requiredScope: ['client_ip'],
     contextFields: { sessionId: 'session_id' },
   }),
   sessionTerminated: authn('sessionTerminated', {
     level: 'notice',
     message: 'Session terminated',
-    promote: {},
-    requiredScope: ['user_id', 'client_ip'],
+    promote: { userId: 'user_id' },
+    // Like the other session events, identity is payload-borne: termination may run
+    // outside request scope (admin revoke, sweep), so do not require it in scope.
+    requiredScope: ['client_ip'],
     contextFields: { sessionId: 'session_id', reason: 'reason' },
   }),
   sessionTimedOut: authn('sessionTimedOut', {
