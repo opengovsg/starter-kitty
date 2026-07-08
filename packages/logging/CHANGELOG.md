@@ -1,5 +1,15 @@
 # @opengovsg/starter-kitty-logging
 
+## 0.3.0
+
+### Minor Changes
+
+- [#76](https://github.com/opengovsg/starter-kitty/pull/76) [`446d796`](https://github.com/opengovsg/starter-kitty/commit/446d796ae64f05b825f86dad1b925e0f6f7c2b23) Thanks [@karrui](https://github.com/karrui)! - Add `Logger.withBindings({ userId })` and `Logger.setBindings({ userId })` to
+  bind the acting user at the root of an existing logger - for identity learned
+  mid-request (e.g. self-signup), so actor-scoped audit events attribute the
+  actor instead of warning. `withBindings` returns a new logger; `setBindings`
+  mutates in place, so the actor persists for the rest of the logger's lifecycle.
+
 ## 0.2.0
 
 ### Minor Changes
