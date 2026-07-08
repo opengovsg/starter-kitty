@@ -153,13 +153,17 @@ scoped.info({ message: 'saving' })
   `withContext`, this lands at the top level, so actor-scoped audit events find
   it. Request-fixed facets (`client_ip`, `user_agent`, `path`) are inherited
   untouched.
-- `setAction({ action })` / `setContext({ context })` — mutate **in place** and
-  return the same instance for chaining.
+- `setAction({ action })` / `setContext({ context })` / `setBindings({ userId })`
+  — mutate **in place** and return the same instance for chaining. `setBindings`
+  is the mutating twin of `withBindings`: the bound `user_id` persists for the
+  rest of the logger's lifecycle.
 
-**⚠️ Caveat:** `setAction` / `setContext` mutate the logger in place. If you
-share a logger across concurrent requests (e.g. a module-level singleton), the
-scope/context bleeds between them. Prefer `scope` / `withContext` for
-request-scoped work.
+**⚠️ Caveat:** `setAction` / `setContext` / `setBindings` mutate the logger in
+place. If you share a logger across concurrent requests (e.g. a module-level
+singleton), the scope/context bleeds between them. Prefer `scope` /
+`withContext` for request-scoped work. For `setBindings` the stakes are higher:
+a bled `user_id` **misattributes audit events** to the wrong user - only ever
+call it on a per-request logger.
 
 ## Choosing a level
 

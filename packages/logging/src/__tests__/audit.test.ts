@@ -517,3 +517,21 @@ describe('withBindings', () => {
     })
   })
 })
+
+describe('setBindings', () => {
+  it('binds the actor in place so it persists on the same logger', () => {
+    const base = createBaseLogger({ traceId: null, path: '/signup', clientIp: '1.2.3.4', userAgent: 'jest' })
+    const returned = base.setBindings({ userId: 'u_new' }) // mutates, not discarded
+    expect(returned).toBe(base) // same instance, for chaining
+
+    // The original reference now carries the actor - no reassignment needed.
+    base.scope({ action: 'team:create' }).audit.resource.created({ resourceType: 'team', resourceId: 't_1' })
+
+    expect(entries().find(l => l.message === 'Audit event missing required scope field')).toBeUndefined()
+    expect(entries().find(l => l.event === 'created')).toMatchObject({
+      user_id: 'u_new',
+      client_ip: '1.2.3.4', // request-fixed facet inherited untouched
+      context: { resource_type: 'team', resource_id: 't_1' },
+    })
+  })
+})

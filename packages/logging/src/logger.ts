@@ -317,6 +317,15 @@ class LoggerImpl implements Logger {
     })
   }
 
+  setBindings(bindings: LateBindings) {
+    // The mutating twin of `withBindings`: swap in a child that merges the new
+    // root facets, so it persists for the rest of this logger's lifecycle. The
+    // audit closure and routine path both read `this.logger` at call time, so
+    // every subsequent line picks the rebinding up.
+    this.logger = bindChild(this.logger, bindings)
+    return this
+  }
+
   setContext(options: { context: LogInput['context'] }) {
     this.context = mergeContext(this.context, options.context)
     return this

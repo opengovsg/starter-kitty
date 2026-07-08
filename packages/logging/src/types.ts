@@ -110,6 +110,23 @@ export interface Logger {
   withBindings(bindings: { userId?: string }): Logger
 
   /**
+   * Bind the acting user at the **root level** (`user_id`) **in place**
+   * (mutates), so it persists for the rest of this logger's lifecycle - every
+   * subsequent line, audit and routine, attributes the actor. The mutating twin
+   * of {@link Logger.withBindings}, for the common case where one request logger
+   * is threaded by reference and gains its identity mid-request.
+   *
+   * ⚠️ Mutation is shared: see the caveat on {@link Logger.setAction}. Here the
+   * stakes are higher - if a logger is reused across requests (e.g. a
+   * module-level singleton), a bound `user_id` bleeds into other users' lines,
+   * **misattributing audit events**. Only ever call this on a per-request logger.
+   *
+   * @param bindings - Root-level identity learned after creation.
+   * @returns The same logger instance, for chaining.
+   */
+  setBindings(bindings: { userId?: string }): Logger
+
+  /**
    * Verbose diagnostic detail useful only while actively debugging (e.g.
    * branch traces, intermediate values). Typically disabled in production.
    * No one is expected to act on it.

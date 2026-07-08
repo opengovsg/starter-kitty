@@ -146,6 +146,9 @@ export interface Logger {
     setAction(options: {
         action: string;
     }): Logger;
+    setBindings(bindings: {
+        userId?: string;
+    }): Logger;
     setContext(options: {
         context: LogInput['context'];
     }): Logger;
