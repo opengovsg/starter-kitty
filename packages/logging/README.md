@@ -148,6 +148,11 @@ scoped.info({ message: 'saving' })
   request scoping). Unlike `pino.child`, it **merges** context rather than
   replacing it — the real pino child is `createBaseLogger`.
 - `withContext({ context })` — returns a **new** logger with merged context.
+- `withBindings({ userId })` — returns a **new** logger with the acting user
+  bound at the **root** (`user_id`), for identity learned mid-request. Unlike
+  `withContext`, this lands at the top level, so actor-scoped audit events find
+  it. Request-fixed facets (`client_ip`, `user_agent`, `path`) are inherited
+  untouched.
 - `setAction({ action })` / `setContext({ context })` — mutate **in place** and
   return the same instance for chaining.
 
@@ -270,7 +275,9 @@ logger.scope({ action: 'verifyOtp' }).audit.authn.loginSucceeded({
   `username`, …) stay raw and are scrubbed at the **sink**, not in-process.
 - **Scope-read fields are asserted at emit:** when an event reads `user_id` /
   `client_ip` from the scope and it is missing, the helper emits a loud
-  diagnostic line rather than a silently-incomplete audit record.
+  diagnostic line rather than a silently-incomplete audit record. Identity
+  learned after creation (e.g. the acting user on self-signup) is bound with
+  `withBindings({ userId })` so actor-scoped events attribute the actor.
 
 See [ADR-0007](../../docs/adr/0007-fixed-shape-audit-helpers.md) for the design.
 Every input additionally accepts `context?` (extra business fields, merged into

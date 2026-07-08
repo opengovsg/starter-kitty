@@ -150,6 +150,9 @@ export interface Logger {
         context: LogInput['context'];
     }): Logger;
     warn(input: LogInput): void;
+    withBindings(bindings: {
+        userId?: string;
+    }): Logger;
     withContext(options: {
         context: LogInput['context'];
     }): Logger;

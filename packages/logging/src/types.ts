@@ -95,6 +95,21 @@ export interface Logger {
   withContext(options: { context: LogInput['context'] }): Logger
 
   /**
+   * Return a **new** logger that binds the acting user at the **root level**
+   * (`user_id`), leaving the original unchanged. Unlike {@link Logger.withContext}
+   * (which lands in `context`), `user_id` is a top-level field and so satisfies
+   * the audit scope-read asserts - e.g. binding the acting user once it is known
+   * mid-request (self-signup, deferred auth), so `audit.resource.*` and other
+   * actor-scoped events attribute the actor instead of warning. Request-fixed
+   * facets (`client_ip`, `user_agent`, `path`) are set at creation and inherited
+   * untouched.
+   *
+   * @param bindings - Root-level identity learned after creation.
+   * @returns A new {@link Logger} with `user_id` bound at the root.
+   */
+  withBindings(bindings: { userId?: string }): Logger
+
+  /**
    * Verbose diagnostic detail useful only while actively debugging (e.g.
    * branch traces, intermediate values). Typically disabled in production.
    * No one is expected to act on it.
