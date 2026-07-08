@@ -488,3 +488,50 @@ describe('audit.resource', () => {
     expect(line).not.toHaveProperty('from_owner_id') // from/to live in context, not root
   })
 })
+
+describe('withBindings', () => {
+  it('binds a late-known actor so actor-scoped events do not warn', () => {
+    createBaseLogger({ traceId: null, path: '/signup', clientIp: '1.2.3.4', userAgent: 'jest' })
+      .withBindings({ userId: 'u_new' })
+      .scope({ action: 'team:create' })
+      .audit.resource.created({ resourceType: 'team', resourceId: 't_1' })
+
+    // No "missing required scope" diagnostic ...
+    expect(entries().find(l => l.message === 'Audit event missing required scope field')).toBeUndefined()
+    // ... the actor is on the event line at the root, and the request-fixed
+    // facet (client_ip) is inherited untouched by the rebind.
+    expect(entries().find(l => l.event === 'created')).toMatchObject({
+      user_id: 'u_new',
+      client_ip: '1.2.3.4',
+      context: { resource_type: 'team', resource_id: 't_1' },
+    })
+  })
+
+  it('returns a new logger and leaves the original unbound', () => {
+    const base = createBaseLogger({ traceId: null, path: '/signup', clientIp: '1.2.3.4', userAgent: 'jest' })
+    base.withBindings({ userId: 'u_new' }) // discarded
+    base.scope({ action: 'team:create' }).audit.resource.created({ resourceType: 'team', resourceId: 't_2' })
+
+    expect(entries().find(l => l.message === 'Audit event missing required scope field')).toMatchObject({
+      context: { missing_scope: ['user_id'] },
+    })
+  })
+})
+
+describe('setBindings', () => {
+  it('binds the actor in place so it persists on the same logger', () => {
+    const base = createBaseLogger({ traceId: null, path: '/signup', clientIp: '1.2.3.4', userAgent: 'jest' })
+    const returned = base.setBindings({ userId: 'u_new' }) // mutates, not discarded
+    expect(returned).toBe(base) // same instance, for chaining
+
+    // The original reference now carries the actor - no reassignment needed.
+    base.scope({ action: 'team:create' }).audit.resource.created({ resourceType: 'team', resourceId: 't_1' })
+
+    expect(entries().find(l => l.message === 'Audit event missing required scope field')).toBeUndefined()
+    expect(entries().find(l => l.event === 'created')).toMatchObject({
+      user_id: 'u_new',
+      client_ip: '1.2.3.4', // request-fixed facet inherited untouched
+      context: { resource_type: 'team', resource_id: 't_1' },
+    })
+  })
+})

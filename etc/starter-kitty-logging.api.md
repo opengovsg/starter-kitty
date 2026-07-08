@@ -146,10 +146,16 @@ export interface Logger {
     setAction(options: {
         action: string;
     }): Logger;
+    setBindings(bindings: {
+        userId?: string;
+    }): Logger;
     setContext(options: {
         context: LogInput['context'];
     }): Logger;
     warn(input: LogInput): void;
+    withBindings(bindings: {
+        userId?: string;
+    }): Logger;
     withContext(options: {
         context: LogInput['context'];
     }): Logger;

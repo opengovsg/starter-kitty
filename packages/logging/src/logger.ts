@@ -1,4 +1,4 @@
-import type { DestinationStream } from 'pino'
+import type { DestinationStream, Logger as PinoLogger } from 'pino'
 import { destination, pino } from 'pino'
 import { PinoPretty } from 'pino-pretty'
 
@@ -120,6 +120,16 @@ export interface LoggerOptions extends SystemLoggerOptions {
 type AnyLoggerOptions = SystemLoggerOptions & { clientIp?: string | null; userAgent?: string | null }
 
 /**
+ * The root-level identity {@link Logger.withBindings} can bind on an existing
+ * logger. Deliberately narrow: only the acting user, which may be learned
+ * *after* creation. Request-fixed facets (`client_ip`, `user_agent`, `path`,
+ * versions) are set once at creation and inherited untouched. Module-local: the
+ * public {@link Logger.withBindings} inlines this shape to avoid a `types.ts`
+ * import of `logger.ts` (a cycle).
+ */
+type LateBindings = Pick<SystemLoggerOptions, 'userId'>
+
+/**
  * A {@link Logger} factory bound to a fixed {@link LoggingConfig}, returned by
  * {@link createLogging}. Call it directly for a **request** logger (client
  * identity required via {@link LoggerOptions}); call `.system(...)` for a
@@ -190,14 +200,20 @@ const buildPino = (config: ResolvedConfig) => {
   )
 }
 
-type PinoInstance = ReturnType<typeof buildPino>
+/**
+ * The root instance or any child of it — what `bindChild` accepts. A child
+ * widens `useOnlyCustomLevels` from the root's `true` to `boolean`, so this
+ * (`boolean`) covers both: the root binds at creation, `withBindings` re-binds
+ * onto an existing child.
+ */
+type PinoChild = PinoLogger<'error' | 'warn' | 'notice' | 'info' | 'debug', boolean>
 
 /*
   The child loggers we hand out inherit the bindings and transport from the
   parent instance. Use child loggers to avoid creating a new pino instance for
   every request / unit of work.
 */
-const bindChild = (instance: PinoInstance, options: AnyLoggerOptions) => {
+const bindChild = (instance: PinoChild, options: Partial<AnyLoggerOptions>) => {
   const { source, path, traceId, userId, deviceId, userAgent, correlationId, clientIp, clientVersion, serverVersion } =
     options
   // Coalesce `null` -> `undefined` on the header-sourced fields (`headers.get`
@@ -285,6 +301,29 @@ class LoggerImpl implements Logger {
       action: this.action,
       context: mergeContext(this.context, options.context),
     })
+  }
+
+  withBindings(bindings: LateBindings) {
+    // Root-level facet, not context: a fresh pino child inherits the parent's
+    // bindings and merges these on top, so audit scope-read asserts (e.g.
+    // `user_id`) see it. `bindChild` maps only the fields present, so
+    // `client_ip`/`user_agent`/`path` are inherited untouched. For identity
+    // learned mid-request (the acting user is known only after login), unlike
+    // `withContext` which lands in `context`. Action and context carry over
+    // unchanged, matching `scope`/`withContext` immutability.
+    return new LoggerImpl(bindChild(this.logger, bindings), this.serializeError, {
+      action: this.action,
+      context: this.context,
+    })
+  }
+
+  setBindings(bindings: LateBindings) {
+    // The mutating twin of `withBindings`: swap in a child that merges the new
+    // root facets, so it persists for the rest of this logger's lifecycle. The
+    // audit closure and routine path both read `this.logger` at call time, so
+    // every subsequent line picks the rebinding up.
+    this.logger = bindChild(this.logger, bindings)
+    return this
   }
 
   setContext(options: { context: LogInput['context'] }) {
