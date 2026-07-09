@@ -310,8 +310,10 @@ export interface SensitiveActionBlockedInput extends AuditInputBase {
 // @public
 export interface SensitiveEndpointAccessedInput extends AuditInputBase {
     endpoint: string;
+    keyId: string;
     method: string;
     params?: AuditContext;
+    userId?: string;
 }
 
 // @public
@@ -352,18 +354,20 @@ export interface SystemLoggerOptions {
 export interface TokenInvalidatedInput extends AuditInputBase {
     reason: string;
     tokenId: string;
+    userId?: string;
 }
 
 // @public
 export interface TokenIssuedInput extends AuditInputBase {
     scopes?: string[];
     tokenId: string;
-    userId: string;
+    userId?: string;
 }
 
 // @public
 export interface TokenRefreshedInput extends AuditInputBase {
     tokenId: string;
+    userId?: string;
 }
 
 // @public

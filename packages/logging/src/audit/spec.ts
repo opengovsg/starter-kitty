@@ -248,8 +248,9 @@ const apiUsage = (event: string, spec: Omit<EventSpec, 'category' | 'event'>): E
   ...spec,
 })
 
-// `tokenIssued` *produces* the subject, so `userId` is payload-required and
-// promoted; the others run in an authenticated context (`user_id` scope-read).
+// API usage runs on machine/bearer-token requests that often have no
+// authenticated `user_id` in scope, so `user_id` is never required here — it is
+// an optional payload field, promoted when the caller has a user-bound token.
 /** API usage event specs. */
 export const API_USAGE_SPECS = {
   tokenIssued: apiUsage('tokenIssued', {
@@ -262,23 +263,25 @@ export const API_USAGE_SPECS = {
   tokenRefreshed: apiUsage('tokenRefreshed', {
     level: 'notice',
     message: 'API token refreshed',
-    promote: {},
-    requiredScope: ['user_id', 'client_ip'],
+    promote: { userId: 'user_id' },
+    requiredScope: ['client_ip'],
     contextFields: { tokenId: 'token_id' },
   }),
   tokenInvalidated: apiUsage('tokenInvalidated', {
     level: 'notice',
     message: 'API token invalidated',
-    promote: {},
-    requiredScope: ['user_id', 'client_ip'],
+    promote: { userId: 'user_id' },
+    requiredScope: ['client_ip'],
     contextFields: { tokenId: 'token_id', reason: 'reason' },
   }),
   sensitiveEndpointAccessed: apiUsage('sensitiveEndpointAccessed', {
     level: 'notice',
     message: 'Sensitive endpoint accessed',
-    promote: {},
-    requiredScope: ['user_id', 'client_ip'],
-    contextFields: { endpoint: 'endpoint', method: 'method', params: 'params' },
+    promote: { userId: 'user_id' },
+    requiredScope: ['client_ip'],
+    // `keyId` is the required principal (compile-time enforced) so the line is
+    // never anonymous; `user_id` is optional for user-bound keys.
+    contextFields: { endpoint: 'endpoint', method: 'method', keyId: 'key_id', params: 'params' },
   }),
 } satisfies Record<string, EventSpec>
 

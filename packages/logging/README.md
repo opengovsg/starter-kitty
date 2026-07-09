@@ -347,12 +347,17 @@ secrets.
 Anomaly/abuse detection is intentionally absent — the app does not know a call is
 anomalous at log time; that is a sink/SIEM concern _over_ these lines.
 
-| Event                       | Level    | Required fields                        |
-| --------------------------- | -------- | -------------------------------------- |
-| `tokenIssued`               | `notice` | `userId`, `tokenId` _(opt: `scopes`)_  |
-| `tokenRefreshed`            | `notice` | `tokenId`                              |
-| `tokenInvalidated`          | `notice` | `tokenId`, `reason`                    |
-| `sensitiveEndpointAccessed` | `notice` | `endpoint`, `method` _(opt: `params`)_ |
+API usage runs on machine/bearer-token requests that often have no authenticated
+user, so `userId` is optional throughout — supply it only for a user-bound key.
+Each event still carries a required non-user principal (`tokenId` or `keyId`), so
+no line is anonymous.
+
+| Event                       | Level    | Required fields                                           |
+| --------------------------- | -------- | --------------------------------------------------------- |
+| `tokenIssued`               | `notice` | `tokenId` _(opt: `userId`, `scopes`)_                     |
+| `tokenRefreshed`            | `notice` | `tokenId` _(opt: `userId`)_                               |
+| `tokenInvalidated`          | `notice` | `tokenId`, `reason` _(opt: `userId`)_                     |
+| `sensitiveEndpointAccessed` | `notice` | `endpoint`, `method`, `keyId` _(opt: `userId`, `params`)_ |
 
 #### `failures` — handled security denials
 

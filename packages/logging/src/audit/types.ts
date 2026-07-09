@@ -336,9 +336,12 @@ export interface PolicyChangedInput extends AuditInputBase {
 /**
  * API usage audit events (category `apiUsage`).
  *
- * Covers API token lifecycle and access to sensitive endpoints. Anomaly/abuse
- * detection is intentionally absent — the app does not know a call is anomalous
- * at log time; that is a sink/SIEM concern *over* these lines (ADR-0007).
+ * Covers API token lifecycle and access to sensitive endpoints. These run on
+ * machine/bearer-token requests that often have no authenticated user, so
+ * `userId` is optional throughout — supply it only when the token is user-bound.
+ * Anomaly/abuse detection is intentionally absent — the app does not know a call
+ * is anomalous at log time; that is a sink/SIEM concern *over* these lines
+ * (ADR-0007).
  *
  * @public
  */
@@ -355,10 +358,10 @@ export interface ApiUsageAudit {
 
 /** Input for {@link ApiUsageAudit.tokenIssued}. @public */
 export interface TokenIssuedInput extends AuditInputBase {
-  /** The subject the token was issued for. Promoted to `user_id`. */
-  userId: string
   /** The token's identifier — a reference, never the token value. */
   tokenId: string
+  /** The subject the token was issued for, if user-bound. Promoted to `user_id`. */
+  userId?: string
   /** The scopes/permissions granted, if any. */
   scopes?: string[]
 }
@@ -367,6 +370,8 @@ export interface TokenIssuedInput extends AuditInputBase {
 export interface TokenRefreshedInput extends AuditInputBase {
   /** The refreshed token's identifier (a reference, not the token value). */
   tokenId: string
+  /** The subject the token is bound to, if any. Promoted to `user_id`. */
+  userId?: string
 }
 
 /** Input for {@link ApiUsageAudit.tokenInvalidated}. @public */
@@ -375,6 +380,8 @@ export interface TokenInvalidatedInput extends AuditInputBase {
   tokenId: string
   /** Why it was invalidated, e.g. `revoked`, `expired`, `rotated`. */
   reason: string
+  /** The subject the token was bound to, if any. Promoted to `user_id`. */
+  userId?: string
 }
 
 /** Input for {@link ApiUsageAudit.sensitiveEndpointAccessed}. @public */
@@ -383,6 +390,15 @@ export interface SensitiveEndpointAccessedInput extends AuditInputBase {
   endpoint: string
   /** The HTTP method. */
   method: string
+  /**
+   * The acting principal — the API key/credential id used to make the call, a
+   * reference and never the key value. Required so no API-usage line is
+   * anonymous; pair with `userId` when the key is user-bound. Emitted as
+   * `context.key_id`.
+   */
+  keyId: string
+  /** The acting user, if the request was user-authenticated. Promoted to `user_id`. */
+  userId?: string
   /** Request parameters — caller-sanitised; keep secrets/PII out. */
   params?: AuditContext
 }

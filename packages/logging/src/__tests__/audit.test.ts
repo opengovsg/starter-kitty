@@ -341,9 +341,27 @@ describe('audit.apiUsage', () => {
     }).audit.apiUsage.sensitiveEndpointAccessed({
       endpoint: '/api/admin/export',
       method: 'POST',
+      keyId: 'key_1',
       params: { scope: 'all' },
     })
-    expect(at(0).context).toMatchObject({ endpoint: '/api/admin/export', method: 'POST', params: { scope: 'all' } })
+    expect(at(0).context).toMatchObject({
+      endpoint: '/api/admin/export',
+      method: 'POST',
+      key_id: 'key_1',
+      params: { scope: 'all' },
+    })
+  })
+
+  it('emits no missing-scope diagnostic for a bearer-token request without user_id', () => {
+    createBaseLogger({
+      traceId: null,
+      path: '/api',
+      clientIp: '1.2.3.4',
+      userAgent: 'jest',
+    }).audit.apiUsage.tokenRefreshed({ tokenId: 'tok_1' })
+    const lines = entries()
+    expect(lines).toHaveLength(1) // user_id not required for API usage
+    expect(lines[0]).not.toHaveProperty('user_id')
   })
 })
 
