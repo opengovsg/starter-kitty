@@ -164,7 +164,6 @@ export interface Logger {
 // @public
 export interface LoggerOptions extends SystemLoggerOptions {
     clientIp: string | null | undefined;
-    traceId: string | null | undefined;
     userAgent: string | null | undefined;
 }
 

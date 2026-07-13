@@ -64,12 +64,15 @@ export interface SystemLoggerOptions {
   /** Where the log originated, e.g. `trpc` / `rest`. Bound as `source`. Accepts `null` (e.g. from `headers.get`). */
   source?: string | null
   /**
-   * Distributed-trace correlation ID, bound as `trace_id` — the key that chains
-   * a request's lines together. **Optional** here: request-less contexts
-   * (startup, jobs, cron, CLI) have no distributed trace, so it is simply
-   * omitted rather than forced. On request loggers it is a required key — see
-   * {@link LoggerOptions.traceId}. Accepts `null` (e.g. from `headers.get`); a
-   * `null` value is omitted from the line.
+   * Distributed-trace correlation ID, bound as `trace_id`. **Usually leave this
+   * unset**: with dd-trace running, log injection (`DD_LOGS_INJECTION`, on by
+   * default) already stamps `dd.trace_id` on every line from the active span -
+   * per line, so it also works in jobs, queues, and cron, and Datadog
+   * correlates on it natively. Set this only for a non-APM sink that needs a
+   * trace id under this schema's own `trace_id` key; for a gateway-minted ID
+   * chained across systems, use {@link SystemLoggerOptions.correlationId}
+   * instead. Accepts `null` (e.g. from `headers.get`); a `null` value is
+   * omitted from the line.
    */
   traceId?: string | null
   /** The acting user's ID. Bound as `user_id` — the canonical user-correlation facet. */
@@ -87,23 +90,18 @@ export interface SystemLoggerOptions {
 /**
  * Per-request metadata for a request-scoped {@link Logger}. Extends
  * {@link SystemLoggerOptions} with the request identity every request line should
- * carry. `traceId`, `clientIp`, and `userAgent` are **required keys** that accept
+ * carry. `clientIp` and `userAgent` are **required keys** that accept
  * `string | null | undefined`: the caller must *acknowledge* them — forgetting
  * the key is a compile error — and pass `null`/`undefined` explicitly when the
  * value is genuinely absent (e.g. a missing `headers.get(...)`), rather than
- * leaving it off by accident. For request-less contexts use
- * {@link SystemLoggerOptions} via `createLogging(...).system(...)`, where
- * `traceId` is optional and the client identity does not exist.
+ * leaving it off by accident. `traceId` is optional: trace correlation comes
+ * from dd-trace log injection (see {@link SystemLoggerOptions.traceId}). For
+ * request-less contexts use {@link SystemLoggerOptions} via
+ * `createLogging(...).system(...)`, where the client identity does not exist.
  *
  * @public
  */
 export interface LoggerOptions extends SystemLoggerOptions {
-  /**
-   * Distributed-trace correlation ID, bound as `trace_id` — the key that chains
-   * a request's lines together. Required key on requests — pass `null`/`undefined`
-   * if there is genuinely no trace; it is never silently forgotten.
-   */
-  traceId: string | null | undefined
   /**
    * The originating client IP (vendor-neutral; not edge-specific). Bound as
    * `client_ip`. Required key — pass `null`/`undefined` if the header is absent.

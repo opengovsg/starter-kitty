@@ -32,6 +32,20 @@ export const createBaseLogger = createLogging({
 })
 ```
 
+### Trace correlation
+
+Trace correlation needs no wiring in this package.
+With dd-trace running, log injection (`DD_LOGS_INJECTION`, on by default)
+stamps `dd.trace_id` from the active span onto every pino line - resolved per
+line, so it also works in jobs, queue consumers, and cron - and Datadog
+correlates logs with traces on it natively.
+Just initialise dd-trace before pino loads (ESM apps:
+`node --import dd-trace/register.js`).
+
+The optional per-logger `traceId` still binds a root `trace_id` for non-APM
+sinks that need one under this schema's own key.
+For a gateway-minted ID chained across systems, use `correlationId` instead.
+
 ## Usage
 
 Import your app's re-exported factory anywhere and create a logger. There are
@@ -40,16 +54,16 @@ two shapes, by context:
 ```ts
 import { createBaseLogger } from '~/logger'
 
-// Request-scoped — inside an HTTP handler. `traceId`, `clientIp`, and
-// `userAgent` are REQUIRED KEYS (a compile error if omitted) but accept
+// Request-scoped — inside an HTTP handler. `clientIp` and `userAgent` are
+// REQUIRED KEYS (a compile error if omitted) but accept
 // `string | null | undefined`: you must acknowledge them, and pass
 // `null`/`undefined` when the header is genuinely missing. `headers.get(...)`
 // returns `string | null`, which is accepted directly — a `null` value is
-// simply omitted from the line.
+// simply omitted from the line. `trace_id` comes from dd-trace log injection
+// (see "Trace correlation" above), so no `traceId` is passed here.
 const logger = createBaseLogger({
   path: '/api/widgets',
   source: req.headers.get('x-source'),
-  traceId: req.headers.get('x-trace-id'),
   clientIp: req.headers.get('cf-connecting-ip'),
   userAgent: req.headers.get('user-agent'),
 })
@@ -71,6 +85,8 @@ startupLogger.info({ message: 'Redis connected', action: 'boot' })
 > header) without forcing fake values where they don't. Header-sourced fields
 > (`source`, `traceId`, `clientIp`, `userAgent`, `clientVersion`) accept `null`
 > and are omitted from the line rather than emitted as `null`.
+> `traceId` is optional everywhere: trace correlation comes from dd-trace log
+> injection, not headers.
 
 ## Wire schema
 
