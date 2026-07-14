@@ -1,5 +1,13 @@
 # @opengovsg/starter-kitty-logging
 
+## 0.5.0
+
+### Minor Changes
+
+- [#81](https://github.com/opengovsg/starter-kitty/pull/81) [`ffe374b`](https://github.com/opengovsg/starter-kitty/commit/ffe374b877840bd4d28ba48f0a238a752a858173) Thanks [@karrui](https://github.com/karrui)! - `traceId` is now optional on request loggers (`LoggerOptions`).
+  Trace correlation should come from dd-trace log injection (`DD_LOGS_INJECTION`, on by default), which stamps `dd.trace_id` from the active span onto every line - resolved per line, so it also works across jobs, queues, and cron, where no request headers exist.
+  Passing `traceId` still binds a root `trace_id` for non-APM sinks; existing callers are unaffected.
+
 ## 0.4.0
 
 ### Minor Changes
