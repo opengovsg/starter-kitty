@@ -18,3 +18,4 @@ Files are numbered sequentially: `NNNN-kebab-case-title.md`.
 | [0006](./0006-pluggable-error-serialization.md) | Pluggable error serialisation; no error type | Accepted |
 | [0007](./0007-fixed-shape-audit-helpers.md)     | Fixed-shape audit helpers                    | Accepted (amended by [0008](./0008-audit-lines-compose-scoped-context.md)) |
 | [0008](./0008-audit-lines-compose-scoped-context.md) | Audit lines compose scoped context      | Accepted |
+| [0009](./0009-rate-limit-package-design.md)     | Rate-limit package design                    | Accepted |

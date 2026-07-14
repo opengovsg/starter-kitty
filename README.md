@@ -13,6 +13,7 @@ Please refer to the [documentation website](https://kit.open.gov.sg/) for detail
 ## Packages
 
 - [`@opengovsg/validators`](./packages/validators/): Common input validators.
+- [`@opengovsg/rate-limit`](./packages/rate-limit/): Redis-backed rate limiting with in-memory fallback.
 
 ## Releasing
 
