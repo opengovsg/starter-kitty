@@ -145,9 +145,14 @@ describe('wire format', () => {
   })
 
   it('does not require traceId on a system logger (omitted when absent)', () => {
-    // `traceId` is request-only; a system logger needs no distributed trace, so
-    // the key is optional and absent from the line when not supplied.
+    // Trace correlation comes from dd-trace log injection, so `traceId` is
+    // optional everywhere; the key is absent from the line when not supplied.
     createBaseLogger.system({ path: 'redis:startup' }).info({ message: 'up', action: 'boot' })
+    expect(entryAt(0)).not.toHaveProperty('trace_id')
+  })
+
+  it('does not require traceId on a request logger (omitted when absent)', () => {
+    createBaseLogger({ path: '/api', clientIp: '1.2.3.4', userAgent: 'jest' }).info({ message: 'm', action: 'a' })
     expect(entryAt(0)).not.toHaveProperty('trace_id')
   })
 

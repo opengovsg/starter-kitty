@@ -32,6 +32,15 @@ Call `createLogging` once and re-export the result. `env`, `service`, and
 `version` are required; `level` (default `info`) and `pretty` (default `false`)
 are optional. The factory is immutable and never throws.
 
+Trace correlation needs no wiring: with dd-trace running, log injection
+(`DD_LOGS_INJECTION`, on by default) stamps `dd.trace_id` from the active span
+onto every line - including jobs, queues, and cron - and Datadog correlates on
+it natively.
+Just initialise dd-trace before pino loads (ESM apps:
+`node --import dd-trace/register.js`).
+The optional per-logger `traceId` exists only for non-APM sinks; use
+`correlationId` for a gateway-minted ID chained across systems.
+
 ## Logging
 
 ```javascript
@@ -40,7 +49,6 @@ import { createBaseLogger } from '~/logger'
 const logger = createBaseLogger({
   path: '/api/widgets',
   source: req.headers.get('x-source'),
-  traceId: req.headers.get('x-trace-id'),
   clientIp: req.headers.get('cf-connecting-ip'),
   userAgent: req.headers.get('user-agent'),
 })
@@ -48,8 +56,10 @@ const logger = createBaseLogger({
 logger.info({ message: 'Widget fetched', action: 'getWidget', context: { widget_id: widgetId } })
 ```
 
-Request-scoped loggers require `traceId`, `clientIp`, and `userAgent` keys (they
-accept `string | null | undefined`, so a missing header passes `null`).
+Request-scoped loggers require `clientIp` and `userAgent` keys (they accept
+`string | null | undefined`, so a missing header passes `null`).
+`traceId` is optional everywhere - trace correlation comes from dd-trace log
+injection, not headers.
 
 ```javascript
 const startupLogger = createBaseLogger.system({ path: 'redis:startup' })
