@@ -1,7 +1,7 @@
 # `@opengovsg/starter-kitty-testcontainers`
 
 A declarative wrapper over [testcontainers](https://node.testcontainers.org/) for integration and e2e test setups.
-It provides a zod-validated container config schema, `setup`/`teardown` over `GenericContainer`, an env-based handoff from global setup to test files, Postgres and Redis presets, and vitest glue helpers.
+It provides a zod-validated container config schema, `setup`/`teardown` over `GenericContainer`, a typed Vitest context handoff, Postgres and Redis presets, and Vitest glue helpers.
 
 The package boots real containers, so a running Docker daemon is required wherever the tests run (locally and in CI).
 If your Docker socket is in a non-standard location, set `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE` (and any other testcontainers daemon env) **before** the containers boot - e.g. at the top of your `globalSetup` module. testcontainers reads it when its Docker client first initialises.
@@ -13,7 +13,7 @@ pnpm add -D @opengovsg/starter-kitty-testcontainers testcontainers
 ```
 
 `testcontainers` and `zod` are peer dependencies - you supply the versions your app already uses.
-The vitest glue lives at the `/vitest` subpath and is only needed if you use it.
+Vitest is an optional peer dependency; the Vitest glue lives at the `/vitest` subpath and is only needed if you use it.
 This package is ESM-only (`"type": "module"`); import it from ESM or an ESM-aware bundler / test runner (vitest, Next). There is no CommonJS build.
 
 ### Snapshot builds
@@ -95,7 +95,7 @@ The schema strips unknown keys, so stray config (e.g. testcontainers options thi
 
 ## Vitest globalSetup wiring
 
-Boot the containers once per run in a `globalSetup` file, and read them back inside test files through the env handoff.
+Boot the containers once per run in a `globalSetup` file. The helper publishes their connection information through Vitest's typed provided context.
 
 ```ts
 // tests/global-setup.ts
@@ -116,17 +116,20 @@ export default defineConfig({
 })
 ```
 
-`createGlobalSetup` starts the containers, publishes their info to `process.env.testcontainers`, and returns the teardown callback vitest runs after the suite.
-Inside any test file, `getContainer(name)` reads that info back:
+`createGlobalSetup` starts the containers, calls `project.provide('testcontainers', ...)`, and returns the teardown callback Vitest runs after the suite.
+Inside any test file, read the name-keyed container information with Vitest's `inject`:
 
 ```ts
 // tests/db.test.ts
-import { getContainer, getPostgresConnectionString } from '@opengovsg/starter-kitty-testcontainers'
+import { getPostgresConnectionString } from '@opengovsg/starter-kitty-testcontainers'
+import { inject } from 'vitest'
 
-const databaseUrl = getPostgresConnectionString(getContainer('postgres'))
+const { postgres } = inject('testcontainers')
+const databaseUrl = getPostgresConnectionString(postgres)
 ```
 
-The handoff crosses a process boundary as JSON, so `getContainer` returns container **info** (host, mapped ports, config) - not the live `StartedTestContainer` handle.
+The `/vitest` import in the global setup registers the `testcontainers` key with Vitest's `ProvidedContext`, so `inject('testcontainers')` is fully typed.
+The provided value contains container **info** (host, mapped ports, config) - not the live `StartedTestContainer` handle.
 That is all you need to connect; wiring the actual Prisma / Redis client stays in your app.
 
 ## Redis worker isolation
@@ -142,11 +145,13 @@ export default createGlobalSetup([redis({ databases: 256 })])
 
 ```ts
 // tests/setup.ts (per-file setup, e.g. via test.setupFiles)
-import { getContainer, getRedisUrl } from '@opengovsg/starter-kitty-testcontainers'
+import { getRedisUrl } from '@opengovsg/starter-kitty-testcontainers'
 import { getWorkerDatabaseIndex } from '@opengovsg/starter-kitty-testcontainers/vitest'
 import { createClient } from 'redis'
+import { inject } from 'vitest'
 
-const client = createClient({ url: getRedisUrl(getContainer('redis')) })
+const { redis } = inject('testcontainers')
+const client = createClient({ url: getRedisUrl(redis) })
 await client.connect()
 await client.select(getWorkerDatabaseIndex(256)) // VITEST_POOL_ID % 256
 
@@ -184,7 +189,7 @@ Give each concurrent suite its own host ports so they never collide.
 
 `setup()` returns the started containers, each carrying the live `.container` handle (`StartedTestContainer`).
 Hold onto that return: e2e teardown and any command run **inside** a container - `pg_dump` / `pg_restore` for DB snapshotting, for instance, via the handle's `exec` method - need the live handle.
-`getContainer()` deliberately returns handle-less info (it crossed the globalSetup process boundary as JSON), so it is for the vitest handoff, not for driving in-container commands.
+`inject('testcontainers')` deliberately returns handle-less info, so it is for the Vitest handoff, not for driving in-container commands.
 
 A command running inside the container must reach Postgres/Redis at the container-internal port, not the mapped host port.
 Pass `internal: true` to the connection-string builders for that address:
@@ -201,9 +206,9 @@ const internalUrl = getPostgresConnectionString(pg, { internal: true }) // postg
 
 ## Extending `createGlobalSetup` with your own global setup
 
-Most suites need setup of their own alongside the container boot - running migrations, seeding, injecting extra env, or `ctx.provide`.
+Most suites need setup of their own alongside the container boot - running migrations, seeding, or providing more test context.
 There are three ways to do it, and none require changes to this package.
-The one rule to remember: **anything that reads the handoff (`getContainer`) must run after the containers are up.**
+The one rule to remember: **anything that reads the provided context must run after the containers are up.**
 
 ### 1. Separate globalSetup entry (recommended)
 
@@ -217,10 +222,23 @@ export default defineConfig({
   test: {
     globalSetup: [
       './tests/global-setup.ts', // ours - boots containers
-      './tests/migrate.ts', // yours - reads getContainer, runs migrations
+      './tests/migrate.ts', // yours - reads the provided context, runs migrations
     ],
   },
 })
+```
+
+Later global setup entries receive the same project, so they can read the context directly:
+
+```ts
+// tests/migrate.ts
+import type {} from '@opengovsg/starter-kitty-testcontainers/vitest'
+import type { TestProject } from 'vitest/node'
+
+export default async (project: TestProject) => {
+  const { postgres } = project.getProvidedContext().testcontainers
+  await runMigrations(postgres)
+}
 ```
 
 ### 2. Wrap it
@@ -230,14 +248,16 @@ Compose it in one file and chain your teardown before ours.
 
 ```ts
 // tests/global-setup.ts
-import { getContainer, postgres } from '@opengovsg/starter-kitty-testcontainers'
+import { postgres } from '@opengovsg/starter-kitty-testcontainers'
 import { createGlobalSetup } from '@opengovsg/starter-kitty-testcontainers/vitest'
+import type { TestProject } from 'vitest/node'
 
 const setupContainers = createGlobalSetup([postgres()])
 
-export default async () => {
-  const stopContainers = await setupContainers() // containers up first
-  await runMigrations(getContainer('postgres')) // now safe to read the handoff
+export default async (project: TestProject) => {
+  const stopContainers = await setupContainers(project) // containers up first
+  const { postgres } = project.getProvidedContext().testcontainers
+  await runMigrations(postgres)
   return async () => {
     await stopContainers() // reverse order on the way down
   }
@@ -246,30 +266,24 @@ export default async () => {
 
 ### 3. Primitives
 
-`createGlobalSetup` is just a convenience wrapper over the public primitives.
-Use `setup`, `serializeContainers` / `TESTCONTAINERS_ENV_KEY`, and `teardown` directly to own the whole function.
+`createGlobalSetup` is just a convenience wrapper over the public primitives and Vitest's `provide` API.
+Use `setup`, `project.provide`, and `teardown` directly to own the whole function.
 
 ```ts
-import {
-  postgres,
-  serializeContainers,
-  setup,
-  teardown,
-  TESTCONTAINERS_ENV_KEY,
-} from '@opengovsg/starter-kitty-testcontainers'
+import { postgres, setup, teardown } from '@opengovsg/starter-kitty-testcontainers'
+import type { ProvidedContainers } from '@opengovsg/starter-kitty-testcontainers/vitest'
+import type { TestProject } from 'vitest/node'
 
-export default async () => {
+export default async (project: TestProject) => {
   const containers = await setup([postgres()])
-  process.env[TESTCONTAINERS_ENV_KEY] = serializeContainers(containers)
+  const [{ container: _handle, ...postgresInfo }] = containers
+  project.provide('testcontainers', { postgres: postgresInfo } satisfies ProvidedContainers)
   // ... your own setup here ...
-  return async () => {
-    delete process.env[TESTCONTAINERS_ENV_KEY]
-    await teardown(containers)
-  }
+  return () => teardown(containers)
 }
 ```
 
 ## API reference
 
 The full generated API reference is published to the [starter-kitty docsite](https://opengovsg.github.io/starter-kitty/api/).
-It covers the main entry only; the `/vitest` glue (`createGlobalSetup`, `getWorkerDatabaseIndex`) is documented here and in its source doc comments.
+It covers the main entry only; the `/vitest` glue (`createGlobalSetup`, `ProvidedContainers`, `TESTCONTAINERS_CONTEXT_KEY`, and `getWorkerDatabaseIndex`) is documented here and in its source doc comments.

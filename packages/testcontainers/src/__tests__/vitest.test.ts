@@ -1,6 +1,24 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, inject, it } from 'vitest'
 
-import { getWorkerDatabaseIndex } from '../vitest/index.js'
+import { getWorkerDatabaseIndex, TESTCONTAINERS_CONTEXT_KEY } from '../vitest/index.js'
+
+describe('provided container context', () => {
+  it('injects container information provided by Vitest', () => {
+    const containers = inject(TESTCONTAINERS_CONTEXT_KEY)
+
+    expect(containers.redis).toEqual({
+      name: 'redis',
+      host: '127.0.0.1',
+      ports: new Map([[6379, 32768]]),
+      configuration: {
+        name: 'redis',
+        image: 'redis',
+        ports: [6379],
+        wait: { type: 'PORT' },
+      },
+    })
+  })
+})
 
 describe('getWorkerDatabaseIndex', () => {
   const original = process.env.VITEST_POOL_ID

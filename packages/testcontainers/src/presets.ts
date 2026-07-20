@@ -1,6 +1,5 @@
 import type { ContainerConfiguration } from './config.js'
-import { getMappedPort } from './handoff.js'
-import type { ContainerInformation } from './setup.js'
+import { type ContainerInformation, getMappedPort } from './setup.js'
 
 /**
  * Merge overrides onto a base config: shallow for all keys, but `environment`

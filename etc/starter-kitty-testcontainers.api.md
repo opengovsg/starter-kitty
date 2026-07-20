@@ -47,9 +47,6 @@ export interface ContainerInformation {
 }
 
 // @public
-export const getContainer: (name: string) => ContainerInformation;
-
-// @public
 export const getMappedPort: (container: ContainerInformation, containerPort: number) => number;
 
 // @public
@@ -64,18 +61,12 @@ export const getRedisUrl: (container: ContainerInformation, options?: {
 }) => string;
 
 // @public
-export const parseContainers: (serialized: string) => ContainerInformation[];
-
-// @public
 export const postgres: (overrides?: Partial<ContainerConfiguration>) => ContainerConfiguration;
 
 // @public
 export const redis: (overrides?: Partial<ContainerConfiguration> & {
     databases?: number;
 }) => ContainerConfiguration;
-
-// @public
-export const serializeContainers: (containers: StartedContainerInformation[]) => string;
 
 // @public
 export const setup: (configurations: ContainerConfiguration[], options?: {
@@ -92,9 +83,6 @@ export interface StartedContainerInformation extends ContainerInformation {
 export const teardown: (containers: {
     container: StartedTestContainer;
 }[]) => Promise<void>;
-
-// @public
-export const TESTCONTAINERS_ENV_KEY = "testcontainers";
 
 // @public
 export type WaitStrategy = {
