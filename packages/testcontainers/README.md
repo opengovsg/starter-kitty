@@ -59,15 +59,15 @@ Use this for images that have no preset.
 ```ts
 import { setup, type ContainerConfiguration } from '@opengovsg/starter-kitty-testcontainers'
 
-const mailpit: ContainerConfiguration = {
-  name: 'mailpit',
-  image: 'axllent/mailpit:latest',
-  ports: [1025, 8025],
-  environment: { MP_SMTP_AUTH_ACCEPT_ANY: '1' },
-  wait: { type: 'LOG', message: 'accessible via' },
+const mockpass: ContainerConfiguration = {
+  name: 'mockpass',
+  image: 'opengovsg/mockpass:4.6.8',
+  ports: [5156],
+  environment: { SHOW_LOGIN_PAGE: 'true', MOCKPASS_NRIC: 'S8979373D' },
+  wait: { type: 'LOG', message: 'MockPass listening on' },
 }
 
-await setup([mailpit])
+await setup([mockpass])
 ```
 
 Supported keys: `name` (also the network alias when a network is passed), `image`, `ports`, `environment`, `command`, `extraHosts`, `reuse`, and `wait`.
