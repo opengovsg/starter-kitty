@@ -70,24 +70,35 @@ export const redis = (
  * back from `configuration.environment`; `database` overrides the DB name (the
  * confetti per-run `randomUUID()` pattern).
  *
+ * By default the URL targets the mapped **host** port, for connecting from the
+ * test process. Pass `internal: true` for the container-internal address
+ * (`localhost:5432`) needed by commands run *inside* the container, e.g.
+ * `pg_dump`/`pg_restore` via `StartedTestContainer.exec`.
+ *
  * @public
  */
 export const getPostgresConnectionString = (
   container: ContainerInformation,
-  options: { database?: string } = {},
+  options: { database?: string; internal?: boolean } = {},
 ): string => {
   const env = container.configuration.environment ?? {}
   const user = env.POSTGRES_USER ?? 'root'
   const password = env.POSTGRES_PASSWORD ?? 'root'
   const database = options.database ?? env.POSTGRES_DB ?? 'test'
-  const port = getMappedPort(container, 5432)
-  return `postgresql://${user}:${password}@${container.host}:${port}/${database}?sslmode=disable`
+  const host = options.internal ? 'localhost' : container.host
+  const port = options.internal ? 5432 : getMappedPort(container, 5432)
+  return `postgresql://${user}:${password}@${host}:${port}/${database}?sslmode=disable`
 }
 
 /**
- * Build a `redis://host:port` URL from container info.
+ * Build a `redis://host:port` URL from container info. Defaults to the mapped
+ * host port; pass `internal: true` for the container-internal address
+ * (`localhost:6379`) used by commands run inside the container.
  *
  * @public
  */
-export const getRedisUrl = (container: ContainerInformation): string =>
-  `redis://${container.host}:${getMappedPort(container, 6379)}`
+export const getRedisUrl = (container: ContainerInformation, options: { internal?: boolean } = {}): string => {
+  const host = options.internal ? 'localhost' : container.host
+  const port = options.internal ? 6379 : getMappedPort(container, 6379)
+  return `redis://${host}:${port}`
+}
