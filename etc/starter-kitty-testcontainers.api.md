@@ -55,10 +55,13 @@ export const getMappedPort: (container: ContainerInformation, containerPort: num
 // @public
 export const getPostgresConnectionString: (container: ContainerInformation, options?: {
     database?: string;
+    internal?: boolean;
 }) => string;
 
 // @public
-export const getRedisUrl: (container: ContainerInformation) => string;
+export const getRedisUrl: (container: ContainerInformation, options?: {
+    internal?: boolean;
+}) => string;
 
 // @public
 export const parseContainers: (serialized: string) => ContainerInformation[];

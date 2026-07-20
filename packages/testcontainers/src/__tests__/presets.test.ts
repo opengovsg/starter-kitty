@@ -73,14 +73,29 @@ describe('connection string builders', () => {
     )
   })
 
+  it('targets the internal port for in-container commands', () => {
+    const remoteHost: ContainerInformation = { ...pgInfo, host: '172.17.0.2' }
+    expect(getPostgresConnectionString(remoteHost, { internal: true })).toBe(
+      'postgresql://root:root@localhost:5432/test?sslmode=disable',
+    )
+    // internal still honours the database override
+    expect(getPostgresConnectionString(remoteHost, { internal: true, database: 'run-123' })).toBe(
+      'postgresql://root:root@localhost:5432/run-123?sslmode=disable',
+    )
+  })
+
+  const redisInfo: ContainerInformation = {
+    name: 'redis',
+    host: '172.17.0.3',
+    ports: new Map([[6379, 63790]]),
+    configuration: redis(),
+  }
+
   it('builds a redis url', () => {
-    expect(
-      getRedisUrl({
-        name: 'redis',
-        host: 'localhost',
-        ports: new Map([[6379, 63790]]),
-        configuration: redis(),
-      }),
-    ).toBe('redis://localhost:63790')
+    expect(getRedisUrl({ ...redisInfo, host: 'localhost' })).toBe('redis://localhost:63790')
+  })
+
+  it('targets the internal redis port for in-container commands', () => {
+    expect(getRedisUrl(redisInfo, { internal: true })).toBe('redis://localhost:6379')
   })
 })

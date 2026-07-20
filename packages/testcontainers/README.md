@@ -4,6 +4,7 @@ A declarative wrapper over [testcontainers](https://node.testcontainers.org/) fo
 It provides a zod-validated container config schema, `setup`/`teardown` over `GenericContainer`, an env-based handoff from global setup to test files, Postgres and Redis presets, and vitest glue helpers.
 
 The package boots real containers, so a running Docker daemon is required wherever the tests run (locally and in CI).
+If your Docker socket is in a non-standard location, set `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE` (and any other testcontainers daemon env) **before** the containers boot - e.g. at the top of your `globalSetup` module. testcontainers reads it when its Docker client first initialises.
 
 ## Install
 
@@ -13,6 +14,17 @@ pnpm add -D @opengovsg/starter-kitty-testcontainers testcontainers
 
 `testcontainers` and `zod` are peer dependencies - you supply the versions your app already uses.
 The vitest glue lives at the `/vitest` subpath and is only needed if you use it.
+This package is ESM-only (`"type": "module"`); import it from ESM or an ESM-aware bundler / test runner (vitest, Next). There is no CommonJS build.
+
+### Snapshot builds
+
+Prereleases are published under the `snapshot` dist-tag as `0.0.0-snapshot-<timestamp>` versions, for validating changes before a real release:
+
+```sh
+pnpm add -D @opengovsg/starter-kitty-testcontainers@snapshot
+```
+
+If your repo enforces a pnpm `minimumReleaseAge` install gate, exclude `@opengovsg/*` from it (`minimumReleaseAgeExclude`) - a freshly published snapshot is younger than any age threshold and will otherwise fail to resolve.
 
 ## Quickstart with presets
 
@@ -79,6 +91,7 @@ Supported keys: `name` (also the network alias when a network is passed), `image
 
 `timeout` is the startup timeout in milliseconds (default 60000).
 Validate untrusted config against the exported `containerConfigurationSchema` if you build it dynamically.
+The schema strips unknown keys, so stray config (e.g. testcontainers options this wrapper does not model) is silently dropped rather than erroring.
 
 ## Vitest globalSetup wiring
 
@@ -142,7 +155,7 @@ beforeEach(() => client.flushDb()) // clean slate per test, scoped to this worke
 
 `getWorkerDatabaseIndex(databases = 16)` is a pure `VITEST_POOL_ID % databases`.
 It is deliberately client-agnostic: it hands you the index, and the `select` / `flushDb` calls stay in your app so any Redis client works.
-Keep the `databases` argument in sync with the `redis({ databases })` you started.
+Keep the `databases` argument in sync with the `redis({ databases })` you started - there is no runtime guard that the two match, so define them as one shared constant.
 
 ## E2E fixed-port pattern
 
@@ -166,6 +179,25 @@ export const startContainers = () =>
 Point the app's `DATABASE_URL` / cache config at those fixed ports.
 Do not call `teardown` here: with `reuse: true`, Ryuk (testcontainers' reaper) stops the containers when the process exits.
 Give each concurrent suite its own host ports so they never collide.
+
+### Holding the container handle for in-container commands
+
+`setup()` returns the started containers, each carrying the live `.container` handle (`StartedTestContainer`).
+Hold onto that return: e2e teardown and any command run **inside** a container - `pg_dump` / `pg_restore` for DB snapshotting, for instance, via the handle's `exec` method - need the live handle.
+`getContainer()` deliberately returns handle-less info (it crossed the globalSetup process boundary as JSON), so it is for the vitest handoff, not for driving in-container commands.
+
+A command running inside the container must reach Postgres/Redis at the container-internal port, not the mapped host port.
+Pass `internal: true` to the connection-string builders for that address:
+
+```ts
+import { getPostgresConnectionString } from '@opengovsg/starter-kitty-testcontainers'
+
+const [pg] = await startContainers()
+const internalUrl = getPostgresConnectionString(pg, { internal: true }) // postgresql://root:root@localhost:5432/test?sslmode=disable
+// then run pg_dump inside the container via pg.container's argv-array exec, e.g. ['pg_dump', internalUrl, '-f', '/tmp/snapshot.sql']
+```
+
+`getRedisUrl(container, { internal: true })` does the same for Redis (`redis://localhost:6379`).
 
 ## Extending `createGlobalSetup` with your own global setup
 
