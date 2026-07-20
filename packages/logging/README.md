@@ -39,8 +39,15 @@ With dd-trace running, log injection (`DD_LOGS_INJECTION`, on by default)
 stamps `dd.trace_id` from the active span onto every pino line - resolved per
 line, so it also works in jobs, queue consumers, and cron - and Datadog
 correlates logs with traces on it natively.
-Just initialise dd-trace before pino loads (ESM apps:
-`node --import dd-trace/register.js`).
+Just initialise dd-trace before pino loads. On Node.js 20.6 and later, the
+one-step ESM preload is:
+
+```sh
+node --import dd-trace/initialize.mjs app.js
+```
+
+This both initialises the tracer and registers the ESM loader before this
+package imports pino.
 
 The optional per-logger `traceId` still binds a root `trace_id` for non-APM
 sinks that need one under this schema's own key.
