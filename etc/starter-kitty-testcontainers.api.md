@@ -4,4 +4,107 @@
 
 ```ts
 
+import type { StartedNetwork } from 'testcontainers';
+import type { StartedTestContainer } from 'testcontainers';
+import { z } from 'zod';
+
+// @public
+export interface ContainerConfiguration {
+    // (undocumented)
+    command?: string[];
+    // (undocumented)
+    environment?: Record<string, string>;
+    // (undocumented)
+    extraHosts?: {
+        host: string;
+        ipAddress: string;
+    }[];
+    // (undocumented)
+    image: string;
+    name: string;
+    ports?: (number | {
+        container: number;
+        host: number;
+    })[];
+    reuse?: boolean;
+    // (undocumented)
+    wait?: WaitStrategy;
+}
+
+// @public
+export const containerConfigurationSchema: z.ZodType<ContainerConfiguration>;
+
+// @public
+export interface ContainerInformation {
+    // (undocumented)
+    configuration: ContainerConfiguration;
+    // (undocumented)
+    host: string;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    ports: Map<number, number>;
+}
+
+// @public
+export const getContainer: (name: string) => ContainerInformation;
+
+// @public
+export const getMappedPort: (container: ContainerInformation, containerPort: number) => number;
+
+// @public
+export const getPostgresConnectionString: (container: ContainerInformation, options?: {
+    database?: string;
+}) => string;
+
+// @public
+export const getRedisUrl: (container: ContainerInformation) => string;
+
+// @public
+export const parseContainers: (serialized: string) => ContainerInformation[];
+
+// @public
+export const postgres: (overrides?: Partial<ContainerConfiguration>) => ContainerConfiguration;
+
+// @public
+export const redis: (overrides?: Partial<ContainerConfiguration> & {
+    databases?: number;
+}) => ContainerConfiguration;
+
+// @public
+export const serializeContainers: (containers: StartedContainerInformation[]) => string;
+
+// @public
+export const setup: (configurations: ContainerConfiguration[], options?: {
+    network?: StartedNetwork;
+}) => Promise<StartedContainerInformation[]>;
+
+// @public
+export interface StartedContainerInformation extends ContainerInformation {
+    // (undocumented)
+    container: StartedTestContainer;
+}
+
+// @public
+export const teardown: (containers: {
+    container: StartedTestContainer;
+}[]) => Promise<void>;
+
+// @public
+export const TESTCONTAINERS_ENV_KEY = "testcontainers";
+
+// @public
+export type WaitStrategy = {
+    type: 'PORT';
+    timeout?: number;
+} | {
+    type: 'LOG';
+    message: string;
+    times?: number;
+    timeout?: number;
+} | {
+    type: 'HEALTHCHECK';
+    timeout?: number;
+};
+
 ```
