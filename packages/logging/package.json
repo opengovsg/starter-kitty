@@ -45,6 +45,7 @@
     "@swc/core": "^1.6.13",
     "@types/node": "^20",
     "typescript": "^5.4.5",
+    "vite": "^7.3.5",
     "vitest": "^4.1.0"
   },
   "prettier": "@opengovsg/prettier-config-starter-kitty"
