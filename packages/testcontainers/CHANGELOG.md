@@ -1,5 +1,11 @@
 # @opengovsg/starter-kitty-testcontainers
 
+## 0.2.0
+
+### Minor Changes
+
+- [#89](https://github.com/opengovsg/starter-kitty/pull/89) [`71ff527`](https://github.com/opengovsg/starter-kitty/commit/71ff5279bb8a70aad7db3d4b5ebbf883a4192826) Thanks [@dextertanyj](https://github.com/dextertanyj)! - Replace the environment-variable Vitest handoff with typed `provide` and `inject` context. Container information is now available from `inject('testcontainers')`, keyed by container name; `getContainer`, the serialization helpers, and `TESTCONTAINERS_ENV_KEY` have been removed.
+
 ## 0.1.0
 
 ### Minor Changes
