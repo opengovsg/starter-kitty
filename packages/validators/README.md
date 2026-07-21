@@ -102,7 +102,7 @@ Not using zod for this input? `new WebhookUrlValidator().validate(rawUrl)` does 
 Use `WebhookUrlValidator.fetch` to actually deliver, every time an event fires - not just once at registration. It re-runs the sync checks, resolves the hostname, validates every resolved IP (catching DNS rebinding: a hostname that resolved to a safe address when saved but an internal one now, or that has a mix of safe and unsafe A/AAAA records), and only then makes the request, rejecting redirects instead of following them:
 
 ```ts
-import { WebhookUrlValidator, WebhookUrlValidationError } from '@opengovsg/starter-kitty-validators/webhook-url'
+import { WebhookUrlValidator } from '@opengovsg/starter-kitty-validators/webhook-url'
 
 const webhookValidator = new WebhookUrlValidator()
 
