@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { webhookUrlSchema, WebhookUrlValidator } from '@/index'
-import { WebhookUrlValidationError } from '@/webhook-url/errors'
+import { webhookUrlSchema, WebhookUrlValidator } from '@/server/webhook-url'
+import { WebhookUrlValidationError } from '@/server/webhook-url/errors'
 
 describe('webhookUrlSchema', () => {
   it('should allow a normal public https URL', () => {

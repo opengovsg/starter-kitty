@@ -1,6 +1,6 @@
 import net from 'node:net'
 
-import { BLOCKED_IPV4_CIDRS, BLOCKED_IPV6_CIDRS } from '@/webhook-url/consts'
+import { BLOCKED_IPV4_CIDRS, BLOCKED_IPV6_CIDRS } from '@/server/webhook-url/consts'
 
 const ipv4ToInt = (ip: string): number => ip.split('.').reduce((acc, octet) => (acc << 8) + Number(octet), 0) >>> 0
 

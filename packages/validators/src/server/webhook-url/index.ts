@@ -1,9 +1,9 @@
 import { z } from 'zod/v4'
 import { fromError } from 'zod-validation-error'
 
-import { defaultDnsLookup, DnsLookupFn, resolveAndValidateHost } from '@/webhook-url/dns'
-import { WebhookUrlValidationError } from '@/webhook-url/errors'
-import { WebhookUrlValidatorOptions } from '@/webhook-url/options'
+import { defaultDnsLookup, DnsLookupFn, resolveAndValidateHost } from '@/server/webhook-url/dns'
+import { WebhookUrlValidationError } from '@/server/webhook-url/errors'
+import { WebhookUrlValidatorOptions } from '@/server/webhook-url/options'
 
 /**
  * Schema for webhook destination URLs, for immediate client/server feedback (e.g. in a form or API
@@ -120,5 +120,5 @@ export class WebhookUrlValidator {
   }
 }
 
-export type * from '@/webhook-url/errors'
-export type { WebhookUrlValidatorOptions } from '@/webhook-url/options'
+export type * from '@/server/webhook-url/errors'
+export type { WebhookUrlValidatorOptions } from '@/server/webhook-url/options'
