@@ -128,7 +128,7 @@ Built on zod's `z.httpUrl()`, this only accepts `http`/`https` URLs with a real 
 Sending a webhook, every time an event fires - not just once at registration:
 
 ```javascript
-import { WebhookUrlValidator } from '@opengovsg/starter-kitty-validators/webhook-url'
+import { WebhookUrlValidator } from '@opengovsg/starter-kitty-validators/server/webhook-url'
 
 const webhookValidator = new WebhookUrlValidator()
 

@@ -76,18 +76,4 @@ export class WebhookUrlValidationError extends Error {
     constructor(message: string);
 }
 
-// @public
-export class WebhookUrlValidator {
-    constructor(options?: WebhookUrlValidatorOptions);
-    fetch(url: string | URL, init?: RequestInit): Promise<Response>;
-    validate(url: string | URL): URL;
-    validateAsync(url: string | URL): Promise<URL>;
-}
-
-// @public
-export interface WebhookUrlValidatorOptions {
-    // Warning: (ae-forgotten-export) The symbol "DnsLookupFn" needs to be exported by the entry point index.d.ts
-    lookup?: DnsLookupFn;
-}
-
 ```

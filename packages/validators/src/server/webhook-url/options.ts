@@ -1,4 +1,4 @@
-import { DnsLookupFn } from '@/webhook-url/dns'
+import { DnsLookupFn } from '@/server/webhook-url/dns'
 
 /**
  * The options to use for webhook URL validation.
