@@ -1,7 +1,7 @@
 # @opengovsg/starter-kitty-testcontainers
 
 A declarative wrapper over [testcontainers](https://node.testcontainers.org/) for integration and e2e test setups.
-It provides a zod-validated container config schema, `setup`/`teardown` over `GenericContainer`, an env-based handoff from global setup to test files, Postgres and Redis presets, and vitest glue helpers.
+It provides a zod-validated container config schema, `setup`/`teardown` over `GenericContainer`, a typed Vitest context handoff, Postgres and Redis presets, and Vitest glue helpers.
 
 A running Docker daemon is required wherever the tests run (locally and in CI).
 
@@ -11,8 +11,8 @@ A running Docker daemon is required wherever the tests run (locally and in CI).
 npm i --save-dev @opengovsg/starter-kitty-testcontainers testcontainers
 ```
 
-`testcontainers` and `zod` are peer dependencies.
-The vitest glue lives at the `/vitest` subpath.
+`testcontainers` and `zod` are peer dependencies. Vitest is an optional peer dependency.
+The Vitest glue lives at the `/vitest` subpath.
 
 ## Quickstart with presets
 
@@ -40,7 +40,7 @@ Presets take overrides, and `environment` merges per-key: `postgres({ image: 'po
 
 ## Vitest globalSetup
 
-Boot the containers once per run, and read them back in test files through the env handoff.
+Boot the containers once per run, and read their connection information back through Vitest's typed provided context.
 
 ```ts
 // tests/global-setup.ts
@@ -61,12 +61,14 @@ export default defineConfig({
 
 ```ts
 // tests/db.test.ts
-import { getContainer, getPostgresConnectionString } from '@opengovsg/starter-kitty-testcontainers'
+import { getPostgresConnectionString } from '@opengovsg/starter-kitty-testcontainers'
+import { inject } from 'vitest'
 
-const databaseUrl = getPostgresConnectionString(getContainer('postgres'))
+const { postgres } = inject('testcontainers')
+const databaseUrl = getPostgresConnectionString(postgres)
 ```
 
-`getContainer()` returns handle-less container info (it crossed the globalSetup process boundary as JSON), which is all you need to connect.
+`createGlobalSetup` publishes a name-keyed record with `project.provide('testcontainers', ...)`; `inject('testcontainers')` returns that handle-less container info, which is all you need to connect.
 Wiring the actual Prisma / Redis client stays in your app.
 
 ## Redis worker isolation
@@ -79,9 +81,14 @@ export default createGlobalSetup([redis({ databases: 256 })])
 ```
 
 ```ts
-import { getContainer, getRedisUrl } from '@opengovsg/starter-kitty-testcontainers'
+import { getRedisUrl } from '@opengovsg/starter-kitty-testcontainers'
 import { getWorkerDatabaseIndex } from '@opengovsg/starter-kitty-testcontainers/vitest'
+import { createClient } from 'redis'
+import { inject } from 'vitest'
 
+const { redis } = inject('testcontainers')
+const client = createClient({ url: getRedisUrl(redis) })
+await client.connect()
 await client.select(getWorkerDatabaseIndex(256)) // VITEST_POOL_ID % 256
 ```
 

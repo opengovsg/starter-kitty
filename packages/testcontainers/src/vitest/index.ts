@@ -1,21 +1,48 @@
 /**
  * Vitest glue for `@opengovsg/starter-kitty-testcontainers`: a globalSetup
- * factory and per-worker Redis logical-DB isolation helper.
+ * factory, typed provided context, and per-worker Redis logical-DB isolation
+ * helper.
  *
  * @packageDocumentation
  */
 
 import type { StartedNetwork } from 'testcontainers'
+import type {} from 'vitest'
+import type { TestProject } from 'vitest/node'
 
 import type { ContainerConfiguration } from '../config.js'
-import { serializeContainers, TESTCONTAINERS_ENV_KEY } from '../handoff.js'
-import { setup, teardown } from '../setup.js'
+import { type ContainerInformation, setup, type StartedContainerInformation, teardown } from '../setup.js'
+
+/**
+ * The Vitest provided-context key containing started container information.
+ *
+ * @public
+ */
+export const TESTCONTAINERS_CONTEXT_KEY = 'testcontainers'
+
+/**
+ * Handle-less container information keyed by configuration name.
+ *
+ * @public
+ */
+export type ProvidedContainers = Record<string, ContainerInformation>
+
+declare module 'vitest' {
+  export interface ProvidedContext {
+    [TESTCONTAINERS_CONTEXT_KEY]: ProvidedContainers
+  }
+}
+
+const toProvidedContainers = (containers: StartedContainerInformation[]): ProvidedContainers =>
+  Object.fromEntries(
+    containers.map(({ name, host, ports, configuration }) => [name, { name, host, ports, configuration }]),
+  )
 
 /**
  * Build a vitest `globalSetup` default export. The returned function starts the
- * given containers, publishes their info to `process.env[TESTCONTAINERS_ENV_KEY]`
- * for test files to read back via `getContainer`, and returns a teardown
- * callback vitest runs after the suite.
+ * given containers, publishes their handle-less info with Vitest's `provide`,
+ * and returns a teardown callback Vitest runs after the suite. Test files can
+ * read the information with `inject('testcontainers')`.
  *
  * @example
  * ```ts
@@ -30,13 +57,10 @@ import { setup, teardown } from '../setup.js'
  */
 export const createGlobalSetup =
   (configurations: ContainerConfiguration[], options: { network?: StartedNetwork } = {}) =>
-  async (): Promise<() => Promise<void>> => {
+  async (project: TestProject): Promise<() => Promise<void>> => {
     const containers = await setup(configurations, options)
-    process.env[TESTCONTAINERS_ENV_KEY] = serializeContainers(containers)
-    return async () => {
-      delete process.env[TESTCONTAINERS_ENV_KEY]
-      await teardown(containers)
-    }
+    project.provide(TESTCONTAINERS_CONTEXT_KEY, toProvidedContainers(containers))
+    return () => teardown(containers)
   }
 
 /**

@@ -4,9 +4,8 @@ import { GenericContainer, Wait } from 'testcontainers'
 import type { ContainerConfiguration } from './config.js'
 
 /**
- * The serializable slice of a started container — what test files see after
- * the env handoff. `ports` maps each exposed container port to its mapped host
- * port.
+ * The serializable slice of a started container. `ports` maps each exposed
+ * container port to its mapped host port.
  *
  * @public
  */
@@ -24,6 +23,19 @@ export interface ContainerInformation {
  */
 export interface StartedContainerInformation extends ContainerInformation {
   container: StartedTestContainer
+}
+
+/**
+ * Return the mapped host port for a container port. Throws if unmapped.
+ *
+ * @public
+ */
+export const getMappedPort = (container: ContainerInformation, containerPort: number): number => {
+  const mapped = container.ports.get(containerPort)
+  if (mapped === undefined) {
+    throw new Error(`Container "${container.name}" has no mapped port for ${containerPort}`)
+  }
+  return mapped
 }
 
 const DEFAULT_STARTUP_TIMEOUT_MS = 60 * 1000

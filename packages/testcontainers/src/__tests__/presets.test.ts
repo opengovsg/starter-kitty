@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { getPostgresConnectionString, getRedisUrl, postgres, redis } from '../presets.js'
-import type { ContainerInformation } from '../setup.js'
+import { type ContainerInformation, getMappedPort } from '../setup.js'
 
 describe('postgres preset', () => {
   it('has sensible defaults', () => {
@@ -63,6 +63,14 @@ const pgInfo: ContainerInformation = {
 }
 
 describe('connection string builders', () => {
+  it('returns a mapped host port', () => {
+    expect(getMappedPort(pgInfo, 5432)).toBe(54321)
+  })
+
+  it('throws for an unmapped port', () => {
+    expect(() => getMappedPort(pgInfo, 6379)).toThrow(/no mapped port/)
+  })
+
   it('builds a Postgres connection string from env creds', () => {
     expect(getPostgresConnectionString(pgInfo)).toBe('postgresql://root:root@localhost:54321/test?sslmode=disable')
   })
