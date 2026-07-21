@@ -110,7 +110,7 @@ export const callbackUrlSchema = z
 Validating the URL when it's saved as config, so an obviously unsafe URL never reaches storage:
 
 ```javascript
-import { webhookUrlSchema } from '@opengovsg/starter-kitty-validators/server/webhook-url'
+import { webhookUrlSchema } from '@opengovsg/starter-kitty-validators/webhook-url'
 
 const saveWebhookConfigSchema = z.object({
   url: webhookUrlSchema,

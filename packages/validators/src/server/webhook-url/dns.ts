@@ -1,7 +1,7 @@
 import { lookup as nodeLookup } from 'node:dns/promises'
 
-import { WebhookUrlValidationError } from '@/server/webhook-url/errors'
 import { isBlockedIp } from '@/server/webhook-url/ip-utils'
+import { WebhookUrlValidationError } from '@/webhook-url/errors'
 
 export interface DnsLookupResult {
   address: string

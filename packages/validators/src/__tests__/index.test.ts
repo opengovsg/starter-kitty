@@ -13,7 +13,7 @@ describe('package root', () => {
     const rootExports = await import('@/index')
 
     expect(rootExports).toHaveProperty('createUrlSchema')
-    expect(rootExports).not.toHaveProperty('webhookUrlSchema')
+    expect(rootExports).toHaveProperty('webhookUrlSchema')
     expect(rootExports).not.toHaveProperty('WebhookUrlValidator')
   })
 })

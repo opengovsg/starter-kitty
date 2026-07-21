@@ -73,14 +73,14 @@ window.location.pathname = validator.parsePathname(redirectUrl, '/home') // fall
 
 `WebhookUrlValidator` is the **inverse** of `UrlValidator`: instead of allowlisting known-safe hosts for redirects within your own app, it **blocklists** private/internal network targets for arbitrary, user-supplied URLs that your server will make outbound requests to - the shape of the problem when a user registers a webhook destination. There are two places to use it: when the URL is first saved, and every time you actually send to it.
 
-It lives under the `/server/webhook-url` subpath (not `/webhook-url`) because it resolves DNS with `node:dns/promises` - server-only code that a browser or edge bundle can't include. Only import it from server-side code.
+`webhookUrlSchema` is plain sync validation and safe to use on the client (e.g. immediate form feedback) as well as the server. `WebhookUrlValidator` lives under the separate `/server/webhook-url` subpath because it resolves DNS with `node:dns/promises` - server-only code that a browser or edge bundle can't include. Only import `WebhookUrlValidator` from server-side code.
 
 ### 1. Validating the URL when it's saved as config
 
 Use `webhookUrlSchema` wherever a webhook URL is taken as input, so a request to save an obviously unsafe URL is rejected before it ever reaches storage:
 
 ```ts
-import { webhookUrlSchema } from '@opengovsg/starter-kitty-validators/server/webhook-url'
+import { webhookUrlSchema } from '@opengovsg/starter-kitty-validators/webhook-url'
 
 const saveWebhookConfigSchema = z.object({
   url: webhookUrlSchema,
@@ -97,7 +97,7 @@ Built on zod's `z.httpUrl()`, this only accepts `http`/`https` URLs with a real 
 
 It cannot catch a hostname that merely _resolves_ to a private address (e.g. `metadata.google.internal`, which is a syntactically valid domain but resolves to the `169.254.169.254` cloud metadata address) - that's what step 2 is for, which is why saving alone is not the full protection.
 
-Not using zod for this input? `new WebhookUrlValidator().validate(rawUrl)` does the same check directly, returning a `URL` or throwing `WebhookUrlValidationError`.
+Not using zod for this input, but still on the server? `new WebhookUrlValidator().validate(rawUrl)` does the same check directly, returning a `URL` or throwing `WebhookUrlValidationError`.
 
 ### 2. Sending a webhook
 

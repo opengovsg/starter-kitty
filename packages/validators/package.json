@@ -20,6 +20,10 @@
       "types": "./dist/email/index.d.ts",
       "default": "./dist/email/index.js"
     },
+    "./webhook-url": {
+      "types": "./dist/webhook-url/index.d.ts",
+      "default": "./dist/webhook-url/index.js"
+    },
     "./server/webhook-url": {
       "types": "./dist/server/webhook-url/index.d.ts",
       "default": "./dist/server/webhook-url/index.js"
@@ -38,6 +42,9 @@
       ],
       "email": [
         "./dist/email/index.d.ts"
+      ],
+      "webhook-url": [
+        "./dist/webhook-url/index.d.ts"
       ],
       "server/webhook-url": [
         "./dist/server/webhook-url/index.d.ts"

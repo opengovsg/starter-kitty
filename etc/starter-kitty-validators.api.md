@@ -6,6 +6,7 @@
 
 /// <reference types="node" />
 
+import { URL as URL_2 } from 'url';
 import { z } from 'zod/v4';
 
 // @public
@@ -65,6 +66,14 @@ export interface UrlValidatorOptions {
     baseOrigin?: string;
     // Warning: (ae-forgotten-export) The symbol "UrlValidatorWhitelist" needs to be exported by the entry point index.d.ts
     whitelist?: UrlValidatorWhitelist;
+}
+
+// @public
+export const webhookUrlSchema: z.ZodPipe<z.ZodURL, z.ZodTransform<URL_2, string>>;
+
+// @public
+export class WebhookUrlValidationError extends Error {
+    constructor(message: string);
 }
 
 ```
