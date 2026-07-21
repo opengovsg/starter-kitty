@@ -1,5 +1,11 @@
 # @opengovsg/starter-kitty-logging
 
+## 0.5.1
+
+### Patch Changes
+
+- [#90](https://github.com/opengovsg/starter-kitty/pull/90) [`fa61d99`](https://github.com/opengovsg/starter-kitty/commit/fa61d9917399b0fa4e9c83de6402c95b9721eb12) Thanks [@dextertanyj](https://github.com/dextertanyj)! - Instantiate Pino through its default export so dd-trace log injection works in ESM applications.
+
 ## 0.5.0
 
 ### Minor Changes
