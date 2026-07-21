@@ -19,6 +19,10 @@
     "./email": {
       "types": "./dist/email/index.d.ts",
       "default": "./dist/email/index.js"
+    },
+    "./webhook-url": {
+      "types": "./dist/webhook-url/index.d.ts",
+      "default": "./dist/webhook-url/index.js"
     }
   },
   "typesVersions": {
@@ -34,6 +38,9 @@
       ],
       "email": [
         "./dist/email/index.d.ts"
+      ],
+      "webhook-url": [
+        "./dist/webhook-url/index.d.ts"
       ]
     }
   },
