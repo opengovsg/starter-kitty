@@ -1,17 +1,17 @@
 import { z } from 'zod/v4'
 import { fromError } from 'zod-validation-error'
 
+import { defaultDnsLookup, DnsLookupFn, resolveAndValidateHost } from '@/webhook-url/dns'
 import { WebhookUrlValidationError } from '@/webhook-url/errors'
 import { stripBrackets } from '@/webhook-url/ip-utils'
 import { parseOptions, WebhookUrlValidatorOptions } from '@/webhook-url/options'
-import { assertResolvedIpsAreSafe as assertHostnameResolvesSafely } from '@/webhook-url/resolved-ips'
 import { toSchema } from '@/webhook-url/schema'
 
 /**
  * Create a schema that validates user-supplied webhook destination URLs. Rejects obvious SSRF
  * targets: literal private/loopback/link-local/reserved IPs, `localhost`, and known cloud metadata
- * hostnames. Does not perform DNS resolution - use {@link WebhookUrlValidator.assertResolvedIpsAreSafe}
- * for that.
+ * hostnames. Does not perform DNS resolution - use {@link WebhookUrlValidator.validateAsync} for
+ * that.
  *
  * @param options - The options to use for validation
  * @returns A Zod schema that validates webhook URLs.
@@ -36,19 +36,16 @@ export const webhookUrlSchema = createWebhookUrlSchema()
  * redirects within your own app, it blocklists private/internal network targets for arbitrary,
  * user-supplied URLs that your server will make outbound requests to.
  *
- * This class performs no DNS resolution or other network I/O itself. At webhook save time and
- * again immediately before every delivery:
- * 1. Call {@link WebhookUrlValidator.validate} for the sync checks.
- * 2. Resolve the hostname yourself - e.g. `dns.lookup(url.hostname, { all: true })`, or the custom
- *    `lookup` hook most HTTP clients accept - and pass the resolved addresses to
- *    {@link WebhookUrlValidator.assertResolvedIpsAreSafe}.
- * 3. Make the outbound request with `redirect: 'error'` (or equivalent) so a redirect response is
- *    never followed to an unvalidated target.
+ * DNS resolution (read-only, no data ever leaves your server) happens inside this class so that
+ * checking resolved IPs against the blocklist is a single call. Making the actual outbound webhook
+ * request - the part that sends your data to a third party - stays your app's responsibility:
+ * do it with `redirect: 'error'` so a redirect response is never followed to an unvalidated target.
  *
  * @public
  */
 export class WebhookUrlValidator {
   private schema: z.ZodType<URL, string>
+  private lookup: DnsLookupFn
 
   /**
    * Creates a new WebhookUrlValidator instance.
@@ -59,6 +56,7 @@ export class WebhookUrlValidator {
    */
   constructor(options: WebhookUrlValidatorOptions = {}) {
     this.schema = createWebhookUrlSchema(options)
+    this.lookup = options.lookup ?? defaultDnsLookup
   }
 
   /**
@@ -79,18 +77,18 @@ export class WebhookUrlValidator {
   }
 
   /**
-   * Validates a webhook URL and the IP addresses your own DNS resolution returned for its
-   * hostname, to guard against DNS rebinding (a hostname that resolves to a safe IP at save time
-   * but an internal IP at delivery time, or that has both safe and unsafe A/AAAA records).
+   * Fully validates a webhook URL for use at webhook save time and again immediately before every
+   * delivery: runs the sync checks, then resolves the hostname and validates every resolved IP
+   * address, to guard against DNS rebinding.
    *
-   * @throws {@link WebhookUrlValidationError} if the URL fails the sync checks, or if any resolved
-   * address falls within a blocked range.
+   * @throws {@link WebhookUrlValidationError} if the URL is invalid, an obvious blocked target, or
+   * resolves to a blocked network address.
    *
    * @public
    */
-  assertResolvedIpsAreSafe(url: string | URL, resolvedIps: readonly string[]): URL {
+  async validateAsync(url: string | URL): Promise<URL> {
     const parsed = this.validate(url)
-    assertHostnameResolvesSafely(stripBrackets(parsed.hostname), resolvedIps)
+    await resolveAndValidateHost(stripBrackets(parsed.hostname), this.lookup)
     return parsed
   }
 }

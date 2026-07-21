@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { createWebhookUrlSchema, webhookUrlSchema, WebhookUrlValidator } from '@/index'
 import { WebhookUrlValidationError } from '@/webhook-url/errors'
@@ -77,35 +77,51 @@ describe('WebhookUrlValidator.validate', () => {
   })
 })
 
-describe('WebhookUrlValidator.assertResolvedIpsAreSafe', () => {
-  const validator = new WebhookUrlValidator()
+describe('WebhookUrlValidator.validateAsync', () => {
+  it('should resolve and pass through a hostname that only resolves to public IPs', async () => {
+    const lookup = vi.fn().mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
+    const validator = new WebhookUrlValidator({ lookup })
 
-  it('should pass through a hostname whose resolved addresses are all public', () => {
-    const url = validator.assertResolvedIpsAreSafe('https://example.com/hooks', ['93.184.216.34'])
+    const url = await validator.validateAsync('https://example.com/hooks')
     expect(url).toBeInstanceOf(URL)
+    expect(lookup).toHaveBeenCalledWith('example.com')
   })
 
-  it('should reject a hostname that resolves to a private IP (DNS rebinding)', () => {
-    expect(() => validator.assertResolvedIpsAreSafe('https://sneaky-webhook.example.com/hooks', ['10.0.0.5'])).toThrow(
+  it('should reject a hostname that resolves to a private IP (DNS rebinding)', async () => {
+    const lookup = vi.fn().mockResolvedValue([{ address: '10.0.0.5', family: 4 }])
+    const validator = new WebhookUrlValidator({ lookup })
+
+    await expect(validator.validateAsync('https://sneaky-webhook.example.com/hooks')).rejects.toThrow(
       WebhookUrlValidationError,
     )
   })
 
-  it('should reject if any of multiple resolved IPs is blocked', () => {
-    expect(() =>
-      validator.assertResolvedIpsAreSafe('https://multi-a-record.example.com', ['93.184.216.34', '169.254.169.254']),
-    ).toThrow(WebhookUrlValidationError)
-  })
+  it('should reject if any of multiple resolved IPs is blocked', async () => {
+    const lookup = vi.fn().mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+      { address: '169.254.169.254', family: 4 },
+    ])
+    const validator = new WebhookUrlValidator({ lookup })
 
-  it('should reject if no resolved IPs are given', () => {
-    expect(() => validator.assertResolvedIpsAreSafe('https://does-not-resolve.example.com', [])).toThrow(
+    await expect(validator.validateAsync('https://multi-a-record.example.com')).rejects.toThrow(
       WebhookUrlValidationError,
     )
   })
 
-  it('should reject an obvious blocked target without needing resolved IPs', () => {
-    expect(() => validator.assertResolvedIpsAreSafe('http://localhost/hooks', ['93.184.216.34'])).toThrow(
+  it('should reject if DNS resolution fails', async () => {
+    const lookup = vi.fn().mockRejectedValue(new Error('ENOTFOUND'))
+    const validator = new WebhookUrlValidator({ lookup })
+
+    await expect(validator.validateAsync('https://does-not-resolve.example.com')).rejects.toThrow(
       WebhookUrlValidationError,
     )
+  })
+
+  it('should reject an obvious blocked target before even attempting DNS resolution', async () => {
+    const lookup = vi.fn()
+    const validator = new WebhookUrlValidator({ lookup })
+
+    await expect(validator.validateAsync('http://localhost/hooks')).rejects.toThrow(WebhookUrlValidationError)
+    expect(lookup).not.toHaveBeenCalled()
   })
 })

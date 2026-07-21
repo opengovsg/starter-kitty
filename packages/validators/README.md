@@ -73,7 +73,7 @@ window.location.pathname = validator.parsePathname(redirectUrl, '/home') // fall
 
 `WebhookUrlValidator` is the **inverse** of `UrlValidator`: instead of allowlisting known-safe hosts for redirects within your own app, it **blocklists** private/internal network targets for arbitrary, user-supplied URLs that your server will make outbound requests to - the shape of the problem when a user registers a webhook destination.
 
-This package performs **no DNS resolution or other network I/O of its own**. It only classifies IP addresses and hostnames. Resolving hostnames and making the actual outbound request are your app's responsibility - this keeps a validation library from being a place that reaches out to the network.
+DNS resolution (read-only - nothing ever leaves your server) happens inside the validator, so checking a hostname's resolved IPs is a single call. Making the actual outbound webhook request - the part that sends your data to a third party - stays your app's responsibility.
 
 ### 1. Sync validation, for immediate feedback
 
@@ -90,24 +90,16 @@ const createWebhookSchema = z.object({
 
 This rejects non-`http(s)` protocols, `localhost` (and `*.localhost`), known cloud metadata hostnames, and literal private/loopback/link-local/reserved IP addresses - including obfuscated forms (decimal/octal/hex-encoded IPv4, IPv4-mapped IPv6). It cannot catch a hostname that merely _resolves_ to a private address, since it does no DNS resolution.
 
-### 2. DNS-rebinding check, at save time and again before every delivery
+### 2. Full validation, at save time and again before every delivery
 
-A hostname can resolve to a safe address when you save the webhook and an internal address when you deliver to it later (DNS rebinding), or resolve to a mix of safe and unsafe addresses across its A/AAAA records. Guard against this by resolving the hostname yourself and handing the results to `assertResolvedIpsAreSafe`:
+A hostname can resolve to a safe address when you save the webhook and an internal address when you deliver to it later (DNS rebinding), or resolve to a mix of safe and unsafe addresses across its A/AAAA records. `validateAsync` runs the sync checks, then resolves the hostname and validates every resolved IP:
 
 ```ts
 import { WebhookUrlValidator, WebhookUrlValidationError } from '@opengovsg/starter-kitty-validators/webhook-url'
-import { lookup } from 'node:dns/promises'
 
 const webhookValidator = new WebhookUrlValidator()
 
-const assertWebhookUrlIsSafe = async (rawUrl: string): Promise<URL> => {
-  const hostname = new URL(rawUrl).hostname.replace(/^\[|\]$/g, '') // dns.lookup rejects bracketed IPv6 literals
-  const resolved = await lookup(hostname, { all: true })
-  return webhookValidator.assertResolvedIpsAreSafe(
-    rawUrl,
-    resolved.map(r => r.address),
-  )
-}
+const validatedUrl = await webhookValidator.validateAsync(rawUrl) // throws WebhookUrlValidationError if unsafe
 ```
 
 Run this **at save time** (when the user registers or updates the webhook URL) and **immediately before every delivery** - re-resolving on each delivery is what catches rebinding, since the check at save time alone would miss a hostname whose records change afterwards.
