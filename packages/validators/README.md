@@ -131,7 +131,18 @@ There's no separate "validate at save time" step to remember here: `fetch` alway
 
 Catch `WebhookUrlValidationError` by checking `error.name === 'WebhookUrlValidationError'` rather than `instanceof` - the class is exported as a type only (matching `UrlValidationError` above), so `instanceof` doesn't work when importing from the public entry point.
 
-If you need a different HTTP client than `fetch` (e.g. for retries or streaming), use `WebhookUrlValidator.validateAsync(url)` to get the same validation and wire up redirect rejection yourself - but prefer `fetch` by default, since it can't be used without also getting the redirect protection.
+### Using a different HTTP client
+
+Prefer `WebhookUrlValidator.fetch` by default - it's the only path that can't be used without also getting the redirect protection. If you need a different client (retries, streaming, an existing wrapper with its own interceptors), use `validateAsync` to get the same validation, then make the request yourself:
+
+```ts
+import ky from 'ky'
+
+const validatedUrl = await webhookValidator.validateAsync(config.url)
+const response = await ky.post(validatedUrl, { json: payload, redirect: 'error' })
+```
+
+You're now responsible for making sure your client actually **rejects** redirects rather than silently following them - clients differ here. `ky` is fetch-based and forwards `redirect: 'error'` straight through, same as the example above. `axios`, by contrast, follows redirects by default and needs explicit configuration (e.g. `maxRedirects: 0`) to stop - check your client's behavior rather than assuming it matches `fetch`'s.
 
 ## API reference
 

@@ -71,6 +71,12 @@ export class WebhookUrlValidator {
    * delivery: runs the sync checks, then resolves the hostname and validates every resolved IP
    * address, to guard against DNS rebinding.
    *
+   * Prefer {@link WebhookUrlValidator.fetch} when you can. Use this directly only if you need a
+   * different HTTP client (e.g. for retries or streaming) - you're then responsible for making sure
+   * that client actually rejects redirects rather than silently following them, since clients vary
+   * (some, like `ky`, forward a `redirect: 'error'`-style fetch option straight through; others,
+   * like `axios`, follow redirects by default and need explicit configuration to stop).
+   *
    * @throws {@link WebhookUrlValidationError} if the URL is invalid, an obvious blocked target, or
    * resolves to a blocked network address.
    *
