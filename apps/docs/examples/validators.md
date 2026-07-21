@@ -102,3 +102,19 @@ export const callbackUrlSchema = z
   )
   .catch(new URL(HOME, baseUrl.origin))
 ```
+
+## Webhook URL Validation
+
+`WebhookUrlValidator` is the inverse of `UrlValidator`: it blocklists private/internal network targets (RFC 1918, loopback, link-local/metadata, and related reserved ranges) for user-supplied webhook destination URLs, instead of allowlisting known-safe hosts.
+It performs no DNS resolution or other network I/O itself - your app resolves hostnames and makes the actual request.
+
+```javascript
+import { webhookUrlSchema } from '@opengovsg/starter-kitty-validators/webhook-url'
+
+const createWebhookSchema = z.object({
+  url: webhookUrlSchema,
+  events: z.array(z.string()),
+})
+```
+
+To also guard against DNS rebinding at save and delivery time, resolve the hostname yourself and pass the results to `WebhookUrlValidator.assertResolvedIpsAreSafe`; see the [package README](https://github.com/opengovsg/starter-kitty/tree/develop/packages/validators#webhook-url-validation) for the full recipe, including rejecting redirects on the outbound request.
