@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createWebhookUrlSchema, webhookUrlSchema, WebhookUrlValidator } from '@/index'
 import { WebhookUrlValidationError } from '@/webhook-url/errors'
@@ -123,5 +123,53 @@ describe('WebhookUrlValidator.validateAsync', () => {
 
     await expect(validator.validateAsync('http://localhost/hooks')).rejects.toThrow(WebhookUrlValidationError)
     expect(lookup).not.toHaveBeenCalled()
+  })
+})
+
+describe('WebhookUrlValidator.fetch', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should validate then perform the request with redirect forced to error', async () => {
+    const lookup = vi.fn().mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
+    const validator = new WebhookUrlValidator({ lookup })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'))
+
+    await validator.fetch('https://example.com/hooks', { method: 'POST' })
+
+    expect(lookup).toHaveBeenCalledWith('example.com')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const [calledUrl, calledInit] = fetchSpy.mock.calls[0]
+    expect(String(calledUrl)).toBe('https://example.com/hooks')
+    expect(calledInit).toMatchObject({ method: 'POST', redirect: 'error' })
+  })
+
+  it('should not allow the caller to override redirect handling', async () => {
+    const lookup = vi.fn().mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
+    const validator = new WebhookUrlValidator({ lookup })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'))
+
+    // intentionally passing a disallowed redirect mode to prove it gets overridden
+    await validator.fetch('https://example.com/hooks', { redirect: 'follow' })
+
+    expect(fetchSpy.mock.calls[0][1]).toMatchObject({ redirect: 'error' })
+  })
+
+  it('should not call fetch when sync validation fails', async () => {
+    const validator = new WebhookUrlValidator()
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'))
+
+    await expect(validator.fetch('http://127.0.0.1/hooks')).rejects.toThrow(WebhookUrlValidationError)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('should not call fetch when the resolved IP is blocked', async () => {
+    const lookup = vi.fn().mockResolvedValue([{ address: '10.0.0.5', family: 4 }])
+    const validator = new WebhookUrlValidator({ lookup })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'))
+
+    await expect(validator.fetch('https://sneaky-webhook.example.com/hooks')).rejects.toThrow(WebhookUrlValidationError)
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

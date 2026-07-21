@@ -73,8 +73,6 @@ window.location.pathname = validator.parsePathname(redirectUrl, '/home') // fall
 
 `WebhookUrlValidator` is the **inverse** of `UrlValidator`: instead of allowlisting known-safe hosts for redirects within your own app, it **blocklists** private/internal network targets for arbitrary, user-supplied URLs that your server will make outbound requests to - the shape of the problem when a user registers a webhook destination.
 
-DNS resolution (read-only - nothing ever leaves your server) happens inside the validator, so checking a hostname's resolved IPs is a single call. Making the actual outbound webhook request - the part that sends your data to a third party - stays your app's responsibility.
-
 ### 1. Sync validation, for immediate feedback
 
 Use `webhookUrlSchema` (or `createWebhookUrlSchema` if you need to restrict protocols) wherever you take a webhook URL as input - a settings form, an API body - to reject obviously unsafe input before it is even saved:
@@ -90,33 +88,26 @@ const createWebhookSchema = z.object({
 
 This rejects non-`http(s)` protocols, `localhost` (and `*.localhost`), known cloud metadata hostnames, and literal private/loopback/link-local/reserved IP addresses - including obfuscated forms (decimal/octal/hex-encoded IPv4, IPv4-mapped IPv6). It cannot catch a hostname that merely _resolves_ to a private address, since it does no DNS resolution.
 
-### 2. Full validation, at save time and again before every delivery
+### 2. Deliver with `WebhookUrlValidator.fetch`
 
-A hostname can resolve to a safe address when you save the webhook and an internal address when you deliver to it later (DNS rebinding), or resolve to a mix of safe and unsafe addresses across its A/AAAA records. `validateAsync` runs the sync checks, then resolves the hostname and validates every resolved IP:
+A hostname can resolve to a safe address when you save the webhook and an internal address when you deliver to it later (DNS rebinding), or resolve to a mix of safe and unsafe addresses across its A/AAAA records. `fetch` re-runs the sync checks, resolves the hostname, validates every resolved IP, and only then makes the request - rejecting redirects instead of following them, since a redirect could point at an internal target that was never validated:
 
 ```ts
 import { WebhookUrlValidator, WebhookUrlValidationError } from '@opengovsg/starter-kitty-validators/webhook-url'
 
 const webhookValidator = new WebhookUrlValidator()
 
-const validatedUrl = await webhookValidator.validateAsync(rawUrl) // throws WebhookUrlValidationError if unsafe
+const response = await webhookValidator.fetch(storedWebhookUrl, {
+  method: 'POST',
+  body: JSON.stringify(payload),
+}) // throws WebhookUrlValidationError before ever connecting, if unsafe
 ```
 
-Run this **at save time** (when the user registers or updates the webhook URL) and **immediately before every delivery** - re-resolving on each delivery is what catches rebinding, since the check at save time alone would miss a hostname whose records change afterwards.
+Call this at delivery time - every time an event fires, not just once at registration - so a hostname whose DNS record changes after being saved is still caught. There's no separate "validate at save time" step to remember: calling `fetch` always validates first, so registering a webhook can simply be a call to `webhookValidator.validate(url)` (the sync check, for fast feedback) followed by storing the URL - `fetch` is what enforces the rest, every time it's used.
 
 Catch `WebhookUrlValidationError` to surface a clean error; `error.name === 'WebhookUrlValidationError'` identifies it (the class is exported as a type only, matching `UrlValidationError` above, so use `.name` rather than `instanceof` when importing from the public entry point).
 
-### 3. The outbound request itself
-
-Make the actual delivery request with your own HTTP client, and reject redirects rather than following them - a redirect response could otherwise point at an internal target that was never validated:
-
-```ts
-const response = await fetch(validatedUrl, {
-  method: 'POST',
-  body: JSON.stringify(payload),
-  redirect: 'error', // throws instead of following a 3xx to an unvalidated host
-})
-```
+If you need a different HTTP client than `fetch` (e.g. for retries or streaming), use `WebhookUrlValidator.validateAsync(url)` to get the same validation and wire up redirect rejection yourself - but prefer `fetch` by default, since it can't be used without also getting the redirect protection.
 
 ## API reference
 

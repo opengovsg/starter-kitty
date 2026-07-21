@@ -36,10 +36,8 @@ export const webhookUrlSchema = createWebhookUrlSchema()
  * redirects within your own app, it blocklists private/internal network targets for arbitrary,
  * user-supplied URLs that your server will make outbound requests to.
  *
- * DNS resolution (read-only, no data ever leaves your server) happens inside this class so that
- * checking resolved IPs against the blocklist is a single call. Making the actual outbound webhook
- * request - the part that sends your data to a third party - stays your app's responsibility:
- * do it with `redirect: 'error'` so a redirect response is never followed to an unvalidated target.
+ * Use {@link WebhookUrlValidator.fetch} to deliver, so validation and redirect rejection are
+ * enforced on every call rather than relied on to be wired correctly at every call site.
  *
  * @public
  */
@@ -90,6 +88,27 @@ export class WebhookUrlValidator {
     const parsed = this.validate(url)
     await resolveAndValidateHost(stripBrackets(parsed.hostname), this.lookup)
     return parsed
+  }
+
+  /**
+   * Validates the URL (sync checks, then DNS resolution and resolved-IP checks) and delivers to it,
+   * rejecting any redirect response instead of following it. This is the recommended way to
+   * deliver to a webhook URL: one call enforces every protection unconditionally, rather than
+   * relying on every call site to re-validate and to remember `redirect: 'error'` on its own fetch.
+   *
+   * Resolution and delivery happen back-to-back, immediately after each other; this does not pin
+   * the connection to the exact resolved IP, so it does not close every theoretical DNS-rebinding
+   * window down to zero. That level of guarantee needs connection-level pinning (e.g. a custom
+   * dispatcher), which is out of scope for a validator - reach for a dedicated egress proxy if your
+   * threat model requires it.
+   *
+   * @throws {@link WebhookUrlValidationError} if the URL fails validation.
+   *
+   * @public
+   */
+  async fetch(url: string | URL, init: RequestInit = {}): Promise<Response> {
+    const parsed = await this.validateAsync(url)
+    return fetch(parsed, { ...init, redirect: 'error' })
   }
 }
 

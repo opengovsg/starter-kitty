@@ -116,4 +116,4 @@ const createWebhookSchema = z.object({
 })
 ```
 
-To also guard against DNS rebinding at save and delivery time, call `WebhookUrlValidator.validateAsync`, which resolves the hostname and validates every resolved IP; see the [package README](https://github.com/opengovsg/starter-kitty/tree/develop/packages/validators#webhook-url-validation) for the full recipe, including rejecting redirects on the outbound request your app makes.
+To deliver, use `WebhookUrlValidator.fetch(url, init)`, which resolves the hostname, validates every resolved IP (guarding against DNS rebinding), and rejects redirects - all enforced on every call, so there's nothing to remember at each call site. See the [package README](https://github.com/opengovsg/starter-kitty/tree/develop/packages/validators#webhook-url-validation) for the full recipe.
