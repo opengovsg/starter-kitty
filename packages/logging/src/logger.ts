@@ -1,5 +1,5 @@
 import type { DestinationStream, Logger as PinoLogger } from 'pino'
-import { destination, pino } from 'pino'
+import createPino, { destination } from 'pino'
 import { PinoPretty } from 'pino-pretty'
 
 import { createAuditLogger } from './audit/index.js'
@@ -159,7 +159,10 @@ const buildPino = (config: ResolvedConfig) => {
   } else {
     transport = destination(1)
   }
-  return pino(
+  // dd-trace's ESM instrumentation wraps Pino's default export. Calling the
+  // `pino` named export here would bypass that wrapper and disable log
+  // injection for ESM applications.
+  return createPino(
     {
       level: config.level,
       useOnlyCustomLevels: true,

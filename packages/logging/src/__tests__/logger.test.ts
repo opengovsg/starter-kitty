@@ -18,7 +18,15 @@ vi.mock('pino', async importOriginal => {
       cb()
     },
   })
-  return { ...actual, destination: () => capture }
+  return {
+    ...actual,
+    destination: () => capture,
+    // dd-trace's ESM loader patches the default export, not this named export.
+    // Make a regression to the named factory fail the test suite immediately.
+    pino: () => {
+      throw new Error('createLogging must instantiate Pino through its default export')
+    },
+  }
 })
 
 vi.mock('pino-pretty', async importOriginal => {
@@ -253,6 +261,10 @@ describe('output fixtures (snapshots)', () => {
 })
 
 describe('createLogging', () => {
+  it('instantiates Pino through its default export for dd-trace ESM instrumentation', () => {
+    expect(() => make()).not.toThrow()
+  })
+
   it('binds the required identity trio on every line', () => {
     const create = createLogging({ env: 'production', service: 'payments', version: '1.2.3' })
     create.system({ traceId: null, path: '/p' }).info({ message: 'm', action: 'a' })
