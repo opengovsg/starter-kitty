@@ -71,41 +71,62 @@ window.location.pathname = validator.parsePathname(redirectUrl, '/home') // fall
 
 ## Webhook URL validation
 
-`WebhookUrlValidator` is the **inverse** of `UrlValidator`: instead of allowlisting known-safe hosts for redirects within your own app, it **blocklists** private/internal network targets for arbitrary, user-supplied URLs that your server will make outbound requests to - the shape of the problem when a user registers a webhook destination.
+`WebhookUrlValidator` is the **inverse** of `UrlValidator`: instead of allowlisting known-safe hosts for redirects within your own app, it **blocklists** private/internal network targets for arbitrary, user-supplied URLs that your server will make outbound requests to - the shape of the problem when a user registers a webhook destination. There are two places to use it: when the URL is first saved, and every time you actually send to it.
 
-### 1. Sync validation, for immediate feedback
+### 1. Validating the URL when it's saved as config
 
-Use `webhookUrlSchema` (or `createWebhookUrlSchema` if you need to restrict protocols) wherever you take a webhook URL as input - a settings form, an API body - to reject obviously unsafe input before it is even saved:
+Use `webhookUrlSchema` (or `createWebhookUrlSchema` if you need to restrict protocols) wherever a webhook URL is taken as input, so a request to save an obviously unsafe URL is rejected before it ever reaches storage:
 
 ```ts
 import { webhookUrlSchema } from '@opengovsg/starter-kitty-validators/webhook-url'
 
-const createWebhookSchema = z.object({
+const saveWebhookConfigSchema = z.object({
   url: webhookUrlSchema,
   events: z.array(z.string()),
 })
+
+export const saveWebhookConfig = async (input: unknown) => {
+  const { url, events } = saveWebhookConfigSchema.parse(input) // throws ZodError if url is an obvious blocked target
+  await db.webhookConfig.upsert({ url: url.href, events })
+}
 ```
 
-This rejects non-`http(s)` protocols, `localhost` (and `*.localhost`), known cloud metadata hostnames, and literal private/loopback/link-local/reserved IP addresses - including obfuscated forms (decimal/octal/hex-encoded IPv4, IPv4-mapped IPv6). It cannot catch a hostname that merely _resolves_ to a private address, since it does no DNS resolution.
+This rejects non-`http(s)` protocols, `localhost` (and `*.localhost`), known cloud metadata hostnames, and literal private/loopback/link-local/reserved IP addresses - including obfuscated forms (decimal/octal/hex-encoded IPv4, IPv4-mapped IPv6). It cannot catch a hostname that merely _resolves_ to a private address, since it does no DNS resolution - that's what step 2 is for, which is why saving alone is not the full protection.
 
-### 2. Deliver with `WebhookUrlValidator.fetch`
+Not using zod for this input? `new WebhookUrlValidator().validate(rawUrl)` does the same check directly, returning a `URL` or throwing `WebhookUrlValidationError`.
 
-A hostname can resolve to a safe address when you save the webhook and an internal address when you deliver to it later (DNS rebinding), or resolve to a mix of safe and unsafe addresses across its A/AAAA records. `fetch` re-runs the sync checks, resolves the hostname, validates every resolved IP, and only then makes the request - rejecting redirects instead of following them, since a redirect could point at an internal target that was never validated:
+### 2. Sending a webhook
+
+Use `WebhookUrlValidator.fetch` to actually deliver, every time an event fires - not just once at registration. It re-runs the sync checks, resolves the hostname, validates every resolved IP (catching DNS rebinding: a hostname that resolved to a safe address when saved but an internal one now, or that has a mix of safe and unsafe A/AAAA records), and only then makes the request, rejecting redirects instead of following them:
 
 ```ts
 import { WebhookUrlValidator, WebhookUrlValidationError } from '@opengovsg/starter-kitty-validators/webhook-url'
 
 const webhookValidator = new WebhookUrlValidator()
 
-const response = await webhookValidator.fetch(storedWebhookUrl, {
-  method: 'POST',
-  body: JSON.stringify(payload),
-}) // throws WebhookUrlValidationError before ever connecting, if unsafe
+export const sendWebhook = async (config: { url: string; events: string[] }, payload: unknown) => {
+  try {
+    const response = await webhookValidator.fetch(config.url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!response.ok) {
+      // the destination is reachable but rejected the request - your usual retry/backoff logic applies
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'WebhookUrlValidationError') {
+      // the stored URL is no longer safe to deliver to (e.g. DNS now resolves to a private address) -
+      // don't retry; flag or disable the webhook config instead
+    }
+    throw error
+  }
+}
 ```
 
-Call this at delivery time - every time an event fires, not just once at registration - so a hostname whose DNS record changes after being saved is still caught. There's no separate "validate at save time" step to remember: calling `fetch` always validates first, so registering a webhook can simply be a call to `webhookValidator.validate(url)` (the sync check, for fast feedback) followed by storing the URL - `fetch` is what enforces the rest, every time it's used.
+There's no separate "validate at save time" step to remember here: `fetch` always validates first, so step 1 exists purely for fast feedback on obviously bad input - `fetch` is what actually enforces the protection, on every delivery.
 
-Catch `WebhookUrlValidationError` to surface a clean error; `error.name === 'WebhookUrlValidationError'` identifies it (the class is exported as a type only, matching `UrlValidationError` above, so use `.name` rather than `instanceof` when importing from the public entry point).
+Catch `WebhookUrlValidationError` by checking `error.name === 'WebhookUrlValidationError'` rather than `instanceof` - the class is exported as a type only (matching `UrlValidationError` above), so `instanceof` doesn't work when importing from the public entry point.
 
 If you need a different HTTP client than `fetch` (e.g. for retries or streaming), use `WebhookUrlValidator.validateAsync(url)` to get the same validation and wire up redirect rejection yourself - but prefer `fetch` by default, since it can't be used without also getting the redirect protection.
 
