@@ -26,9 +26,3 @@ export const BLOCKED_IPV6_CIDRS: readonly string[] = [
   'fe80::/10', // link-local
   '2001:db8::/32', // documentation
 ]
-
-export const BLOCKED_HOSTNAMES: ReadonlySet<string> = new Set([
-  'localhost',
-  'metadata.google.internal', // GCP metadata
-  'metadata', // GCP metadata short form
-])

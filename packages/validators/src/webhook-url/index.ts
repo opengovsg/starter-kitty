@@ -3,31 +3,25 @@ import { fromError } from 'zod-validation-error'
 
 import { defaultDnsLookup, DnsLookupFn, resolveAndValidateHost } from '@/webhook-url/dns'
 import { WebhookUrlValidationError } from '@/webhook-url/errors'
-import { stripBrackets } from '@/webhook-url/ip-utils'
-import { parseOptions, WebhookUrlValidatorOptions } from '@/webhook-url/options'
-import { toSchema } from '@/webhook-url/schema'
+import { WebhookUrlValidatorOptions } from '@/webhook-url/options'
 
 /**
- * Create a schema that validates user-supplied webhook destination URLs. Rejects obvious SSRF
- * targets: literal private/loopback/link-local/reserved IPs, `localhost`, and known cloud metadata
- * hostnames. Does not perform DNS resolution - use {@link WebhookUrlValidator.validateAsync} for
- * that.
- *
- * @param options - The options to use for validation
- * @returns A Zod schema that validates webhook URLs.
+ * Schema for webhook destination URLs, for immediate client/server feedback (e.g. in a form or API
+ * input schema) on obvious blocked targets. Requires a real domain - `z.httpUrl()`'s hostname check
+ * already rejects every literal IP address (v4, v6, and obfuscated forms like decimal/octal/hex
+ * encoding or IPv4-mapped IPv6), so it also rejects `localhost` and single-label hostnames like the
+ * bare `metadata` cloud-metadata alias; `*.localhost` subdomains (RFC 6761) are blocked explicitly,
+ * since those are still valid-looking domains. Does not perform DNS resolution - use
+ * {@link WebhookUrlValidator.fetch} or {@link WebhookUrlValidator.validateAsync} for that.
  *
  * @public
  */
-export const createWebhookUrlSchema = (options: WebhookUrlValidatorOptions = {}): z.ZodType<URL, string> =>
-  toSchema(parseOptions(options))
-
-/**
- * Ready-to-use schema for webhook destination URLs with default options, for immediate
- * client/server feedback (e.g. in a form or API input schema) on obvious blocked targets.
- *
- * @public
- */
-export const webhookUrlSchema = createWebhookUrlSchema()
+export const webhookUrlSchema = z
+  .httpUrl()
+  .transform(raw => new URL(raw))
+  .refine(url => !url.hostname.toLowerCase().endsWith('.localhost'), {
+    message: 'Webhook URL points to a disallowed network target',
+  })
 
 /**
  * Validates webhook destination URLs supplied by users, to protect against SSRF.
@@ -42,7 +36,6 @@ export const webhookUrlSchema = createWebhookUrlSchema()
  * @public
  */
 export class WebhookUrlValidator {
-  private schema: z.ZodType<URL, string>
   private lookup: DnsLookupFn
 
   /**
@@ -53,13 +46,12 @@ export class WebhookUrlValidator {
    * @public
    */
   constructor(options: WebhookUrlValidatorOptions = {}) {
-    this.schema = createWebhookUrlSchema(options)
     this.lookup = options.lookup ?? defaultDnsLookup
   }
 
   /**
    * Synchronously validates a webhook URL for immediate client/server feedback. Only catches
-   * obvious blocked targets (literal IPs, localhost, metadata hostnames) - it does not resolve
+   * obvious blocked targets (literal IPs, localhost, single-label hostnames) - it does not resolve
    * DNS, so it cannot catch a hostname that resolves to a private address.
    *
    * @throws {@link WebhookUrlValidationError} if the URL is invalid or an obvious blocked target.
@@ -67,7 +59,7 @@ export class WebhookUrlValidator {
    * @public
    */
   validate(url: string | URL): URL {
-    const result = this.schema.safeParse(url instanceof URL ? url.href : url)
+    const result = webhookUrlSchema.safeParse(url instanceof URL ? url.href : url)
     if (result.success) {
       return result.data
     }
@@ -86,7 +78,7 @@ export class WebhookUrlValidator {
    */
   async validateAsync(url: string | URL): Promise<URL> {
     const parsed = this.validate(url)
-    await resolveAndValidateHost(stripBrackets(parsed.hostname), this.lookup)
+    await resolveAndValidateHost(parsed.hostname, this.lookup)
     return parsed
   }
 
@@ -102,13 +94,23 @@ export class WebhookUrlValidator {
    * dispatcher), which is out of scope for a validator - reach for a dedicated egress proxy if your
    * threat model requires it.
    *
-   * @throws {@link WebhookUrlValidationError} if the URL fails validation.
+   * @throws {@link WebhookUrlValidationError} if the URL fails validation, or if the destination
+   * responds with a redirect.
    *
    * @public
    */
   async fetch(url: string | URL, init: RequestInit = {}): Promise<Response> {
     const parsed = await this.validateAsync(url)
-    return fetch(parsed, { ...init, redirect: 'error' })
+    try {
+      return await fetch(parsed, { ...init, redirect: 'error' })
+    } catch (error) {
+      if (error instanceof TypeError && error.cause instanceof Error && /redirect/i.test(error.cause.message)) {
+        throw new WebhookUrlValidationError(
+          `Webhook request to "${parsed.href}" was redirected - provide the final destination URL directly instead of one that redirects.`,
+        )
+      }
+      throw error
+    }
   }
 }
 

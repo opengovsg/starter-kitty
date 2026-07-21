@@ -1,6 +1,6 @@
 import net from 'node:net'
 
-import { BLOCKED_HOSTNAMES, BLOCKED_IPV4_CIDRS, BLOCKED_IPV6_CIDRS } from '@/webhook-url/consts'
+import { BLOCKED_IPV4_CIDRS, BLOCKED_IPV6_CIDRS } from '@/webhook-url/consts'
 
 const ipv4ToInt = (ip: string): number => ip.split('.').reduce((acc, octet) => (acc << 8) + Number(octet), 0) >>> 0
 
@@ -55,10 +55,11 @@ const extractIpv4MappedAddress = (ip: string): string | null => {
   return [24, 16, 8, 0].map(shift => (ipv4Int >>> shift) & 0xff).join('.')
 }
 
-export const stripBrackets = (host: string): string => host.replace(/^\[|\]$/g, '')
+const stripBrackets = (host: string): string => host.replace(/^\[|\]$/g, '')
 
 /**
- * Whether a literal IP address (v4 or v6) falls within a blocked private/reserved range.
+ * Whether a literal IP address (v4 or v6, as resolved by DNS) falls within a blocked
+ * private/reserved range.
  */
 export const isBlockedIp = (rawIp: string): boolean => {
   const ip = stripBrackets(rawIp)
@@ -74,17 +75,4 @@ export const isBlockedIp = (rawIp: string): boolean => {
     return BLOCKED_IPV6_CIDRS.some(cidr => isIpv6InCidr(ip, cidr))
   }
   return false
-}
-
-/**
- * Whether a URL hostname is an obviously blocked webhook target: a literal blocked IP,
- * `localhost` (and its reserved `.localhost` subdomains, per RFC 6761), or a known cloud
- * metadata hostname. Does not perform DNS resolution.
- */
-export const isBlockedHost = (rawHost: string): boolean => {
-  const host = stripBrackets(rawHost).toLowerCase()
-  if (BLOCKED_HOSTNAMES.has(host) || host.endsWith('.localhost')) {
-    return true
-  }
-  return net.isIP(host) !== 0 && isBlockedIp(host)
 }

@@ -105,7 +105,7 @@ export const callbackUrlSchema = z
 
 ## Webhook URL Validation
 
-`WebhookUrlValidator` is the inverse of `UrlValidator`: it blocklists private/internal network targets (RFC 1918, loopback, link-local/metadata, and related reserved ranges) for user-supplied webhook destination URLs, instead of allowlisting known-safe hosts.
+`WebhookUrlValidator` is the inverse of `UrlValidator`: it blocklists private/internal network targets (RFC 1918, loopback, link-local/metadata, and related reserved ranges) for user-supplied webhook destination URLs, instead of allowlisting known-safe hosts. Built on `z.httpUrl()`, `webhookUrlSchema` requires a real domain - no literal IP address, public or private, survives the format check.
 
 ```javascript
 import { webhookUrlSchema } from '@opengovsg/starter-kitty-validators/webhook-url'

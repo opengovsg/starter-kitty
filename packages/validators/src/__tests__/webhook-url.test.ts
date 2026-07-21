@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createWebhookUrlSchema, webhookUrlSchema, WebhookUrlValidator } from '@/index'
+import { webhookUrlSchema, WebhookUrlValidator } from '@/index'
 import { WebhookUrlValidationError } from '@/webhook-url/errors'
 
 describe('webhookUrlSchema', () => {
@@ -19,49 +19,25 @@ describe('webhookUrlSchema', () => {
     expect(() => webhookUrlSchema.parse('http://LOCALHOST:3000')).toThrow()
   })
 
-  it('should reject known cloud metadata hostnames', () => {
-    expect(() => webhookUrlSchema.parse('http://metadata.google.internal')).toThrow()
+  it('should reject the bare cloud-metadata hostname alias (single-label, not a domain)', () => {
     expect(() => webhookUrlSchema.parse('http://metadata/computeMetadata/v1/')).toThrow()
   })
 
-  it('should reject literal loopback, private, and link-local/metadata IPv4 addresses', () => {
-    expect(() => webhookUrlSchema.parse('http://127.0.0.1')).toThrow()
-    expect(() => webhookUrlSchema.parse('http://10.1.2.3')).toThrow()
-    expect(() => webhookUrlSchema.parse('http://172.16.0.5')).toThrow()
-    expect(() => webhookUrlSchema.parse('http://192.168.1.1')).toThrow()
-    expect(() => webhookUrlSchema.parse('http://169.254.169.254')).toThrow() // cloud metadata endpoint
-  })
-
-  it('should reject obfuscated (decimal/octal/hex/short-form) IPv4 loopback addresses', () => {
-    expect(() => webhookUrlSchema.parse('http://2130706433')).toThrow() // decimal for 127.0.0.1
-    expect(() => webhookUrlSchema.parse('http://0x7f.0.0.1')).toThrow()
-    expect(() => webhookUrlSchema.parse('http://017700000001')).toThrow()
-    expect(() => webhookUrlSchema.parse('http://127.1')).toThrow()
-  })
-
-  it('should reject literal IPv6 loopback, unique-local, and link-local addresses', () => {
-    expect(() => webhookUrlSchema.parse('http://[::1]')).toThrow()
-    expect(() => webhookUrlSchema.parse('http://[fc00::1]')).toThrow()
-    expect(() => webhookUrlSchema.parse('http://[fe80::1]')).toThrow()
-  })
-
-  it('should reject IPv4-mapped IPv6 addresses that embed a blocked IPv4 address', () => {
-    expect(() => webhookUrlSchema.parse('http://[::ffff:127.0.0.1]')).toThrow()
-    expect(() => webhookUrlSchema.parse('http://[::ffff:169.254.169.254]')).toThrow()
-  })
-
-  it('should allow an IPv4-mapped IPv6 address that embeds a public IPv4 address', () => {
-    expect(() => webhookUrlSchema.parse('http://[::ffff:8.8.8.8]')).not.toThrow()
-  })
-
-  it('should allow public IPv6 addresses', () => {
-    expect(() => webhookUrlSchema.parse('http://[2606:4700:4700::1111]')).not.toThrow()
-  })
-
-  it('should support restricting protocols via createWebhookUrlSchema', () => {
-    const schema = createWebhookUrlSchema({ protocols: ['https'] })
-    expect(() => schema.parse('https://example.com')).not.toThrow()
-    expect(() => schema.parse('http://example.com')).toThrow()
+  it('should reject every literal IP address, public or private, in any form', () => {
+    // z.httpUrl() only accepts domain-shaped hostnames - no literal IP survives the sync schema at
+    // all, so a hostname's *resolved* address is the only place a literal IP is checked (see
+    // WebhookUrlValidator.validateAsync tests) - including metadata.google.internal, which is a
+    // syntactically valid domain and is only caught once it resolves to 169.254.169.254.
+    expect(() => webhookUrlSchema.parse('http://127.0.0.1')).toThrow() // loopback
+    expect(() => webhookUrlSchema.parse('http://10.1.2.3')).toThrow() // RFC 1918
+    expect(() => webhookUrlSchema.parse('http://169.254.169.254')).toThrow() // cloud metadata IP
+    expect(() => webhookUrlSchema.parse('http://8.8.8.8')).toThrow() // public IPv4
+    expect(() => webhookUrlSchema.parse('http://2130706433')).toThrow() // decimal-encoded 127.0.0.1
+    expect(() => webhookUrlSchema.parse('http://0x7f.0.0.1')).toThrow() // hex-encoded
+    expect(() => webhookUrlSchema.parse('http://017700000001')).toThrow() // octal-encoded
+    expect(() => webhookUrlSchema.parse('http://[::1]')).toThrow() // IPv6 loopback
+    expect(() => webhookUrlSchema.parse('http://[::ffff:127.0.0.1]')).toThrow() // IPv4-mapped IPv6
+    expect(() => webhookUrlSchema.parse('http://[2606:4700:4700::1111]')).toThrow() // public IPv6
   })
 })
 
@@ -94,6 +70,13 @@ describe('WebhookUrlValidator.validateAsync', () => {
     await expect(validator.validateAsync('https://sneaky-webhook.example.com/hooks')).rejects.toThrow(
       WebhookUrlValidationError,
     )
+  })
+
+  it('should reject metadata.google.internal once it resolves to the cloud metadata IP', async () => {
+    const lookup = vi.fn().mockResolvedValue([{ address: '169.254.169.254', family: 4 }])
+    const validator = new WebhookUrlValidator({ lookup })
+
+    await expect(validator.validateAsync('http://metadata.google.internal')).rejects.toThrow(WebhookUrlValidationError)
   })
 
   it('should reject if any of multiple resolved IPs is blocked', async () => {
@@ -171,5 +154,26 @@ describe('WebhookUrlValidator.fetch', () => {
 
     await expect(validator.fetch('https://sneaky-webhook.example.com/hooks')).rejects.toThrow(WebhookUrlValidationError)
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('should throw a clear, actionable error when the destination responds with a redirect', async () => {
+    const lookup = vi.fn().mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
+    const validator = new WebhookUrlValidator({ lookup })
+    // this is the exact TypeError shape undici's fetch throws for `redirect: 'error'` on a 3xx response
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+      new TypeError('fetch failed', { cause: new Error('unexpected redirect') }),
+    )
+
+    await expect(validator.fetch('https://example.com/hooks')).rejects.toThrow(WebhookUrlValidationError)
+    await expect(validator.fetch('https://example.com/hooks')).rejects.toThrow(/redirected/)
+  })
+
+  it('should not mask an unrelated fetch failure as a redirect error', async () => {
+    const lookup = vi.fn().mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
+    const validator = new WebhookUrlValidator({ lookup })
+    const connectionError = new TypeError('fetch failed', { cause: new Error('ECONNREFUSED') })
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(connectionError)
+
+    await expect(validator.fetch('https://example.com/hooks')).rejects.toBe(connectionError)
   })
 })
