@@ -74,6 +74,7 @@
     "@types/node": "^20",
     "tsc-alias": "^1.8.10",
     "typescript": "^5.4.5",
+    "vite": "^7.3.5",
     "vitest": "^4.1.0"
   },
   "prettier": "@opengovsg/prettier-config-starter-kitty"
