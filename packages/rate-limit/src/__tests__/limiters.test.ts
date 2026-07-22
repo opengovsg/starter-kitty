@@ -238,6 +238,11 @@ describe('createGlobalRateLimiter', () => {
     })
   })
 
+  // The global limiter's literal built-in default (100 points/second, no
+  // burst) can no longer be observed via the no-client path — the fallback
+  // allowance (10/s) governs it instead, per ADR 0010. See
+  // `rate-limiter.docker.test.ts` for that coverage against a real Redis.
+
   it('forwards a per-check logger through to the underlying limiter', async () => {
     const requestLogger = createLoggerStub()
     const storeError = new Error('boom')
