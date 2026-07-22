@@ -27,6 +27,13 @@ export const LOCAL_RATE_LIMIT_DEFAULTS = {
 }
 
 /**
+ * The local limiter's fallback allowance (ADR 0010): tighter than the
+ * package-wide 10 points/second default, since 5 points/second already
+ * approximates this limiter's own steady default (50 points/10s).
+ */
+export const LOCAL_RATE_LIMIT_FALLBACK = { points: 5, duration: 1 }
+
+/**
  * Key for a shared bucket for requests whose client IP is unparseable.
  */
 export const UNKNOWN_BUCKET = 'unknown'

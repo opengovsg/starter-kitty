@@ -11,7 +11,7 @@ import type {
   RedisClient,
   RequiredRateLimitConfig,
 } from './types.js'
-import { clamp, mergeConfig } from './utilities.js'
+import { clamp, mergeConfig, mergeFallback } from './utilities.js'
 
 const STEADY_NAMESPACE = 'rate-limit:'
 const BURST_NAMESPACE = 'rate-limit-burst:'
@@ -25,14 +25,6 @@ type RequiredFallbackConfig = Required<FallbackConfig>
  * than derived from the primary configuration — see ADR 0010.
  */
 const BASE_FALLBACK: RequiredFallbackConfig = { points: 10, duration: 1 }
-
-/**
- * Merge a partial fallback config over a fully-resolved base fallback.
- */
-const mergeFallback = (base: RequiredFallbackConfig, override?: FallbackConfig): RequiredFallbackConfig => ({
-  points: override?.points ?? base.points,
-  duration: override?.duration ?? base.duration,
-})
 
 /**
  * Clamp every numeric field, since caller input is not validated at the type

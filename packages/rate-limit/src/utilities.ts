@@ -1,6 +1,6 @@
 import ipaddr from 'ipaddr.js'
 
-import { RateLimitConfig, RequiredRateLimitConfig } from './types.js'
+import { FallbackConfig, RateLimitConfig, RequiredRateLimitConfig } from './types.js'
 
 /**
  * Derive the store key for a client IP, or `null` when the input is not a
@@ -49,4 +49,12 @@ export const mergeConfig = (base: RequiredRateLimitConfig, override?: RateLimitC
   duration: override?.duration ?? base.duration,
   burst: override?.burst !== undefined ? override.burst : base.burst,
   prefix: override?.prefix ?? base.prefix,
+})
+
+/**
+ * Merge a partial fallback config over a fully-resolved base fallback.
+ */
+export const mergeFallback = (base: Required<FallbackConfig>, override?: FallbackConfig): Required<FallbackConfig> => ({
+  points: override?.points ?? base.points,
+  duration: override?.duration ?? base.duration,
 })
