@@ -47,10 +47,10 @@ describe('rate limiters against a real, healthy Redis', () => {
     const ip = `10.0.0.${Math.floor(Math.random() * 255)}`
 
     const first = await limiter.check({ ip })
-    expect(first.remainingPoints).toBe(99)
+    expect(first.points.remaining).toBe(99)
 
     const rest = await limiter.check({ ip, points: 99 })
-    expect(rest.remainingPoints).toBe(0)
+    expect(rest.points.remaining).toBe(0)
     await expect(limiter.check({ ip })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
 
