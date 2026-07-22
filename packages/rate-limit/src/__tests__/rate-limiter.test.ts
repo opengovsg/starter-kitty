@@ -28,6 +28,7 @@ describe('createRateLimiter', () => {
           burst: null,
           prefix: uniquePrefix(),
         },
+        fallback: { points: 5, duration: 10 },
       })
 
       const info = await limiter.check({ key: randomUUID() })
@@ -49,6 +50,7 @@ describe('createRateLimiter', () => {
           burst: null,
           prefix: uniquePrefix(),
         },
+        fallback: { points: 2, duration: 10 },
       })
       const key = randomUUID()
 
@@ -63,49 +65,24 @@ describe('createRateLimiter', () => {
       expect(rateLimitError.message).toMatch(/Rate limit exceeded/)
     })
 
-    it('grants extra requests from the burst allowance after the steady window is exhausted', async () => {
+    it('never grants extra requests from burst while running off memory, even when burst is configured', async () => {
       const limiter = createRateLimiter({
         logger: defaultLogger,
         overrides: {
           points: 1,
           duration: 10,
-          burst: { points: 2, duration: 30 },
+          burst: { points: 5, duration: 30 },
           prefix: uniquePrefix(),
         },
+        fallback: { points: 1, duration: 10 },
       })
       const key = randomUUID()
 
       await limiter.check({ key })
-      await limiter.check({ key })
-      await limiter.check({ key })
+      // Burst never engages while enforcement runs off memory (ADR 0010): the
+      // fallback allowance above is the only capacity available, regardless of
+      // the primary burst configuration.
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
-    })
-
-    it('inherits the built-in burst when overrides omit it and disables it when null', async () => {
-      // Burst omitted: the built-in { points: 20, duration: 30 } applies, so
-      // 1 steady + 20 burst checks pass before the 22nd is rejected.
-      const inheriting = createRateLimiter({
-        logger: defaultLogger,
-        overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
-      })
-      const inheritingKey = randomUUID()
-      for (let i = 0; i < 21; i++) {
-        await inheriting.check({ key: inheritingKey })
-      }
-      await expect(inheriting.check({ key: inheritingKey })).rejects.toBeInstanceOf(RateLimitExceededError)
-
-      const burstless = createRateLimiter({
-        logger: defaultLogger,
-        overrides: {
-          points: 1,
-          duration: 10,
-          burst: null,
-          prefix: uniquePrefix(),
-        },
-      })
-      const burstlessKey = randomUUID()
-      await burstless.check({ key: burstlessKey })
-      await expect(burstless.check({ key: burstlessKey })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
 
     it('warns that limits are per-instance when no client is configured', async () => {
@@ -134,12 +111,65 @@ describe('createRateLimiter', () => {
           burst: null,
           prefix: uniquePrefix(),
         },
+        fallback: { points: 1, duration: 10 },
       })
       const key = randomUUID()
 
-      // points clamped to 1: the first check consumes it, the second is rejected.
+      // Primary points clamped to 1 (still warned below, even though the
+      // fallback above — not this clamped primary value — is what's actually
+      // enforced in the no-client path per ADR 0010).
       await limiter.check({ key })
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+    })
+
+    it('enforces the default fallback allowance (10 points per second) regardless of a larger primary window', async () => {
+      const limiter = createRateLimiter({
+        defaults: { points: 1000, duration: 10, burst: null, prefix: uniquePrefix() },
+      })
+      const key = randomUUID()
+
+      const info = await limiter.check({ key, points: 10 })
+      expect(info.points.remaining).toBe(0)
+      await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+    })
+
+    it('overrides the default fallback allowance via the fallback option', async () => {
+      const limiter = createRateLimiter({
+        defaults: { points: 1000, duration: 10, burst: null, prefix: uniquePrefix() },
+        fallback: { points: 2, duration: 30 },
+      })
+      const key = randomUUID()
+
+      await limiter.check({ key })
+      await limiter.check({ key })
+      await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+    })
+
+    it('clamps a non-positive fallback.points to 1 and warns', async () => {
+      const logger = createLoggerStub()
+      const limiter = createRateLimiter({
+        logger,
+        defaults: { points: 1000, duration: 10, burst: null, prefix: uniquePrefix() },
+        fallback: { points: 0, duration: 10 },
+      })
+      const key = randomUUID()
+
+      await limiter.check({ key })
+      await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+      const clampCall = logger.warn.mock.calls.find(([input]) => input.message.includes('fallback.points'))
+      expect(clampCall?.[0].context?.requested).toBe(0)
+    })
+
+    it('clamps a non-positive fallback.duration to 1 and warns', () => {
+      const logger = createLoggerStub()
+      createRateLimiter({
+        logger,
+        defaults: { points: 1000, duration: 10, burst: null, prefix: uniquePrefix() },
+        fallback: { points: 5, duration: 0 },
+      })
+
+      const clampCall = logger.warn.mock.calls.find(([input]) => input.message.includes('fallback.duration'))
+      expect(clampCall?.[0].context?.requested).toBe(0)
     })
 
     it('reports an unexpected limiter error to the logger with a top-level error and rethrows it', async () => {
@@ -335,6 +365,27 @@ describe('createRateLimiter', () => {
           burst: null,
           prefix: uniquePrefix(),
         },
+        fallback: { points: 1, duration: 10 },
+      })
+      const key = randomUUID()
+
+      await expect(limiter.check({ key })).resolves.toMatchObject({
+        points: { remaining: 0 },
+      })
+      await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+    })
+
+    it('grants nothing extra from burst when Redis is not ready, even though burst is configured', async () => {
+      const client = { status: 'end' } as unknown as RedisClient
+      const limiter = createRateLimiter({
+        client,
+        defaults: {
+          points: 1,
+          duration: 10,
+          burst: { points: 5, duration: 30 },
+          prefix: uniquePrefix(),
+        },
+        fallback: { points: 1, duration: 10 },
       })
       const key = randomUUID()
 
