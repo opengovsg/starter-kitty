@@ -206,25 +206,26 @@ export const createRateLimiter = (options: CreateRateLimiterOptions): RateLimite
   // The fallback allowance is resolved once per factory. Keep it separate
   // from the primary rate limit so an outage cannot grant the larger primary
   // allowance.
-  const rawFallback = mergeFallback(BASE_FALLBACK, options.fallback)
+  const fallbackOptions = mergeFallback(BASE_FALLBACK, options.fallback)
   const fallback: RequiredFallbackConfig = {
-    points: clamp(rawFallback.points),
-    duration: clamp(rawFallback.duration),
+    points: clamp(fallbackOptions.points),
+    duration: clamp(fallbackOptions.duration),
   }
   // A clamped fallback value is surfaced rather than silently corrected. The
   // fallback governs the degraded path (ADR 0010), so a non-positive or
   // non-finite value quietly becoming 1 would hide a misconfiguration in the
-  // path that matters most during an outage.
-  if (fallback.points !== rawFallback.points) {
+  // path that matters most during an outage. Configuration warnings go to the
+  // factory logger, since the fallback is resolved once per factory.
+  if (fallback.points !== fallbackOptions.points) {
     logger?.warn({
       message: 'fallback.points was clamped to the minimum allowed value of 1',
-      context: { requested: rawFallback.points },
+      context: { requested: fallbackOptions.points },
     })
   }
-  if (fallback.duration !== rawFallback.duration) {
+  if (fallback.duration !== fallbackOptions.duration) {
     logger?.warn({
       message: 'fallback.duration was clamped to the minimum allowed value of 1',
-      context: { requested: rawFallback.duration },
+      context: { requested: fallbackOptions.duration },
     })
   }
 
