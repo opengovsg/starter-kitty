@@ -1,7 +1,11 @@
 import ipaddr from 'ipaddr.js'
 
 import { COLON_REPLACEMENT } from './constants.js'
-import { RateLimitConfig, RequiredRateLimitConfig } from './types.js'
+import {
+  FallbackConfig,
+  RateLimitConfig,
+  RequiredRateLimitConfig,
+} from './types.js'
 
 /**
  * Derive the store key for a client IP, or `null` when the input is not a
@@ -18,7 +22,8 @@ import { RateLimitConfig, RequiredRateLimitConfig } from './types.js'
  * @public
  */
 export const normalizeIp = (ip: string): string | null => {
-  if (!ipaddr.IPv4.isValidFourPartDecimal(ip) && !ipaddr.IPv6.isValid(ip)) return null
+  if (!ipaddr.IPv4.isValidFourPartDecimal(ip) && !ipaddr.IPv6.isValid(ip))
+    return null
 
   // `process` normalizes every spelling of an IPv4-mapped IPv6 address to
   // IPv4 so all representations of the client share one bucket.
@@ -50,9 +55,23 @@ export const clamp = (value: number): number => {
  * Merge a partial config over a resolved base. Omitted `burst`
  * values inherit the base's. An explicit `null` disables bursting.
  */
-export const mergeConfig = (base: RequiredRateLimitConfig, override?: RateLimitConfig): RequiredRateLimitConfig => ({
+export const mergeConfig = (
+  base: RequiredRateLimitConfig,
+  override?: RateLimitConfig,
+): RequiredRateLimitConfig => ({
   points: override?.points ?? base.points,
   duration: override?.duration ?? base.duration,
   burst: override?.burst !== undefined ? override.burst : base.burst,
   prefix: override?.prefix ?? base.prefix,
+})
+
+/**
+ * Merge a partial fallback config over a fully-resolved base fallback.
+ */
+export const mergeFallback = (
+  base: Required<FallbackConfig>,
+  override?: FallbackConfig,
+): Required<FallbackConfig> => ({
+  points: override?.points ?? base.points,
+  duration: override?.duration ?? base.duration,
 })

@@ -22,6 +22,7 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      fallback: { points: 1, duration: 10 },
     })
 
     await limiter.check({ ip: '1.2.3.4' })
@@ -35,6 +36,7 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      fallback: { points: 1, duration: 10 },
     })
 
     await limiter.check({ ip: '2001:db8:85a3:1::1' })
@@ -50,6 +52,7 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      fallback: { points: 1, duration: 10 },
     })
 
     await limiter.check({ ip: '2001:db8::1' })
@@ -61,6 +64,7 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      fallback: { points: 1, duration: 10 },
     })
 
     // `::` here compresses a single zero group inside the first four groups,
@@ -73,6 +77,7 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      fallback: { points: 1, duration: 10 },
     })
 
     await limiter.check({ ip: 'fe80::1%eth0' })
@@ -83,6 +88,7 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       overrides: { points: 2, duration: 10, prefix: uniquePrefix() },
+      fallback: { points: 2, duration: 10 },
     })
 
     await limiter.check({ ip: '1.2.3.4' })
@@ -95,6 +101,7 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      fallback: { points: 1, duration: 10 },
     })
 
     await limiter.check({ ip: 'not-an-ip', logger: requestLogger })
@@ -172,6 +179,7 @@ describe('createGlobalRateLimiter', () => {
       logger: defaultLogger,
       skipKeyNormalization: true,
       overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      fallback: { points: 1, duration: 10 },
     })
 
     await limiter.check({ ip: 'not-an-ip', logger: requestLogger })
@@ -185,6 +193,7 @@ describe('createGlobalRateLimiter', () => {
       logger: defaultLogger,
       skipKeyNormalization: true,
       overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      fallback: { points: 1, duration: 10 },
     })
 
     await limiter.check({ ip: '2001:db8::1' })
@@ -193,21 +202,10 @@ describe('createGlobalRateLimiter', () => {
     })
   })
 
-  it('defaults to 100 points per second with no burst', async () => {
-    const limiter = createGlobalRateLimiter({
-      logger: defaultLogger,
-      overrides: { prefix: uniquePrefix() },
-    })
-    const ip = `10.0.0.${Math.floor(Math.random() * 255)}`
-
-    const first = await limiter.check({ ip })
-    expect(first.points.remaining).toBe(99)
-
-    for (let i = 0; i < 99; i++) {
-      await limiter.check({ ip })
-    }
-    await expect(limiter.check({ ip })).rejects.toBeInstanceOf(RateLimitExceededError)
-  })
+  // The global limiter's literal built-in default (100 points/second, no
+  // burst) can no longer be observed via the no-client path — the fallback
+  // allowance (10/s) governs it instead, per ADR 0010. See
+  // `rate-limiter.docker.test.ts` for that coverage against a real Redis.
 
   it('forwards a per-check logger through to the underlying limiter', async () => {
     const requestLogger = createLoggerStub()
@@ -245,6 +243,7 @@ describe('createLocalRateLimiter', () => {
         burst: null,
         prefix: uniquePrefix(),
       },
+      fallback: { points: 1, duration: 10 },
     })
     const actor = randomUUID()
 
@@ -264,6 +263,7 @@ describe('createLocalRateLimiter', () => {
         burst: null,
         prefix: uniquePrefix(),
       },
+      fallback: { points: 1, duration: 10 },
     })
     const resource = 'auth.login'
 
