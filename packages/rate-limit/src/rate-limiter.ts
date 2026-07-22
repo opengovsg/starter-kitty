@@ -3,11 +3,36 @@ import { BurstyRateLimiter, RateLimiterMemory, RateLimiterRedis } from 'rate-lim
 
 import { BASE_RATE_LIMIT_DEFAULTS } from './constants.js'
 import { RateLimitExceededError } from './errors.js'
-import type { CreateRateLimiterOptions, Logger, RateLimitInfo, RedisClient, RequiredRateLimitConfig } from './types.js'
+import type {
+  CreateRateLimiterOptions,
+  FallbackConfig,
+  Logger,
+  RateLimitInfo,
+  RedisClient,
+  RequiredRateLimitConfig,
+} from './types.js'
 import { clamp, mergeConfig } from './utilities.js'
 
 const STEADY_NAMESPACE = 'rate-limit:'
 const BURST_NAMESPACE = 'rate-limit-burst:'
+
+type RequiredFallbackConfig = Required<FallbackConfig>
+
+/**
+ * The in-memory limiter's built-in fallback allowance: used as insurance
+ * behind a Redis-backed window during an outage, and as the sole limiter when
+ * no `client` is configured. A fixed, factory-independent constant rather
+ * than derived from the primary configuration — see ADR 0010.
+ */
+const BASE_FALLBACK: RequiredFallbackConfig = { points: 10, duration: 1 }
+
+/**
+ * Merge a partial fallback config over a fully-resolved base fallback.
+ */
+const mergeFallback = (base: RequiredFallbackConfig, override?: FallbackConfig): RequiredFallbackConfig => ({
+  points: override?.points ?? base.points,
+  duration: override?.duration ?? base.duration,
+})
 
 /**
  * Clamp every numeric field, since caller input is not validated at the type
@@ -116,25 +141,31 @@ export interface RateLimiter {
 
 const buildLimiter = (
   config: RequiredRateLimitConfig,
+  fallback: RequiredFallbackConfig,
   client: RedisClient | null,
   logger: Logger,
 ): RateLimiterAbstract | BurstyRateLimiter => {
   const { points, duration, burst } = config
-  const steadyMemoryLimiter = new RateLimiterMemory({ points, duration })
-  const burstMemoryLimiter = burst
-    ? new RateLimiterMemory({
-        points: burst.points,
-        duration: burst.duration,
-      })
-    : null
+  // The fallback allowance (ADR 0010) stands in for the primary window
+  // whenever enforcement runs off memory, as insurance during a Redis outage
+  // or as the sole limiter with no `client` configured, so it must never
+  // reflect the (possibly much larger) primary points/duration.
+  const fallbackMemory = new RateLimiterMemory({
+    points: fallback.points,
+    duration: fallback.duration,
+  })
 
   if (!client) {
     logger.warn({
       message:
-        'No Redis client configured, using in-memory rate limiting. Limits are per-instance and not shared across replicas.',
-      context: { prefix: config.prefix },
+        'No Redis client configured, using in-memory rate limiting at the fallback allowance. Limits are per-instance and not shared across replicas.',
+      context: {
+        prefix: config.prefix,
+        fallbackPoints: fallback.points,
+        fallbackDuration: fallback.duration,
+      },
     })
-    return burstMemoryLimiter ? new BurstyRateLimiter(steadyMemoryLimiter, burstMemoryLimiter) : steadyMemoryLimiter
+    return fallbackMemory
   }
 
   const steady = new RateLimiterRedis({
@@ -143,11 +174,16 @@ const buildLimiter = (
     points,
     duration,
     keyPrefix: `${STEADY_NAMESPACE}${config.prefix}:`,
-    insuranceLimiter: steadyMemoryLimiter,
+    insuranceLimiter: fallbackMemory,
   })
-  if (!burst || !burstMemoryLimiter) {
+  if (!burst) {
     return steady
   }
+  // Burst grants nothing extra while degraded (ADR 0010): a dedicated,
+  // zero-capacity memory limiter rejects immediately and cleanly whenever
+  // Redis is unreachable, without touching the fallback allowance above. It
+  // sits inert whenever Redis is healthy, since insurance is only ever
+  // consulted on an infrastructure failure, never a legitimate rejection.
   return new BurstyRateLimiter(
     steady,
     new RateLimiterRedis({
@@ -156,7 +192,10 @@ const buildLimiter = (
       points: burst.points,
       duration: burst.duration,
       keyPrefix: `${BURST_NAMESPACE}${config.prefix}:`,
-      insuranceLimiter: burstMemoryLimiter,
+      insuranceLimiter: new RateLimiterMemory({
+        points: 0,
+        duration: burst.duration,
+      }),
     }),
   )
 }
@@ -172,7 +211,32 @@ export const createRateLimiter = (options: CreateRateLimiterOptions): RateLimite
 
   const config = validateConfig(mergeConfig(BASE_RATE_LIMIT_DEFAULTS, options.overrides), logger)
 
-  const limiter = buildLimiter(config, client, logger)
+  // The fallback allowance is resolved once per factory. Keep it separate
+  // from the primary rate limit so an outage cannot grant the larger primary
+  // allowance.
+  const rawFallback = mergeFallback(BASE_FALLBACK, options.fallback)
+  const fallback: RequiredFallbackConfig = {
+    points: clamp(rawFallback.points),
+    duration: clamp(rawFallback.duration),
+  }
+  // A clamped fallback value is surfaced rather than silently corrected. The
+  // fallback governs the degraded path (ADR 0010), so a non-positive or
+  // non-finite value quietly becoming 1 would hide a misconfiguration in the
+  // path that matters most during an outage.
+  if (fallback.points !== rawFallback.points) {
+    logger?.warn({
+      message: 'fallback.points was clamped to the minimum allowed value of 1',
+      context: { requested: rawFallback.points },
+    })
+  }
+  if (fallback.duration !== rawFallback.duration) {
+    logger?.warn({
+      message: 'fallback.duration was clamped to the minimum allowed value of 1',
+      context: { requested: rawFallback.duration },
+    })
+  }
+
+  const limiter = buildLimiter(config, fallback, client, logger)
 
   return {
     check: async ({ key, logger: checkLogger }) => {
