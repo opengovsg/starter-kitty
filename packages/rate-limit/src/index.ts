@@ -26,6 +26,7 @@ export { createRateLimiter } from './rate-limiter.js'
 export type {
   BurstConfig,
   CreateRateLimiterOptions,
+  FallbackConfig,
   Logger,
   RateLimitConfig,
   RateLimitInfo,
