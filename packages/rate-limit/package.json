@@ -50,11 +50,14 @@
     "@microsoft/api-extractor": "^7.58.9",
     "@opengovsg/eslint-config-starter-kitty": "workspace:*",
     "@opengovsg/prettier-config-starter-kitty": "workspace:*",
+    "@opengovsg/testcontainers": "workspace:*",
     "@swc/core": "^1.6.13",
     "@types/node": "^20",
     "ioredis": "^5.8.2",
+    "testcontainers": "^12.0.4",
     "typescript": "^5.4.5",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "zod": "^3.25.0 || ^4.0.0"
   },
   "prettier": "@opengovsg/prettier-config-starter-kitty"
 }
