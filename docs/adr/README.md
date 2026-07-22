@@ -8,15 +8,16 @@ supersedes the old one (and note it in the old one's status).
 
 Files are numbered sequentially: `NNNN-kebab-case-title.md`.
 
-| ADR                                             | Title                                        | Status   |
-| ----------------------------------------------- | -------------------------------------------- | -------- |
-| [0001](./0001-logging-package-public-api.md)    | Logging package public API                   | Accepted |
-| [0002](./0002-logging-factory-no-global.md)     | Logging factory, no library-owned global     | Accepted |
-| [0003](./0003-canonical-log-wire-schema.md)     | Canonical log wire schema                    | Accepted |
-| [0004](./0004-scope-not-pino-child.md)          | Scoping is `scope`, not `child`              | Accepted |
-| [0005](./0005-no-redaction-in-base-logger.md)   | No redaction in the base logger              | Accepted |
-| [0006](./0006-pluggable-error-serialization.md) | Pluggable error serialisation; no error type | Accepted |
-| [0007](./0007-fixed-shape-audit-helpers.md)     | Fixed-shape audit helpers                    | Accepted (amended by [0008](./0008-audit-lines-compose-scoped-context.md)) |
-| [0008](./0008-audit-lines-compose-scoped-context.md) | Audit lines compose scoped context      | Accepted |
-| [0009](./0009-rate-limit-package-design.md)     | Rate-limit package design                    | Accepted (amended by [0010](./0010-clamp-insurance-limiter-fallback.md)) |
-| [0010](./0010-clamp-insurance-limiter-fallback.md) | Clamp the insurance limiter's fallback allowance | Accepted |
+| ADR                                                   | Title                                            | Status                                                                     |
+| ----------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
+| [0001](./0001-logging-package-public-api.md)          | Logging package public API                       | Accepted                                                                   |
+| [0002](./0002-logging-factory-no-global.md)           | Logging factory, no library-owned global         | Accepted                                                                   |
+| [0003](./0003-canonical-log-wire-schema.md)           | Canonical log wire schema                        | Accepted                                                                   |
+| [0004](./0004-scope-not-pino-child.md)                | Scoping is `scope`, not `child`                  | Accepted                                                                   |
+| [0005](./0005-no-redaction-in-base-logger.md)         | No redaction in the base logger                  | Accepted                                                                   |
+| [0006](./0006-pluggable-error-serialization.md)       | Pluggable error serialisation; no error type     | Accepted                                                                   |
+| [0007](./0007-fixed-shape-audit-helpers.md)           | Fixed-shape audit helpers                        | Accepted (amended by [0008](./0008-audit-lines-compose-scoped-context.md)) |
+| [0008](./0008-audit-lines-compose-scoped-context.md)  | Audit lines compose scoped context               | Accepted                                                                   |
+| [0009](./0009-rate-limit-package-design.md)           | Rate-limit package design                        | Accepted (amended by [0010](./0010-clamp-insurance-limiter-fallback.md))   |
+| [0010](./0010-clamp-insurance-limiter-fallback.md)    | Clamp the insurance limiter's fallback allowance | Accepted                                                                   |
+| [0011](./0011-failed-authentication-rate-limiting.md) | Failed-authentication rate limiting              | Accepted                                                                   |
