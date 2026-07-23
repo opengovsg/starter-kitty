@@ -22,6 +22,16 @@ for manifest in packages/*/package.json; do
   [ -z "$name" ] && continue
   version=$(jq -r '.version' "$manifest")
 
+  # In snapshot mode (tag given), a run with no pending changesets leaves
+  # package.json at its last real, already-released version instead of a
+  # fresh `-<tag>-<timestamp>` bump. npm correctly no-ops on that; mirror
+  # the no-op here instead of republishing the release version under the
+  # snapshot tag.
+  if [ -n "${1:-}" ] && npm view "$name@$version" --registry=https://registry.npmjs.org/ >/dev/null 2>&1; then
+    echo "$name@$version is already released on npm (no new snapshot), skipping"
+    continue
+  fi
+
   if view_output=$(npm view "$name@$version" --registry=https://npm.pkg.github.com 2>&1); then
     echo "$name@$version already published to GitHub Packages, skipping"
   elif echo "$view_output" | grep -q 'E404'; then
