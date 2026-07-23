@@ -28,6 +28,7 @@ jobs:
       contents: read
       pull-requests: write
       id-token: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,6 +73,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: "" # https://github.com/changesets/changesets/issues/1152#issuecomment-3190884868
 
+      - name: Configure registry for GitHub Packages
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: Publish snapshot to GitHub Packages
+        run: .github/scripts/publish-github-packages.sh snapshot
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   release:
     name: Release
     runs-on: ubuntu-latest
@@ -80,6 +92,7 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
+      packages: write
     steps:
       # Mint a token from the reusable Changesets GitHub App so the Version
       # Packages PR is created with a non-default identity. PRs/pushes made
@@ -127,3 +140,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           NPM_TOKEN: "" # https://github.com/changesets/changesets/issues/1152#issuecomment-3190884868
+
+      - name: Configure registry for GitHub Packages
+        if: steps.changesets.outputs.published == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: Publish to GitHub Packages
+        if: steps.changesets.outputs.published == 'true'
+        run: .github/scripts/publish-github-packages.sh
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
