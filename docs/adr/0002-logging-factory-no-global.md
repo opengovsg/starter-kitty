@@ -5,7 +5,7 @@ Status: Accepted
 
 ## Context
 
-`@opengovsg/starter-kitty-logging` originally exposed two entry points:
+`@opengovsg/logging` originally exposed two entry points:
 
 - `configureLogging(partial)` — mutated a **module-level** `config` and reset a
   lazily-built pino singleton. Process-global, meant to be called once at boot,

@@ -1,5 +1,5 @@
 {
-  "name": "@opengovsg/starter-kitty-logging",
+  "name": "@opengovsg/logging",
   "version": "0.5.1",
   "type": "module",
   "main": "./dist/index.js",

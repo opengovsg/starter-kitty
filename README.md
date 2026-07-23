@@ -12,7 +12,7 @@ Please refer to the [documentation website](https://kit.open.gov.sg/) for detail
 
 ## Packages
 
-- [`@opengovsg/starter-kitty-validators`](./packages/validators/): Common input validators.
+- [`@opengovsg/validators`](./packages/validators/): Common input validators.
 
 ## Releasing
 

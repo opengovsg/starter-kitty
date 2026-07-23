@@ -1,15 +1,15 @@
-# @opengovsg/starter-kitty-validators
+# @opengovsg/validators
 
 ## Installation
 
 ```bash
-npm i --save @opengovsg/starter-kitty-validators
+npm i --save @opengovsg/validators
 ```
 
 ## Path Validation
 
 ```javascript
-import { createPathSchema } from '@opengovsg/starter-kitty-validators/path'
+import { createPathSchema } from '@opengovsg/validators/path'
 
 const pathSchema = createPathSchema({
   basePath: '/app/content',
@@ -29,7 +29,7 @@ type ContentSubmission = z.infer<typeof contentSubmissionSchema>
 ## Email Validation
 
 ```javascript
-import { createEmailSchema } from '@opengovsg/starter-kitty-validators/email'
+import { createEmailSchema } from '@opengovsg/validators/email'
 
 const emailSchema = createEmailSchema({
   domains: [{ domain: 'gov.sg', includeSubdomains: true }],
@@ -50,7 +50,7 @@ type FormValues = z.infer<typeof formSchema>
 Validating a post-login redirect URL provided in a query parameter:
 
 ```javascript
-import { UrlValidator } from '@opengovsg/starter-kitty-validators/url'
+import { UrlValidator } from '@opengovsg/validators/url'
 
 const validator = new RelUrlValidator(window.location.origin)
 ```
@@ -66,7 +66,7 @@ router.push(validator.parsePathname(redirectUrl, fallbackUrl))
 For more control you can create the UrlValidator instance yourself and invoke .parse
 
 ```javascript
-import { UrlValidator } from '@opengovsg/starter-kitty-validators/url'
+import { UrlValidator } from '@opengovsg/validators/url'
 
 const validator = new UrlValidator({
   whitelist: {
@@ -83,7 +83,7 @@ validator.parse(userInput)
 Using the validator as part of a Zod schema to validate the URL and fall back to a default URL if the URL is invalid:
 
 ```javascript
-import { createUrlSchema } from '@opengovsg/starter-kitty-validators/url'
+import { createUrlSchema } from '@opengovsg/validators/url'
 
 const baseUrl = new URL(getBaseUrl())
 
@@ -110,7 +110,7 @@ export const callbackUrlSchema = z
 Validating the URL when it's saved as config, so an obviously unsafe URL never reaches storage:
 
 ```javascript
-import { webhookUrlSchema } from '@opengovsg/starter-kitty-validators/webhook-url'
+import { webhookUrlSchema } from '@opengovsg/validators/webhook-url'
 
 const saveWebhookConfigSchema = z.object({
   url: webhookUrlSchema,
@@ -128,7 +128,7 @@ Built on zod's `z.httpUrl()`, this only accepts `http`/`https` URLs with a real 
 Sending a webhook, every time an event fires - not just once at registration:
 
 ```javascript
-import { WebhookUrlValidator } from '@opengovsg/starter-kitty-validators/server/webhook-url'
+import { WebhookUrlValidator } from '@opengovsg/validators/server/webhook-url'
 
 const webhookValidator = new WebhookUrlValidator()
 

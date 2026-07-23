@@ -5,7 +5,7 @@ Status: Accepted
 
 ## Context
 
-`@opengovsg/starter-kitty-logging` emits newline-delimited JSON. The exact field
+`@opengovsg/logging` emits newline-delimited JSON. The exact field
 names and the set of fields present on every line are an interface in their own
 right: dashboards, monitors, and incident queries are written against them, so
 they are expensive to change once consumers depend on them. Until now the shape

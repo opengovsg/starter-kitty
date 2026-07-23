@@ -8,7 +8,7 @@ import { z } from 'zod/v4'
  * bare `metadata` cloud-metadata alias; `*.localhost` subdomains (RFC 6761) are blocked explicitly,
  * since those are still valid-looking domains. Does not perform DNS resolution - use
  * `WebhookUrlValidator.fetch` or `WebhookUrlValidator.validateAsync` (from the
- * `@opengovsg/starter-kitty-validators/server/webhook-url` subpath) for that.
+ * `@opengovsg/validators/server/webhook-url` subpath) for that.
  *
  * @public
  */

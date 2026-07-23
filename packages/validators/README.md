@@ -1,4 +1,4 @@
-# `@opengovsg/starter-kitty-validators`
+# `@opengovsg/validators`
 
 A set of [zod](https://zod.dev/)-based validators providing sensible defaults to prevent common security vulnerabilities: path traversal, open redirects, XSS, and SSRF.
 Each validator is its own subpath export, so you only pull in what you use.
@@ -6,7 +6,7 @@ Each validator is its own subpath export, so you only pull in what you use.
 ## Install
 
 ```sh
-pnpm add @opengovsg/starter-kitty-validators zod
+pnpm add @opengovsg/validators zod
 ```
 
 `zod` (`^3.25.0 || ^4.0.0`) is a peer dependency - you supply the version your app already uses.
@@ -14,7 +14,7 @@ pnpm add @opengovsg/starter-kitty-validators zod
 ## Path validation
 
 ```ts
-import { createPathSchema } from '@opengovsg/starter-kitty-validators/path'
+import { createPathSchema } from '@opengovsg/validators/path'
 
 const pathSchema = createPathSchema({ basePath: '/app/content' })
 
@@ -29,7 +29,7 @@ const contentSubmissionSchema = z.object({
 ## Email validation
 
 ```ts
-import { createEmailSchema } from '@opengovsg/starter-kitty-validators/email'
+import { createEmailSchema } from '@opengovsg/validators/email'
 
 const emailSchema = createEmailSchema({ domains: [{ domain: 'gov.sg', includeSubdomains: true }] })
 
@@ -46,7 +46,7 @@ const formSchema = z.object({
 `UrlValidator` **allowlists** known-safe hosts, for validating redirect targets and other URLs your own app navigates to:
 
 ```ts
-import { UrlValidator } from '@opengovsg/starter-kitty-validators/url'
+import { UrlValidator } from '@opengovsg/validators/url'
 
 const validator = new UrlValidator({
   whitelist: {
@@ -61,7 +61,7 @@ validator.parse(userSuppliedRedirectUrl)
 `RelUrlValidator` is a convenience subclass for the common case of validating a relative post-login redirect against the current origin:
 
 ```ts
-import { RelUrlValidator } from '@opengovsg/starter-kitty-validators/url'
+import { RelUrlValidator } from '@opengovsg/validators/url'
 
 const validator = new RelUrlValidator(window.location.origin)
 window.location.pathname = validator.parsePathname(redirectUrl, '/home') // falls back to /home if invalid
@@ -80,7 +80,7 @@ window.location.pathname = validator.parsePathname(redirectUrl, '/home') // fall
 Use `webhookUrlSchema` wherever a webhook URL is taken as input, so a request to save an obviously unsafe URL is rejected before it ever reaches storage:
 
 ```ts
-import { webhookUrlSchema } from '@opengovsg/starter-kitty-validators/webhook-url'
+import { webhookUrlSchema } from '@opengovsg/validators/webhook-url'
 
 const saveWebhookConfigSchema = z.object({
   url: webhookUrlSchema,
@@ -104,7 +104,7 @@ Not using zod for this input, but still on the server? `new WebhookUrlValidator(
 Use `WebhookUrlValidator.fetch` to actually deliver, every time an event fires - not just once at registration. It re-runs the sync checks, resolves the hostname, validates every resolved IP (catching DNS rebinding: a hostname that resolved to a safe address when saved but an internal one now, or that has a mix of safe and unsafe A/AAAA records), and only then makes the request, rejecting redirects instead of following them:
 
 ```ts
-import { WebhookUrlValidator } from '@opengovsg/starter-kitty-validators/server/webhook-url'
+import { WebhookUrlValidator } from '@opengovsg/validators/server/webhook-url'
 
 const webhookValidator = new WebhookUrlValidator()
 

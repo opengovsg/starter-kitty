@@ -40,7 +40,7 @@ The base logger **defines no error type** and shapes errors through a
 
 Framework-specific serialisers (tRPC `code`→`kind`, NestJS `HttpException`) are
 **deferred**. When they land they ship as subpath exports
-(`@opengovsg/starter-kitty-logging/trpc`, `/nestjs`), following the `validators`
+(`@opengovsg/logging/trpc`, `/nestjs`), following the `validators`
 package precedent (`exports` + `typesVersions` + `src/<name>/index.ts`).
 
 ## Consequences

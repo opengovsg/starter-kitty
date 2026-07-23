@@ -54,7 +54,7 @@ importers:
 
   apps/docs:
     devDependencies:
-      '@opengovsg/starter-kitty-validators':
+      '@opengovsg/validators':
         specifier: workspace:*
         version: link:../../packages/validators
       vitepress:
