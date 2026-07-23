@@ -1,5 +1,5 @@
 {
-  "name": "@opengovsg/starter-kitty-validators",
+  "name": "@opengovsg/validators",
   "version": "1.4.1",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

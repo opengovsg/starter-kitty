@@ -1,5 +1,5 @@
 /**
- * Vitest glue for `@opengovsg/starter-kitty-testcontainers`: a globalSetup
+ * Vitest glue for `@opengovsg/testcontainers`: a globalSetup
  * factory, typed provided context, and per-worker Redis logical-DB isolation
  * helper.
  *
@@ -47,8 +47,8 @@ const toProvidedContainers = (containers: StartedContainerInformation[]): Provid
  * @example
  * ```ts
  * // tests/global-setup.ts
- * import { postgres, redis } from '@opengovsg/starter-kitty-testcontainers'
- * import { createGlobalSetup } from '@opengovsg/starter-kitty-testcontainers/vitest'
+ * import { postgres, redis } from '@opengovsg/testcontainers'
+ * import { createGlobalSetup } from '@opengovsg/testcontainers/vitest'
  *
  * export default createGlobalSetup([postgres(), redis({ databases: 256 })])
  * ```

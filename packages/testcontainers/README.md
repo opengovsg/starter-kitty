@@ -1,4 +1,4 @@
-# `@opengovsg/starter-kitty-testcontainers`
+# `@opengovsg/testcontainers`
 
 A declarative wrapper over [testcontainers](https://node.testcontainers.org/) for integration and e2e test setups.
 It provides a zod-validated container config schema, `setup`/`teardown` over `GenericContainer`, a typed Vitest context handoff, Postgres and Redis presets, and Vitest glue helpers.
@@ -9,7 +9,7 @@ If your Docker socket is in a non-standard location, set `TESTCONTAINERS_DOCKER_
 ## Install
 
 ```sh
-pnpm add -D @opengovsg/starter-kitty-testcontainers testcontainers
+pnpm add -D @opengovsg/testcontainers testcontainers
 ```
 
 `testcontainers` and `zod` are peer dependencies - you supply the versions your app already uses.
@@ -21,7 +21,7 @@ This package is ESM-only (`"type": "module"`); import it from ESM or an ESM-awar
 Prereleases are published under the `snapshot` dist-tag as `0.0.0-snapshot-<timestamp>` versions, for validating changes before a real release:
 
 ```sh
-pnpm add -D @opengovsg/starter-kitty-testcontainers@snapshot
+pnpm add -D @opengovsg/testcontainers@snapshot
 ```
 
 If your repo enforces a pnpm `minimumReleaseAge` install gate, exclude `@opengovsg/*` from it (`minimumReleaseAgeExclude`) - a freshly published snapshot is younger than any age threshold and will otherwise fail to resolve.
@@ -31,14 +31,7 @@ If your repo enforces a pnpm `minimumReleaseAge` install gate, exclude `@opengov
 Start Postgres and Redis, then build connection strings from the started containers.
 
 ```ts
-import {
-  getPostgresConnectionString,
-  getRedisUrl,
-  postgres,
-  redis,
-  setup,
-  teardown,
-} from '@opengovsg/starter-kitty-testcontainers'
+import { getPostgresConnectionString, getRedisUrl, postgres, redis, setup, teardown } from '@opengovsg/testcontainers'
 
 const containers = await setup([postgres(), redis()])
 const [pg, cache] = containers
@@ -69,7 +62,7 @@ Anything the presets do, you can spell out yourself with a plain `ContainerConfi
 Use this for images that have no preset.
 
 ```ts
-import { setup, type ContainerConfiguration } from '@opengovsg/starter-kitty-testcontainers'
+import { setup, type ContainerConfiguration } from '@opengovsg/testcontainers'
 
 const mockpass: ContainerConfiguration = {
   name: 'mockpass',
@@ -99,8 +92,8 @@ Boot the containers once per run in a `globalSetup` file. The helper publishes t
 
 ```ts
 // tests/global-setup.ts
-import { postgres, redis } from '@opengovsg/starter-kitty-testcontainers'
-import { createGlobalSetup } from '@opengovsg/starter-kitty-testcontainers/vitest'
+import { postgres, redis } from '@opengovsg/testcontainers'
+import { createGlobalSetup } from '@opengovsg/testcontainers/vitest'
 
 export default createGlobalSetup([postgres(), redis()])
 ```
@@ -121,7 +114,7 @@ Inside any test file, read the name-keyed container information with Vitest's `i
 
 ```ts
 // tests/db.test.ts
-import { getPostgresConnectionString } from '@opengovsg/starter-kitty-testcontainers'
+import { getPostgresConnectionString } from '@opengovsg/testcontainers'
 import { inject } from 'vitest'
 
 const { postgres } = inject('testcontainers')
@@ -145,8 +138,8 @@ export default createGlobalSetup([redis({ databases: 256 })])
 
 ```ts
 // tests/setup.ts (per-file setup, e.g. via test.setupFiles)
-import { getRedisUrl } from '@opengovsg/starter-kitty-testcontainers'
-import { getWorkerDatabaseIndex } from '@opengovsg/starter-kitty-testcontainers/vitest'
+import { getRedisUrl } from '@opengovsg/testcontainers'
+import { getWorkerDatabaseIndex } from '@opengovsg/testcontainers/vitest'
 import { createClient } from 'redis'
 import { inject } from 'vitest'
 
@@ -169,7 +162,7 @@ Pin fixed host ports and set `reuse: true` so reruns share the same containers i
 
 ```ts
 // tests/e2e/setup/containers.ts
-import { postgres, redis, setup } from '@opengovsg/starter-kitty-testcontainers'
+import { postgres, redis, setup } from '@opengovsg/testcontainers'
 
 const PG_HOST_PORT = 64322
 const REDIS_HOST_PORT = 63800
@@ -195,7 +188,7 @@ A command running inside the container must reach Postgres/Redis at the containe
 Pass `internal: true` to the connection-string builders for that address:
 
 ```ts
-import { getPostgresConnectionString } from '@opengovsg/starter-kitty-testcontainers'
+import { getPostgresConnectionString } from '@opengovsg/testcontainers'
 
 const [pg] = await startContainers()
 const internalUrl = getPostgresConnectionString(pg, { internal: true }) // postgresql://root:root@localhost:5432/test?sslmode=disable
@@ -232,7 +225,7 @@ Later global setup entries receive the same project, so they can read the contex
 
 ```ts
 // tests/migrate.ts
-import type {} from '@opengovsg/starter-kitty-testcontainers/vitest'
+import type {} from '@opengovsg/testcontainers/vitest'
 import type { TestProject } from 'vitest/node'
 
 export default async (project: TestProject) => {
@@ -248,8 +241,8 @@ Compose it in one file and chain your teardown before ours.
 
 ```ts
 // tests/global-setup.ts
-import { postgres } from '@opengovsg/starter-kitty-testcontainers'
-import { createGlobalSetup } from '@opengovsg/starter-kitty-testcontainers/vitest'
+import { postgres } from '@opengovsg/testcontainers'
+import { createGlobalSetup } from '@opengovsg/testcontainers/vitest'
 import type { TestProject } from 'vitest/node'
 
 const setupContainers = createGlobalSetup([postgres()])
@@ -270,8 +263,8 @@ export default async (project: TestProject) => {
 Use `setup`, `project.provide`, and `teardown` directly to own the whole function.
 
 ```ts
-import { postgres, setup, teardown } from '@opengovsg/starter-kitty-testcontainers'
-import type { ProvidedContainers } from '@opengovsg/starter-kitty-testcontainers/vitest'
+import { postgres, setup, teardown } from '@opengovsg/testcontainers'
+import type { ProvidedContainers } from '@opengovsg/testcontainers/vitest'
 import type { TestProject } from 'vitest/node'
 
 export default async (project: TestProject) => {

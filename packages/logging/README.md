@@ -1,4 +1,4 @@
-# `@opengovsg/starter-kitty-logging`
+# `@opengovsg/logging`
 
 A framework-agnostic structured logging core built on [pino](https://getpino.io/).
 It standardises the log wire format (newline-delimited JSON with custom syslog
@@ -19,7 +19,7 @@ optional. It never throws.
 
 ```ts
 // src/logger.ts — owned by your app
-import { createLogging } from '@opengovsg/starter-kitty-logging'
+import { createLogging } from '@opengovsg/logging'
 
 export const createBaseLogger = createLogging({
   // Required — deployment identity, no library defaults:
@@ -227,7 +227,7 @@ To recover framework-specific shaping (e.g. map a tRPC `code` or a NestJS
 `HttpException` status to `kind`), override `serializeError` once on the factory:
 
 ```ts
-import { createLogging, serializeError } from '@opengovsg/starter-kitty-logging'
+import { createLogging, serializeError } from '@opengovsg/logging'
 
 export const createBaseLogger = createLogging({
   env,

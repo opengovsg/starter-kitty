@@ -1,4 +1,4 @@
-# @opengovsg/starter-kitty-testcontainers
+# @opengovsg/testcontainers
 
 A declarative wrapper over [testcontainers](https://node.testcontainers.org/) for integration and e2e test setups.
 It provides a zod-validated container config schema, `setup`/`teardown` over `GenericContainer`, a typed Vitest context handoff, Postgres and Redis presets, and Vitest glue helpers.
@@ -8,7 +8,7 @@ A running Docker daemon is required wherever the tests run (locally and in CI).
 ## Installation
 
 ```bash
-npm i --save-dev @opengovsg/starter-kitty-testcontainers testcontainers
+npm i --save-dev @opengovsg/testcontainers testcontainers
 ```
 
 `testcontainers` and `zod` are peer dependencies. Vitest is an optional peer dependency.
@@ -17,14 +17,7 @@ The Vitest glue lives at the `/vitest` subpath.
 ## Quickstart with presets
 
 ```ts
-import {
-  getPostgresConnectionString,
-  getRedisUrl,
-  postgres,
-  redis,
-  setup,
-  teardown,
-} from '@opengovsg/starter-kitty-testcontainers'
+import { getPostgresConnectionString, getRedisUrl, postgres, redis, setup, teardown } from '@opengovsg/testcontainers'
 
 const containers = await setup([postgres(), redis()])
 const [pg, cache] = containers
@@ -44,8 +37,8 @@ Boot the containers once per run, and read their connection information back thr
 
 ```ts
 // tests/global-setup.ts
-import { postgres, redis } from '@opengovsg/starter-kitty-testcontainers'
-import { createGlobalSetup } from '@opengovsg/starter-kitty-testcontainers/vitest'
+import { postgres, redis } from '@opengovsg/testcontainers'
+import { createGlobalSetup } from '@opengovsg/testcontainers/vitest'
 
 export default createGlobalSetup([postgres(), redis()])
 ```
@@ -61,7 +54,7 @@ export default defineConfig({
 
 ```ts
 // tests/db.test.ts
-import { getPostgresConnectionString } from '@opengovsg/starter-kitty-testcontainers'
+import { getPostgresConnectionString } from '@opengovsg/testcontainers'
 import { inject } from 'vitest'
 
 const { postgres } = inject('testcontainers')
@@ -81,8 +74,8 @@ export default createGlobalSetup([redis({ databases: 256 })])
 ```
 
 ```ts
-import { getRedisUrl } from '@opengovsg/starter-kitty-testcontainers'
-import { getWorkerDatabaseIndex } from '@opengovsg/starter-kitty-testcontainers/vitest'
+import { getRedisUrl } from '@opengovsg/testcontainers'
+import { getWorkerDatabaseIndex } from '@opengovsg/testcontainers/vitest'
 import { createClient } from 'redis'
 import { inject } from 'vitest'
 
@@ -100,7 +93,7 @@ Keep its argument and `redis({ databases })` as one shared constant.
 Playwright e2e suites need a known URL, so pin fixed host ports and set `reuse: true`.
 
 ```ts
-import { postgres, redis, setup } from '@opengovsg/starter-kitty-testcontainers'
+import { postgres, redis, setup } from '@opengovsg/testcontainers'
 
 export const startContainers = () =>
   setup([

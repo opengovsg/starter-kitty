@@ -12,7 +12,7 @@ Status: Accepted
 
 ## Context
 
-`@opengovsg/starter-kitty-logging` provides a framework-agnostic structured
+`@opengovsg/logging` provides a framework-agnostic structured
 logging core. Its public API has to balance two competing pressures:
 
 - **Ergonomics.** Every log call should be cheap to write, or engineers route

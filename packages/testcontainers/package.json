@@ -1,5 +1,5 @@
 {
-  "name": "@opengovsg/starter-kitty-testcontainers",
+  "name": "@opengovsg/testcontainers",
   "version": "0.2.0",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,4 +1,4 @@
-# @opengovsg/starter-kitty-logging
+# @opengovsg/logging
 
 A framework-agnostic structured logging core built on [pino](https://getpino.io/).
 It standardises the log wire format (newline-delimited JSON aligned to Datadog),
@@ -8,14 +8,14 @@ taxonomy of audit events. It reads no environment variables of its own.
 ## Installation
 
 ```bash
-npm i --save @opengovsg/starter-kitty-logging
+npm i --save @opengovsg/logging
 ```
 
 ## Setup
 
 ```javascript
 // src/logger.ts — owned by your app
-import { createLogging } from '@opengovsg/starter-kitty-logging'
+import { createLogging } from '@opengovsg/logging'
 
 export const createBaseLogger = createLogging({
   // Required — deployment identity, no library defaults:
@@ -105,7 +105,7 @@ between concurrent requests.
 ## Error serialisation
 
 ```javascript
-import { createLogging, serializeError } from '@opengovsg/starter-kitty-logging'
+import { createLogging, serializeError } from '@opengovsg/logging'
 
 export const createBaseLogger = createLogging({
   env,
@@ -159,5 +159,5 @@ The categories and their events:
 | `failures`       | Handled security denials (`warn`)      | `accessDenied`, `privilegeEscalationDenied`, `sensitiveActionBlocked`                                                                             |
 | `resource`       | Entity lifecycle (mutations)           | `created`, `updated`, `deleted`, `ownershipTransferred`                                                                                           |
 
-See the [`@opengovsg/starter-kitty-logging` README](https://github.com/opengovsg/starter-kitty/blob/develop/packages/logging/README.md)
+See the [`@opengovsg/logging` README](https://github.com/opengovsg/starter-kitty/blob/develop/packages/logging/README.md)
 for each event's required fields.
