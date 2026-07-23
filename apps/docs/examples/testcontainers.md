@@ -17,14 +17,7 @@ The Vitest glue lives at the `/vitest` subpath.
 ## Quickstart with presets
 
 ```ts
-import {
-  getPostgresConnectionString,
-  getRedisUrl,
-  postgres,
-  redis,
-  setup,
-  teardown,
-} from '@opengovsg/testcontainers'
+import { getPostgresConnectionString, getRedisUrl, postgres, redis, setup, teardown } from '@opengovsg/testcontainers'
 
 const containers = await setup([postgres(), redis()])
 const [pg, cache] = containers
