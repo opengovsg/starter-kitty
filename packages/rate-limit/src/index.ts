@@ -8,14 +8,23 @@
  * be composed with a short burst allowance to absorb legitimate spikes.
  *
  * {@link createGlobalRateLimiter} guards pre-authentication traffic by client
- * IP. {@link createLocalRateLimiter} enforces per-actor, per-resource quotas
- * for identified traffic.
- *
- * {@link createRateLimiter} exposes the underlying core for anything else.
+ * IP. {@link createAuthnRateLimiter} counts failed credential verification by
+ * client IP. {@link createLocalRateLimiter} enforces per-actor, per-resource
+ * quotas for identified traffic. {@link createRateLimiter} exposes the
+ * underlying request-counting core and {@link createBlockingRateLimiter} the
+ * failure-counting core for anything else.
  *
  * @packageDocumentation
  */
 
+export type { AuthnRateLimiter, CreateAuthnRateLimiterOptions } from './authn-rate-limiter.js'
+export { createAuthnRateLimiter } from './authn-rate-limiter.js'
+export type {
+  BlockingRateLimitConfig,
+  BlockingRateLimiter,
+  CreateBlockingRateLimiterOptions,
+} from './blocking-rate-limiter.js'
+export { createBlockingRateLimiter } from './blocking-rate-limiter.js'
 export { RateLimitExceededError } from './errors.js'
 export type { CreateGlobalRateLimiterOptions, GlobalRateLimiter } from './global-rate-limiter.js'
 export { createGlobalRateLimiter } from './global-rate-limiter.js'

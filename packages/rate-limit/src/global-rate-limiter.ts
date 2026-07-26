@@ -72,8 +72,6 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions)
       // extractor cannot crash the limiter on either path.
       const key = typeof ip !== 'string' ? null : skipKeyNormalization ? ip : normalizeIp(ip)
       if (key === null) {
-        // Prefer the request-scoped logger so the extraction failure carries
-        // request identity.
         const lgr = logger ?? rateLimiterOptions.logger
         lgr.error({
           message:

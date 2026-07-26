@@ -6,7 +6,14 @@ import { Redis } from 'ioredis'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { TestProject } from 'vitest/node'
 
-import { createGlobalRateLimiter, createLocalRateLimiter, type Logger, RateLimitExceededError } from '../index.js'
+import {
+  createAuthnRateLimiter,
+  createBlockingRateLimiter,
+  createGlobalRateLimiter,
+  createLocalRateLimiter,
+  type Logger,
+  RateLimitExceededError,
+} from '../index.js'
 
 const uniquePrefix = () => `test-${randomUUID()}`
 
@@ -100,5 +107,48 @@ describe('rate limiters against a real, healthy Redis', () => {
     await limiter.check({ actor, resource: 'bookings.create' })
     await limiter.check({ actor, resource: 'bookings.create' })
     await expect(limiter.check({ actor, resource: 'bookings.create' })).rejects.toBeInstanceOf(RateLimitExceededError)
+  })
+
+  it('persists and resets a primitive block in Redis', async () => {
+    const limiter = createBlockingRateLimiter({
+      client,
+      defaults: { points: 2, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+    })
+    const key = randomUUID()
+
+    await expect(limiter.isBlocked({ key })).resolves.toBeUndefined()
+    await limiter.consume({ key })
+    await limiter.consume({ key })
+    await expect(limiter.isBlocked({ key })).resolves.toBeUndefined()
+
+    await limiter.consume({ key })
+    const error = await limiter.isBlocked({ key }).catch((caught: unknown) => caught)
+    expect(error).toBeInstanceOf(RateLimitExceededError)
+    expect((error as RateLimitExceededError).info.points).toEqual({ remaining: 0, consumed: 3 })
+    expect((error as RateLimitExceededError).info.msToNextWindow).toBeGreaterThan(25_000)
+    expect((error as RateLimitExceededError).info.msToNextWindow).toBeLessThanOrEqual(30_000)
+
+    await limiter.reset({ key })
+    await expect(limiter.isBlocked({ key })).resolves.toBeUndefined()
+  })
+
+  it('persists an authn IP block in Redis', async () => {
+    const limiter = createAuthnRateLimiter({
+      client,
+      defaults: { points: 2, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+    })
+    const ip = `10.0.1.${Math.floor(Math.random() * 255)}`
+
+    await expect(limiter.isBlocked({ ip })).resolves.toBeUndefined()
+    await limiter.consume({ ip })
+    await limiter.consume({ ip })
+    await expect(limiter.isBlocked({ ip })).resolves.toBeUndefined()
+
+    await limiter.consume({ ip })
+    const error = await limiter.isBlocked({ ip }).catch((caught: unknown) => caught)
+    expect(error).toBeInstanceOf(RateLimitExceededError)
+    expect((error as RateLimitExceededError).info.points).toEqual({ remaining: 0, consumed: 3 })
+    expect((error as RateLimitExceededError).info.msToNextWindow).toBeGreaterThan(25_000)
+    expect((error as RateLimitExceededError).info.msToNextWindow).toBeLessThanOrEqual(30_000)
   })
 })
