@@ -1,4 +1,4 @@
-# `@opengovsg/starter-kitty-rate-limit`
+# `@opengovsg/rate-limit`
 
 A framework-agnostic rate-limiting core built on
 [rate-limiter-flexible](https://github.com/animir/node-rate-limiter-flexible),
@@ -40,7 +40,7 @@ keys, throttling non-HTTP work such as database writes).
 
 ```ts
 // src/rate-limiters.ts — owned by your app
-import { createGlobalRateLimiter, createLocalRateLimiter } from '@opengovsg/starter-kitty-rate-limit'
+import { createGlobalRateLimiter, createLocalRateLimiter } from '@opengovsg/rate-limit'
 
 import { redis } from './redis.js' // your ioredis client (or omit for memory-only)
 import { systemLogger } from './logger.js' // a base/system logger
@@ -100,7 +100,7 @@ rethrown, so failing open or closed stays your decision.
 ## Handling rejections
 
 ```ts
-import { constructRateLimitHeaders, RateLimitExceededError } from '@opengovsg/starter-kitty-rate-limit'
+import { constructRateLimitHeaders, RateLimitExceededError } from '@opengovsg/rate-limit'
 
 try {
   await localRateLimiter.check({ actor, resource })

@@ -1,4 +1,4 @@
-# @opengovsg/starter-kitty-rate-limit
+# @opengovsg/rate-limit
 
 A framework-agnostic rate-limiting core built on
 [rate-limiter-flexible](https://github.com/animir/node-rate-limiter-flexible).
@@ -10,7 +10,7 @@ fallback when no client is configured at all.
 ## Installation
 
 ```bash
-npm i --save @opengovsg/starter-kitty-rate-limit
+npm i --save @opengovsg/rate-limit
 ```
 
 `ioredis` is an optional peer dependency; install it only if you back the
@@ -23,7 +23,7 @@ them:
 
 ```javascript
 // src/rate-limiters.ts — owned by your app
-import { createGlobalRateLimiter, createLocalRateLimiter } from '@opengovsg/starter-kitty-rate-limit'
+import { createGlobalRateLimiter, createLocalRateLimiter } from '@opengovsg/rate-limit'
 
 import { systemLogger } from '~/logger' // a base/system logger
 import { redis } from '~/redis' // your ioredis client
@@ -66,7 +66,7 @@ A `null` IP falls into a shared `unknown` bucket rather than being exempted.
 ## Express
 
 ```javascript
-import { constructRateLimitHeaders, RateLimitExceededError } from '@opengovsg/starter-kitty-rate-limit'
+import { constructRateLimitHeaders, RateLimitExceededError } from '@opengovsg/rate-limit'
 
 import { globalRateLimiter, localRateLimiter } from '~/rate-limiters'
 
@@ -108,7 +108,7 @@ request logging; do not accept forwarding headers from untrusted clients.
 Drive per-procedure limits from procedure `meta`:
 
 ```javascript
-import { RateLimitExceededError } from '@opengovsg/starter-kitty-rate-limit'
+import { RateLimitExceededError } from '@opengovsg/rate-limit'
 import { initTRPC, TRPCError } from '@trpc/server'
 
 import { localRateLimiter } from '~/rate-limiters'
@@ -163,7 +163,7 @@ The core `createRateLimiter` fits any throttling job — e.g. limiting a
 `lastUsedAt` bookkeeping write to once per key per ten minutes:
 
 ```javascript
-import { createRateLimiter, RateLimitExceededError } from '@opengovsg/starter-kitty-rate-limit'
+import { createRateLimiter, RateLimitExceededError } from '@opengovsg/rate-limit'
 
 const touchThrottle = createRateLimiter({
   client: redis,

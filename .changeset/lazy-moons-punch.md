@@ -1,5 +1,5 @@
 ---
-'@opengovsg/starter-kitty-rate-limit': minor
+"@opengovsg/rate-limit": minor
 ---
 
 Initial release: a framework-agnostic rate-limiting core built on rate-limiter-flexible, extracted from the production patterns shared by several OGP applications.

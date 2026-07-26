@@ -13,7 +13,7 @@ questions (what to key on before auth, how to handle Redis outages, how to
 avoid false positives on bursty-but-legitimate traffic) and some copies answer
 them less safely than others.
 
-`@opengovsg/starter-kitty-rate-limit` exists to make the well-trodden path the
+`@opengovsg/rate-limit` exists to make the well-trodden path the
 default one: a framework-agnostic core with the safe answers built in.
 
 ## Decision

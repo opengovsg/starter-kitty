@@ -64,7 +64,7 @@ export interface RateLimitInfo {
  * for non-fatal conditions the consumer should know about, e.g. running without
  * Redis or an unexpected store error. Any logger whose `warn` accepts
  * `{ message, context?, error? }` satisfies it — including the logger from
- * `@opengovsg/starter-kitty-logging`, whose `warn` accepts a superset. The
+ * `@opengovsg/logging`, whose `warn` accepts a superset. The
  * package takes no logging dependency; this is a structural interface.
  *
  * The input mirrors a structured log call — `message`, optional structured
