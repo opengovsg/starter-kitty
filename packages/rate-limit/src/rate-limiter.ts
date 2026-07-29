@@ -45,7 +45,9 @@ export const mergeConfig = (base: Config, override?: RateLimitConfig): Config =>
  * because the Redis-backed limiter's `INCRBY`/`EXPIRE` calls reject
  * non-integer arguments at runtime.
  */
-const clamp = (value: number): number => (Number.isFinite(value) && value >= 1 ? Math.trunc(value) : 1)
+const clamp = (value: number): number => {
+  return Number.isFinite(value) && value >= 1 ? Math.trunc(value) : 1
+}
 
 /**
  * Apply {@link clamp} to every numeric field, since `override` values in
@@ -56,7 +58,12 @@ const validateConfig = (config: Config, logger?: Logger): Config => {
   const validated = {
     points: clamp(config.points),
     duration: clamp(config.duration),
-    burst: config.burst ? { points: clamp(config.burst.points), duration: clamp(config.burst.duration) } : null,
+    burst: config.burst
+      ? {
+          points: clamp(config.burst.points),
+          duration: clamp(config.burst.duration),
+        }
+      : null,
     prefix: config.prefix,
   }
 
@@ -64,26 +71,42 @@ const validateConfig = (config: Config, logger?: Logger): Config => {
     if (validated.points !== config.points) {
       logger?.warn({
         message: 'Rate limit points was clamped',
-        context: { value: config.points, clamped: validated.points, prefix: config.prefix },
+        context: {
+          value: config.points,
+          clamped: validated.points,
+          prefix: config.prefix,
+        },
       })
     }
     if (validated.duration !== config.duration) {
       logger?.warn({
         message: 'Rate limit duration was clamped',
-        context: { value: config.duration, clamped: validated.duration, prefix: config.prefix },
+        context: {
+          value: config.duration,
+          clamped: validated.duration,
+          prefix: config.prefix,
+        },
       })
     }
     if (config.burst && validated.burst) {
       if (validated.burst.points !== config.burst.points) {
         logger?.warn({
           message: 'Rate limit burst points was clamped',
-          context: { value: config.burst.points, clamped: validated.burst.points, prefix: config.prefix },
+          context: {
+            value: config.burst.points,
+            clamped: validated.burst.points,
+            prefix: config.prefix,
+          },
         })
       }
       if (validated.burst.duration !== config.burst.duration) {
         logger?.warn({
           message: 'Rate limit burst duration was clamped',
-          context: { value: config.burst.duration, clamped: validated.burst.duration, prefix: config.prefix },
+          context: {
+            value: config.burst.duration,
+            clamped: validated.burst.duration,
+            prefix: config.prefix,
+          },
         })
       }
     }
@@ -224,7 +247,11 @@ export const createRateLimiter = (options: CreateRateLimiterOptions = {}): RateL
       if (clampedPoints !== points) {
         lgr?.warn({
           message: 'Rate limit consumption points was clamped',
-          context: { value: points, clamped: clampedPoints, prefix: config.prefix },
+          context: {
+            value: points,
+            clamped: clampedPoints,
+            prefix: config.prefix,
+          },
         })
       }
       try {

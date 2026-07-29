@@ -34,3 +34,4 @@ export type {
   RateLimitInfo,
   RedisClient,
 } from './types.js'
+export { normalizeIp } from './utilities.js'

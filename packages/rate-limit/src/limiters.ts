@@ -1,7 +1,6 @@
-import ipaddr from 'ipaddr.js'
-
 import { createRateLimiter, mergeConfig } from './rate-limiter.js'
 import type { CreateRateLimiterOptions, Logger, RateLimitConfig, RateLimitInfo } from './types.js'
+import { normalizeIp } from './utilities.js'
 
 /**
  * Pre-authentication guard values: coarse but cheap shielding, keyed purely by
@@ -28,29 +27,6 @@ const LOCAL_DEFAULTS = {
  * mint fresh buckets from attacker-controlled input.
  */
 const UNKNOWN_BUCKET = 'unknown'
-
-/**
- * Derive the store key for a client IP, or `null` when the input is not a
- * valid IP address so the caller can warn and fall back to the shared bucket.
- */
-const resolveIpKey = (ip: string): string | null => {
-  if (!ipaddr.IPv4.isValidFourPartDecimal(ip) && !ipaddr.IPv6.isValid(ip)) return null
-
-  // IPv4-mapped IPv6 addresses are IPv4 traffic arriving on a dual-stack
-  // socket. `process` normalizes both their dotted and hexadecimal spellings
-  // to IPv4 so every representation of the client shares one bucket.
-  const address = ipaddr.process(ip)
-  if (address instanceof ipaddr.IPv4) return address.toString()
-
-  // Use the first four 16-bit groups as the IPv6 /64 key. Working from parsed
-  // groups makes compressed, expanded, embedded-IPv4, and zone-bearing
-  // spellings equivalent. Colons are avoided for compatibility with the
-  // common `namespace:subkey` Redis convention.
-  return address.parts
-    .slice(0, 4)
-    .map(group => group.toString(16))
-    .join('-')
-}
 
 /**
  * A rate limiter keyed purely by client IP, for use before authentication.
@@ -123,7 +99,7 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions 
   })
   return {
     check: ({ ip, points, logger }) => {
-      const key = ip === null ? null : validate ? resolveIpKey(ip) : ip
+      const key = ip === null ? null : validate ? normalizeIp(ip) : ip
       if (key === null) {
         // Request warning: prefer the per-check (request-scoped) logger so the
         // extraction failure carries request identity, like other request
@@ -131,7 +107,9 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions 
         const warnLogger = logger ?? rateLimiterOptions.logger
         warnLogger?.warn(
           ip === null
-            ? { message: 'Client IP extraction returned null; using the shared unknown bucket' }
+            ? {
+                message: 'Client IP extraction returned null; using the shared unknown bucket',
+              }
             : {
                 message: 'Client IP is not a valid IPv4 or IPv6 address; using the shared unknown bucket',
                 // Truncated: an unparseable value is attacker-controlled input
@@ -140,7 +118,11 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions 
               },
         )
       }
-      return limiter.check({ key: key ?? UNKNOWN_BUCKET, points, logger })
+      return limiter.check({
+        key: key?.replaceAll(':', '-') ?? UNKNOWN_BUCKET,
+        points,
+        logger,
+      })
     },
   }
 }
@@ -200,7 +182,7 @@ export const createLocalRateLimiter = (options: CreateRateLimiterOptions = {}): 
   return {
     check: ({ actor, resource, options: checkOptions, points, logger }) =>
       limiter.check({
-        key: `${actor}:${resource}`,
+        key: `${actor.replaceAll(':', '-')}:${resource.replaceAll(':', '-')}`,
         options: checkOptions,
         points,
         logger,
