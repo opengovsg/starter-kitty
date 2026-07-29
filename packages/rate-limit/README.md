@@ -43,8 +43,24 @@ export const globalRateLimiter = createGlobalRateLimiter({ client: redis, logger
 export const localRateLimiter = createLocalRateLimiter({ client: redis, logger })
 ```
 
-When `client` is omitted, the limiter runs on in-memory counters. This is suitable for tests and local development. However, as limits are
-per-instance and not shared across replicas, this is not suitable for a production use case.
+The global limiter validates and normalizes IP addresses by default. If the
+application already supplies a trusted, canonical key, pass
+`skipKeyNormalization: true` to use the string verbatim. This also disables
+IPv6 /64 bucketing and IPv4-mapped normalization, so do not use it with
+attacker-controlled or unnormalized values.
+
+The factory `logger`'s `error` fires when no Redis client is configured, since
+enforcement is then degraded (per-instance, not shared across replicas), not
+just misconfigured. `warn` fires whenever a rate-limit value is clamped to a
+safe integer (out of range, or a fractional value truncated toward zero),
+reporting the field's original and clamped values. Both fire once when the
+limiter is created, so a base/system logger fits. A Redis error that escapes
+the in-memory insurance limiter is a separate, per-request `error` (see
+[Checking limits](#checking-limits)).
+
+Without a `client`, limits are enforced in memory — functional, but
+per-instance and not shared across replicas. The factory `logger`'s `error`
+surfaces that trade-off.
 
 ## Checking limits
 
@@ -58,8 +74,8 @@ await localRateLimiter.check({
   // A normalized route identity (route template or procedure name), never
   // the raw URL: raw URLs give every parameter value its own bucket.
   resource: 'bookings.create',
-  // Optional request-scoped logger: request errors (an unexpected store
-  // error) then carry this request's identity.
+  // Optional request-scoped logger: request diagnostics (an unexpected store
+  // error, reported to `error`) then carry this request's identity.
   logger: req.log,
 })
 ```

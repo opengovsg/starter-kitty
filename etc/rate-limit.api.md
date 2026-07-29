@@ -32,8 +32,15 @@ export const createRateLimiter: (options: CreateRateLimiterOptions) => RateLimit
 // @public
 export interface CreateRateLimiterOptions {
     client?: RedisClient | null;
+    fallback?: FallbackConfig;
     logger: Logger;
     overrides?: RateLimitConfig;
+}
+
+// @public
+export interface FallbackConfig {
+    duration?: number;
+    points?: number;
 }
 
 // @public
