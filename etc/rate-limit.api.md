@@ -7,9 +7,64 @@
 import type { Redis } from 'ioredis';
 
 // @public
+export interface AuthnRateLimiter {
+    consume(args: {
+        ip: string | null;
+        logger?: Logger;
+    }): Promise<void>;
+    isBlocked(args: {
+        ip: string | null;
+        logger?: Logger;
+    }): Promise<void>;
+}
+
+// @public
+export interface BlockingRateLimitConfig {
+    block?: {
+        duration?: number;
+    };
+    duration?: number;
+    points?: number;
+    prefix?: string;
+}
+
+// @public
+export interface BlockingRateLimiter {
+    consume(args: {
+        key: string;
+        logger?: Logger;
+    }): Promise<void>;
+    isBlocked(args: {
+        key: string;
+        logger?: Logger;
+    }): Promise<void>;
+    reset(args: {
+        key: string;
+    }): Promise<void>;
+}
+
+// @public
 export interface BurstConfig {
     duration: number;
     points: number;
+}
+
+// @public
+export const createAuthnRateLimiter: (options?: CreateAuthnRateLimiterOptions) => AuthnRateLimiter;
+
+// @public
+export interface CreateAuthnRateLimiterOptions extends CreateBlockingRateLimiterOptions {
+    validate?: boolean;
+}
+
+// @public
+export const createBlockingRateLimiter: (options?: CreateBlockingRateLimiterOptions) => BlockingRateLimiter;
+
+// @public
+export interface CreateBlockingRateLimiterOptions {
+    client?: RedisClient | null;
+    defaults?: BlockingRateLimitConfig;
+    logger?: Logger;
 }
 
 // @public
