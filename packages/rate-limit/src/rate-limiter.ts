@@ -148,7 +148,7 @@ const buildLimiter = (
   })
 
   if (!client) {
-    logger.warn({
+    logger.error({
       message:
         'No Redis client configured, using in-memory rate limiting at the fallback allowance. Limits are per-instance and not shared across replicas.',
       context: {

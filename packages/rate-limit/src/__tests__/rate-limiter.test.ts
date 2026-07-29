@@ -7,8 +7,8 @@ import { createRateLimiter, type Logger, RateLimitExceededError, type RedisClien
 
 const uniquePrefix = () => `test-${randomUUID()}`
 
-// A Logger stub whose `warn` and `error` methods are vitest mocks, for
-// asserting which log reached which logger.
+// A Logger stub whose `warn`/`error` methods are vitest mocks, for asserting
+// which diagnostics reached which logger.
 const createLoggerStub = () => {
   const warn = vi.fn<Logger['warn']>()
   const error = vi.fn<Logger['error']>()
@@ -85,7 +85,7 @@ describe('createRateLimiter', () => {
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
 
-    it('warns that limits are per-instance when no client is configured', async () => {
+    it('reports to error that limits are per-instance when no client is configured', async () => {
       const logger = createLoggerStub()
       const limiter = createRateLimiter({
         logger,
@@ -99,7 +99,7 @@ describe('createRateLimiter', () => {
 
       await limiter.check({ key: randomUUID() })
 
-      expect(logger.warn.mock.calls.some(([input]) => input.message.includes('in-memory'))).toBe(true)
+      expect(logger.error.mock.calls.some(([input]) => input.message.includes('in-memory'))).toBe(true)
     })
 
     it('clamps invalid configuration values', async () => {
@@ -176,7 +176,8 @@ describe('createRateLimiter', () => {
       const logger = createLoggerStub()
       const storeError = new Error('boom')
       // A non-RateLimiterRes rejection is neither a limit nor absorbed by the
-      // insurance limiter, so it reaches the error path and is rethrown.
+      // insurance limiter, so it reaches the error-reporting path and is
+      // rethrown.
       const spy = vi.spyOn(RateLimiterMemory.prototype, 'consume').mockRejectedValue(storeError)
       try {
         const limiter = createRateLimiter({
@@ -197,7 +198,7 @@ describe('createRateLimiter', () => {
       }
     })
 
-    it('routes a per-check logger the request warnings, overriding the factory logger', async () => {
+    it('routes a per-check logger the request diagnostics, overriding the factory logger', async () => {
       const factoryLogger = createLoggerStub()
       const requestLogger = createLoggerStub()
       const storeError = new Error('boom')
@@ -223,7 +224,7 @@ describe('createRateLimiter', () => {
       }
     })
 
-    it('routes configuration warnings to the factory logger even when a per-check logger is given', async () => {
+    it('routes configuration diagnostics to the factory logger even when a per-check logger is given', async () => {
       const factoryLogger = createLoggerStub()
       const requestLogger = createLoggerStub()
       const limiter = createRateLimiter({
@@ -239,8 +240,8 @@ describe('createRateLimiter', () => {
       await limiter.check({ key: randomUUID(), logger: requestLogger })
 
       const inMemory = (input: { message: string }) => input.message.includes('in-memory')
-      expect(factoryLogger.warn.mock.calls.some(([input]) => inMemory(input))).toBe(true)
-      expect(requestLogger.warn.mock.calls.some(([input]) => inMemory(input))).toBe(false)
+      expect(factoryLogger.error.mock.calls.some(([input]) => inMemory(input))).toBe(true)
+      expect(requestLogger.error.mock.calls.some(([input]) => inMemory(input))).toBe(false)
     })
 
     describe('clamp warnings', () => {

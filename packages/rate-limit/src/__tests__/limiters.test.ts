@@ -7,8 +7,8 @@ import { createGlobalRateLimiter, createLocalRateLimiter, type Logger, RateLimit
 
 const uniquePrefix = () => `test-${randomUUID()}`
 
-// A Logger stub whose `warn` and `error` methods are vitest mocks, for
-// asserting which log reached which logger.
+// A Logger stub whose `warn`/`error` methods are vitest mocks, for asserting
+// which diagnostics reached which logger.
 const createLoggerStub = () => {
   const warn = vi.fn<Logger['warn']>()
   const error = vi.fn<Logger['error']>()
