@@ -340,11 +340,11 @@ describe('createAuthnRateLimiter', () => {
 
     await expect(limiter.isBlocked({ ip: null, logger })).rejects.toBeInstanceOf(RateLimitExceededError)
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null; using the shared unknown bucket' }),
+      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
     )
     expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Client IP is not a valid IPv4 or IPv6 address; using the shared unknown bucket',
+        message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
         context: { ip: 'not-an-ip' },
       }),
     )
@@ -364,11 +364,11 @@ describe('createAuthnRateLimiter', () => {
     await expect(limiter.isBlocked({ ip: null, logger })).resolves.toBeUndefined()
     expect(logger.warn).not.toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Client IP is not a valid IPv4 or IPv6 address; using the shared unknown bucket',
+        message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
       }),
     )
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null; using the shared unknown bucket' }),
+      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
     )
   })
 
@@ -384,7 +384,7 @@ describe('createAuthnRateLimiter', () => {
     await limiter.consume({ ip: null, logger: requestLogger })
 
     expect(requestLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null; using the shared unknown bucket' }),
+      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
     )
     expect(requestLogger.warn).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Rate limit block engaged after failure allowance was exceeded' }),
