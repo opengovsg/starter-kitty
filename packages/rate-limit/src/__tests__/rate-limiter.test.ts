@@ -244,7 +244,7 @@ describe('createRateLimiter', () => {
     })
 
     describe('clamp warnings', () => {
-      it('truncates non-integer points, duration, and burst configuration values toward zero', async () => {
+      it('truncates non-integer points and duration configuration values toward zero', async () => {
         const limiter = createRateLimiter({
           logger: defaultLogger,
           overrides: {
@@ -253,12 +253,13 @@ describe('createRateLimiter', () => {
             burst: { points: 1.9, duration: 30.9 },
             prefix: uniquePrefix(),
           },
+          fallback: { points: 2, duration: 10 },
         })
         const key = randomUUID()
 
-        // points truncates to 2, burst.points truncates to 1: 3 checks succeed
-        // (2 steady + 1 burst) before the 4th is rejected.
-        await limiter.check({ key })
+        // The primary points truncate to 2, but burst never applies while
+        // running off memory (ADR 0010), so only 2 checks succeed before the
+        // 3rd is rejected.
         await limiter.check({ key })
         await limiter.check({ key })
         await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
