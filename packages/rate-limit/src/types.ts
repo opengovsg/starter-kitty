@@ -18,6 +18,12 @@ export interface BurstConfig {
  * Configuration for a rate-limit window. All fields are optional; omitted
  * fields inherit from the limiter's defaults.
  *
+ * Numeric values, including the burst window's, are clamped to safe positive
+ * integers. Non-finite or below-1 values degrade to 1, and fractional values
+ * are truncated toward zero, since the Redis-backed limiter rejects
+ * non-integer arguments at runtime. Each clamp is logged to the factory
+ * logger the first time its resulting (post-clamp) configuration is used.
+ *
  * @public
  */
 export interface RateLimitConfig {
@@ -105,8 +111,9 @@ export interface CreateRateLimiterOptions {
    */
   defaults?: RateLimitConfig
   /**
-   * Logger receiving configuration warnings when no Redis client is
-   * configured. Per-request warnings take a separate logger on each
+   * Logger receiving configuration warnings: when no Redis client is
+   * configured, and when a rate-limit value is clamped to a safe integer.
+   * Per-request warnings take a separate logger on each
    * {@link RateLimiter.check | check}. Optional.
    */
   logger?: Logger

@@ -58,9 +58,10 @@ and IPv4-mapped normalization, so do not use it with attacker-controlled or
 unnormalized values. A `null` IP still uses the shared `unknown` bucket.
 
 The factory `logger` receives a configuration warning when no Redis client is
-configured. This warning describes the limiter and fires roughly once, so a
-base/system logger fits. Out-of-range rate-limit values are silently clamped
-to a safe minimum.
+configured, and a separate warning whenever a rate-limit value is clamped to a
+safe integer (out of range, or a fractional value truncated toward zero),
+reporting the field's original and clamped values. Both warnings fire roughly
+once per configuration, so a base/system logger fits.
 
 Without a `client`, limits are enforced in memory — functional, but
 per-instance and not shared across replicas. The factory `logger` surfaces that

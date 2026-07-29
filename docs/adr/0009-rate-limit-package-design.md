@@ -210,9 +210,10 @@ The package emits non-fatal warnings through an injected `logger` (a structural
 `{ warn }` interface — any structured logger satisfies it, and the package keeps
 no logging dependency, per [ADR-0002](./0002-logging-factory-no-global.md)),
 delivered at two scopes because the warnings are of two kinds. **Configuration**
-warnings (no client configured) describe the limiter, fire once per
-configuration, and go to the factory `logger` — wired to a base/system logger.
-Out-of-range values are silently clamped to a safe minimum. **Request**
+warnings (no client configured, or a rate-limit value clamped to a safe
+integer) describe the limiter, fire once per configuration, and go to the
+factory `logger` — wired to a base/system logger. A clamp warning reports the
+field along with its original and clamped values. **Request**
 warnings (an unexpected store error, a `null` client IP) happen on a single
 `check` and go to an optional per-`check` `logger`, falling back to the factory
 one.

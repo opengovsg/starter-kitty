@@ -38,29 +38,60 @@ export const mergeConfig = (base: Config, override?: RateLimitConfig): Config =>
 })
 
 /**
- * Clamp a points/duration value to a safe positive minimum. Negative, zero,
+ * Clamp a points/duration value to a safe positive integer. Negative, zero,
  * `NaN`, and `Infinity` all degrade to 1 rather than reaching the underlying
  * limiter, where a negative would replenish the allowance and a non-finite
- * would corrupt the counter.
+ * would corrupt the counter. Fractional values are truncated toward zero
+ * because the Redis-backed limiter's `INCRBY`/`EXPIRE` calls reject
+ * non-integer arguments at runtime.
  */
-const clamp = (value: number): number => (Number.isFinite(value) && value >= 1 ? value : 1)
+const clamp = (value: number): number => (Number.isFinite(value) && value >= 1 ? Math.trunc(value) : 1)
 
 /**
  * Apply {@link clamp} to every numeric field, since `override` values in
  * {@link mergeConfig} come from caller input and aren't validated at the type
  * level.
  */
-const validateConfig = (config: Config): Config => {
-  const points = clamp(config.points)
-  const duration = clamp(config.duration)
-  const burst = config.burst
-    ? {
-        points: clamp(config.burst.points),
-        duration: clamp(config.burst.duration),
-      }
-    : null
+const validateConfig = (config: Config, logger?: Logger): Config => {
+  const validated = {
+    points: clamp(config.points),
+    duration: clamp(config.duration),
+    burst: config.burst ? { points: clamp(config.burst.points), duration: clamp(config.burst.duration) } : null,
+    prefix: config.prefix,
+  }
 
-  return { points, duration, burst, prefix: config.prefix }
+  if (logger) {
+    if (validated.points !== config.points) {
+      logger?.warn({
+        message: 'Rate limit points was clamped',
+        context: { value: config.points, clamped: validated.points, prefix: config.prefix },
+      })
+    }
+    if (validated.duration !== config.duration) {
+      logger?.warn({
+        message: 'Rate limit duration was clamped',
+        context: { value: config.duration, clamped: validated.duration, prefix: config.prefix },
+      })
+    }
+    if (config.burst && validated.burst) {
+      if (validated.burst.points !== config.burst.points) {
+        logger?.warn({
+          message: 'Rate limit burst points was clamped',
+          context: { value: config.burst.points, clamped: validated.burst.points, prefix: config.prefix },
+        })
+      }
+      if (validated.burst.duration !== config.burst.duration) {
+        logger?.warn({
+          message: 'Rate limit burst duration was clamped',
+          context: { value: config.burst.duration, clamped: validated.burst.duration, prefix: config.prefix },
+        })
+      }
+    }
+  }
+
+  return {
+    ...validated,
+  }
 }
 
 const toRateLimitInfo = (res: RateLimiterRes): RateLimitInfo => ({
@@ -91,7 +122,10 @@ const isRateLimiterRes = (value: unknown): value is RateLimiterRes => {
  */
 export interface RateLimiter {
   /**
-   * Consume `points` (default 1) from `key`'s allowance.
+   * Consume `points` (default 1) from `key`'s allowance. `points` and the
+   * numeric fields in `options` are clamped to safe positive integers, and
+   * each clamp is logged with the original and clamped values. See
+   * {@link RateLimitConfig} for the clamping rules.
    *
    * Resolves with a {@link RateLimitInfo} snapshot when the request is within
    * limits. Throws {@link RateLimitExceededError} when the allowance is
@@ -165,13 +199,16 @@ export const createRateLimiter = (options: CreateRateLimiterOptions = {}): RateL
   }
 
   const getLimiter = (config: Config): RateLimiterAbstract | BurstyRateLimiter => {
+    // Resolve the config to its validated values to check if it has been memoized already.
     const resolved = validateConfig(config)
     const cacheKey = `${resolved.prefix}:${resolved.points}:${resolved.duration}:${resolved.burst?.points ?? '-'}:${
       resolved.burst?.duration ?? '-'
     }`
     const cached = cache.get(cacheKey)
     if (cached) return cached
-    const limiter = buildLimiter(resolved)
+    // If there is no memoized limiter, build a new one.
+    // While building a new limiter, validate the config and log any fields that are invalid.
+    const limiter = buildLimiter(validateConfig(config, logger))
     cache.set(cacheKey, limiter)
     return limiter
   }
@@ -183,9 +220,15 @@ export const createRateLimiter = (options: CreateRateLimiterOptions = {}): RateL
       // Request warnings prefer the per-call logger (request-scoped) and fall
       // back to the factory logger.
       const lgr = checkLogger ?? logger
-      points = clamp(points)
+      const clampedPoints = clamp(points)
+      if (clampedPoints !== points) {
+        lgr?.warn({
+          message: 'Rate limit consumption points was clamped',
+          context: { value: points, clamped: clampedPoints, prefix: config.prefix },
+        })
+      }
       try {
-        const res = await limiter.consume(key, points)
+        const res = await limiter.consume(key, clampedPoints)
         return toRateLimitInfo(res)
       } catch (error) {
         if (isRateLimiterRes(error)) {

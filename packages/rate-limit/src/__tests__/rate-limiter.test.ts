@@ -239,6 +239,186 @@ describe('createRateLimiter', () => {
       await limiter.check({ key, options: { points: 0 } })
       await expect(limiter.check({ key, options: { points: -5 } })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
+
+    describe('clamp warnings', () => {
+      it('truncates non-integer consumption points toward zero', async () => {
+        const limiter = createRateLimiter({
+          defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+        })
+        const key = randomUUID()
+
+        const info = await limiter.check({ key, points: 2.9 })
+
+        expect(info.points.consumed).toBe(2)
+        expect(info.points.remaining).toBe(3)
+      })
+
+      it('warns every time consumption points is clamped', async () => {
+        const logger = createLoggerStub()
+        const limiter = createRateLimiter({
+          logger,
+          defaults: { points: 10, duration: 10, burst: null, prefix: uniquePrefix() },
+        })
+        const key = randomUUID()
+
+        await limiter.check({ key, points: 2.5 })
+        await limiter.check({ key, points: 2.5 })
+
+        const clampWarnings = logger.warn.mock.calls.filter(([input]) =>
+          input.message.includes('consumption points was clamped'),
+        )
+        expect(clampWarnings).toHaveLength(2)
+      })
+
+      it('routes a per-check logger the consumption-points clamp warning, overriding the factory logger', async () => {
+        const factoryLogger = createLoggerStub()
+        const requestLogger = createLoggerStub()
+        const limiter = createRateLimiter({
+          logger: factoryLogger,
+          defaults: { points: 10, duration: 10, burst: null, prefix: uniquePrefix() },
+        })
+
+        await limiter.check({ key: randomUUID(), points: 2.5, logger: requestLogger })
+
+        const clamped = (input: { message: string }) => input.message.includes('consumption points was clamped')
+        expect(requestLogger.warn.mock.calls.some(([input]) => clamped(input))).toBe(true)
+        expect(factoryLogger.warn.mock.calls.some(([input]) => clamped(input))).toBe(false)
+      })
+
+      it('truncates non-integer points, duration, and burst configuration values toward zero', async () => {
+        const limiter = createRateLimiter({
+          defaults: {
+            points: 2.9,
+            duration: 10.5,
+            burst: { points: 1.9, duration: 30.9 },
+            prefix: uniquePrefix(),
+          },
+        })
+        const key = randomUUID()
+
+        // points truncates to 2, burst.points truncates to 1: 3 checks succeed
+        // (2 steady + 1 burst) before the 4th is rejected.
+        await limiter.check({ key })
+        await limiter.check({ key })
+        await limiter.check({ key })
+        await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+      })
+
+      it('warns about a clamped configuration once per distinct configuration, not on every check', async () => {
+        const logger = createLoggerStub()
+        const limiter = createRateLimiter({ logger })
+        const options = { points: 2.9, duration: 10, burst: null, prefix: uniquePrefix() }
+        const key = randomUUID()
+
+        await limiter.check({ key, options })
+        await limiter.check({ key, options })
+
+        const clampWarnings = logger.warn.mock.calls.filter(
+          ([input]) => input.message === 'Rate limit points was clamped',
+        )
+        expect(clampWarnings).toHaveLength(1)
+      })
+
+      it('treats distinct fractional configuration values that truncate to the same effective value as one limiter', async () => {
+        const logger = createLoggerStub()
+        const limiter = createRateLimiter({ logger })
+        const key = randomUUID()
+        const prefix = uniquePrefix()
+
+        // `2.1` and `2.9` both truncate to the same effective `points: 2`. If
+        // the cache key were derived from the raw (untruncated) values, these
+        // would fragment into two limiter instances, each with its own fresh
+        // counter, so the third check would wrongly succeed instead of
+        // hitting the shared, already-exhausted allowance. The warning only
+        // fires once, since the second check resolves to the same effective
+        // (already-built) configuration as the first.
+        await limiter.check({ key, options: { points: 2.1, duration: 10, burst: null, prefix } })
+        await limiter.check({ key, options: { points: 2.9, duration: 10, burst: null, prefix } })
+        await expect(
+          limiter.check({ key, options: { points: 2.9, duration: 10, burst: null, prefix } }),
+        ).rejects.toBeInstanceOf(RateLimitExceededError)
+
+        const clampWarnings = logger.warn.mock.calls.filter(
+          ([input]) => input.message === 'Rate limit points was clamped',
+        )
+        expect(clampWarnings).toHaveLength(1)
+      })
+
+      it('names the clamped field and reports the original and clamped values in the context', async () => {
+        const logger = createLoggerStub()
+        const limiter = createRateLimiter({
+          logger,
+          defaults: { points: 5, duration: 10.7, burst: null, prefix: uniquePrefix() },
+        })
+
+        await limiter.check({ key: randomUUID() })
+
+        const call = logger.warn.mock.calls.find(([input]) => input.message === 'Rate limit duration was clamped')
+        expect(call?.[0]).toMatchObject({
+          message: 'Rate limit duration was clamped',
+          context: { value: 10.7, clamped: 10 },
+        })
+      })
+
+      it('warns once per clamped field when multiple configuration fields are clamped at once', async () => {
+        const logger = createLoggerStub()
+        const limiter = createRateLimiter({
+          logger,
+          defaults: {
+            points: 2.9,
+            duration: 10.5,
+            burst: { points: 1.9, duration: 30.9 },
+            prefix: uniquePrefix(),
+          },
+        })
+
+        await limiter.check({ key: randomUUID() })
+
+        const fields = logger.warn.mock.calls
+          .map(([input]) => input.message)
+          .filter(message => message.includes('was clamped'))
+          .map(message => /Rate limit (.+?) was clamped/.exec(message)?.[1])
+        expect(fields.sort()).toEqual(['burst duration', 'burst points', 'duration', 'points'])
+      })
+
+      it.each([0, NaN, Infinity, -5])(
+        'warns with the original and clamped values when the invalid configuration value %p degrades to 1',
+        async points => {
+          const logger = createLoggerStub()
+          const limiter = createRateLimiter({
+            logger,
+            defaults: { points, duration: 10, burst: null, prefix: uniquePrefix() },
+          })
+
+          await limiter.check({ key: randomUUID() })
+
+          const call = logger.warn.mock.calls.find(([input]) => input.message === 'Rate limit points was clamped')
+          expect(call?.[0]).toMatchObject({
+            context: { value: points, clamped: 1 },
+          })
+        },
+      )
+
+      it.each([0, NaN, Infinity, -5])(
+        'warns with the original and clamped values when the invalid consumption points %p degrades to 1',
+        async points => {
+          const logger = createLoggerStub()
+          const limiter = createRateLimiter({
+            logger,
+            defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+          })
+
+          await limiter.check({ key: randomUUID(), points })
+
+          const call = logger.warn.mock.calls.find(([input]) =>
+            input.message.includes('consumption points was clamped'),
+          )
+          expect(call?.[0]).toMatchObject({
+            context: { value: points, clamped: 1 },
+          })
+        },
+      )
+    })
   })
 
   describe('redis path', () => {
