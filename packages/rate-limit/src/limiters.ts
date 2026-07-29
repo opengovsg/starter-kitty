@@ -38,7 +38,7 @@ export interface GlobalRateLimiter {
   /**
    * Consume `points` (default 1) from the allowance of `ip`.
    *
-   * With the default validation enabled, IPv4 addresses are keyed per address;
+   * With the default validation enabled, IPv4 addresses are keyed per address.
    * IPv6 addresses are bucketed by their /64 prefix, because a subscriber
    * typically holds an entire /64 and per-address keying would let an attacker
    * mint a fresh bucket per request by rotating within their prefix.
@@ -51,7 +51,7 @@ export interface GlobalRateLimiter {
    * warning so a broken extractor shows up in logs, not just as 429s.
    *
    * Pass a request-scoped `logger` to attach request identity to any request
-   * warnings this call emits; omit it to fall back to the factory logger.
+   * warnings this call emits. Omit it to fall back to the factory logger.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */
@@ -84,9 +84,9 @@ export interface CreateGlobalRateLimiterOptions extends CreateRateLimiterOptions
  * infrastructure (a database, an OTP table), and a per-user limiter cannot
  * protect that infrastructure because unauthenticated traffic has no user yet.
  *
- * Defaults to 100 points per second with no burst; override via
+ * Defaults to 100 points per second with no burst. Override via
  * {@link CreateRateLimiterOptions.defaults}. IP validation and normalization
- * are enabled by default; pass `validate: false` to use each non-null IP
+ * are enabled by default. Pass `validate: false` to use each non-null IP
  * string verbatim as the store key.
  *
  * @public
@@ -108,10 +108,10 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions 
         warnLogger?.warn(
           ip === null
             ? {
-                message: 'Client IP extraction returned null; using the shared unknown bucket',
+                message: 'Client IP extraction returned null, using the shared unknown bucket',
               }
             : {
-                message: 'Client IP is not a valid IPv4 or IPv6 address; using the shared unknown bucket',
+                message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
                 // Truncated: an unparseable value is attacker-controlled input
                 // and must not flood logs at request rate.
                 context: { ip: ip.slice(0, 64) },
@@ -139,18 +139,18 @@ export interface LocalRateLimiter {
    *
    * `actor` is caller-defined: a user ID, an API-key ID, a hash of a bearer
    * token (hash secrets yourself so they never become store keys), or a
-   * client IP for anonymous traffic. Avoid `:` in actors — the store key is
+   * client IP for anonymous traffic. Avoid `:` in actors because the store key is
    * `actor:resource`, so a colon shifts the boundary between the two.
    *
-   * `resource` must be a normalized route identity — an Express route
-   * template (`/users/:id`), a tRPC procedure name — never the raw request
+   * `resource` must be a normalized route identity, such as an Express route
+   * template (`/users/:id`) or a tRPC procedure name. Never use the raw request
    * URL. Keying on raw URLs makes every parameter value its own bucket,
    * which fragments the actor's quota (defeating the limit), grows store key
    * cardinality without bound, and breaks per-route overrides. Each actor
    * gets an independent allowance per resource.
    *
    * Pass a request-scoped `logger` to attach request identity to any request
-   * warnings this call emits; omit it to fall back to the factory logger.
+   * warnings this call emits. Omit it to fall back to the factory logger.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */
@@ -165,11 +165,11 @@ export interface LocalRateLimiter {
 
 /**
  * Create a rate limiter enforcing per-actor, per-resource quotas for
- * identified traffic — the fair-use complement to
+ * identified traffic, the fair-use complement to
  * {@link createGlobalRateLimiter}.
  *
  * Defaults to 50 points per 10 seconds with a burst allowance of 20 per 30
- * seconds; override via {@link CreateRateLimiterOptions.defaults} or per
+ * seconds. Override via {@link CreateRateLimiterOptions.defaults} or per
  * check.
  *
  * @public

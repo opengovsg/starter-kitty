@@ -5,7 +5,7 @@
  *
  * Counters live in an injected Redis (`ioredis`) client so limits are shared
  * across replicas, with an in-memory insurance limiter keeping enforcement
- * alive through Redis outages — and a memory-only fallback when no client is
+ * alive through Redis outages and a memory-only fallback when no client is
  * configured at all. A steady fixed window can be composed with a short-lived
  * burst allowance to absorb legitimate spikes without loosening the sustained
  * rate.

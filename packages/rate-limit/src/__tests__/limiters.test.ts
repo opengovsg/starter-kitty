@@ -98,17 +98,17 @@ describe('createGlobalRateLimiter', () => {
 
     await limiter.check({ ip: null, logger: requestLogger })
     expect(requestLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null; using the shared unknown bucket' }),
+      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
     )
     // The factory logger still receives configuration warnings (no Redis
     // client), but the null-IP request warning must go to the request logger.
     expect(factoryLogger.warn).not.toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null; using the shared unknown bucket' }),
+      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
     )
 
     await limiter.check({ ip: null })
     expect(factoryLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null; using the shared unknown bucket' }),
+      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
     )
   })
 
@@ -121,7 +121,7 @@ describe('createGlobalRateLimiter', () => {
     await limiter.check({ ip: 'not-an-ip', logger: requestLogger })
     expect(requestLogger.warn).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Client IP is not a valid IPv4 or IPv6 address; using the shared unknown bucket',
+        message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
         context: { ip: 'not-an-ip' },
       }),
     )
@@ -146,7 +146,7 @@ describe('createGlobalRateLimiter', () => {
       points: { remaining: 0 },
     })
     expect(requestLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null; using the shared unknown bucket' }),
+      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
     )
   })
 

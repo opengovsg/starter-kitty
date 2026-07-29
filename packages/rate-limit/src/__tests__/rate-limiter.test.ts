@@ -140,7 +140,7 @@ describe('createRateLimiter', () => {
       const key = randomUUID()
 
       // A negative consume would replenish the bucket via rate-limiter-flexible's
-      // incrby; clamping to 1 keeps it a real consumption.
+      // incrby. Clamping to 1 keeps it a real consumption.
       const info = await limiter.check({ key, points: -10 })
 
       expect(info.points.consumed).toBe(1)
@@ -233,7 +233,7 @@ describe('createRateLimiter', () => {
 
       // `0` and `-5` both clamp to the same effective `points: 1`. If the cache
       // key were derived from the raw (unclamped) values, these would fragment
-      // into two limiter instances, each with its own fresh counter — so the
+      // into two limiter instances, each with its own fresh counter, so the
       // second check would wrongly succeed instead of hitting the shared,
       // already-exhausted allowance.
       await limiter.check({ key, options: { points: 0 } })

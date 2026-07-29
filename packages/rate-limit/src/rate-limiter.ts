@@ -28,7 +28,7 @@ const BASE_DEFAULTS: Config = {
 
 /**
  * Merge a partial config over a fully-resolved base. `burst` is inherited only
- * when omitted — an explicit `null` disables bursting.
+ * when omitted. An explicit `null` disables bursting.
  */
 export const mergeConfig = (base: Config, override?: RateLimitConfig): Config => ({
   points: override?.points ?? base.points,
@@ -158,7 +158,7 @@ export interface RateLimiter {
    * open and failing closed.
    *
    * Pass a request-scoped `logger` to attach request identity (path, user,
-   * client IP) to the request warnings this call may emit; omit it to fall back
+   * client IP) to the request warnings this call may emit. Omit it to fall back
    * to the factory {@link CreateRateLimiterOptions.logger}.
    */
   check(args: { key: string; options?: RateLimitConfig; points?: number; logger?: Logger }): Promise<RateLimitInfo>
@@ -191,7 +191,7 @@ export const createRateLimiter = (options: CreateRateLimiterOptions = {}): RateL
     if (!client) {
       logger?.warn({
         message:
-          'No Redis client configured; using in-memory rate limiting. Limits are per-instance and not shared across replicas.',
+          'No Redis client configured, using in-memory rate limiting. Limits are per-instance and not shared across replicas.',
         context: { prefix: resolved.prefix },
       })
       return burstMemoryLimiter ? new BurstyRateLimiter(steadyMemoryLimiter, burstMemoryLimiter) : steadyMemoryLimiter

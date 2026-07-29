@@ -2,7 +2,7 @@ import type { Redis } from 'ioredis'
 
 /**
  * An extra, short-lived allowance layered on top of the steady window to absorb
- * legitimate spikes — e.g. a page load firing several parallel API calls, or
+ * legitimate spikes, for example a page load firing several parallel API calls, or
  * many users behind a shared IP/NAT.
  *
  * @public
@@ -15,7 +15,7 @@ export interface BurstConfig {
 }
 
 /**
- * Configuration for a rate-limit window. All fields are optional; omitted
+ * Configuration for a rate-limit window. All fields are optional. Omitted
  * fields inherit from the limiter's defaults.
  *
  * Numeric values, including the burst window's, are clamped to safe positive
@@ -33,7 +33,7 @@ export interface RateLimitConfig {
   duration?: number
   /**
    * Burst window layered on top of the steady window. Omit to inherit the
-   * limiter's default burst; pass `null` to disable bursting entirely.
+   * limiter's default burst. Pass `null` to disable bursting entirely.
    * Defaults to `{ points: 20, duration: 30 }`.
    */
   burst?: BurstConfig | null
@@ -69,12 +69,12 @@ export interface RateLimitInfo {
  * The subset of a structured logger this package needs: a single `warn` method
  * for non-fatal conditions the consumer should know about, e.g. running without
  * Redis or an unexpected store error. Any logger whose `warn` accepts
- * `{ message, context?, error? }` satisfies it — including the logger from
+ * `{ message, context?, error? }` satisfies it, including the logger from
  * `@opengovsg/logging`, whose `warn` accepts a superset. The
- * package takes no logging dependency; this is a structural interface.
+ * package takes no logging dependency. This is a structural interface.
  *
- * The input mirrors a structured log call — `message`, optional structured
- * `context`, and an optional top-level `error` — so an unexpected store error
+ * The input mirrors a structured log call: `message`, optional structured
+ * `context`, and an optional top-level `error`. An unexpected store error
  * is passed as `error` (kept out of `context`) and reaches a logger's error
  * serializer intact.
  *
@@ -86,7 +86,7 @@ export interface Logger {
 
 /**
  * The Redis client used to share rate-limit counters across instances.
- * This is an `ioredis` client; `ioredis` is an optional peer dependency.
+ * This is an `ioredis` client. `ioredis` is an optional peer dependency.
  *
  * @public
  */
@@ -100,7 +100,7 @@ export type RedisClient = Redis
 export interface CreateRateLimiterOptions {
   /**
    * The Redis client backing the limiter's counters. When absent or `null`,
-   * the limiter falls back to in-memory counters — functional, but
+   * the limiter falls back to in-memory counters. This is functional, but
    * per-instance: limits are not shared across replicas. The factory
    * {@link CreateRateLimiterOptions.logger | logger} is warned once per limiter
    * configuration when this happens.

@@ -39,14 +39,14 @@ keys, throttling non-HTTP work such as database writes).
 ## Setup
 
 ```ts
-// src/rate-limiters.ts — owned by your app
+// src/rate-limiters.ts - owned by your app
 import { createGlobalRateLimiter, createLocalRateLimiter } from '@opengovsg/rate-limit'
 
 import { redis } from './redis.js' // your ioredis client (or omit for memory-only)
 import { systemLogger } from './logger.js' // a base/system logger
 
 // `logger` needs only a `warn({ message, context?, error? })` method, so any
-// structured logger satisfies it — pass it directly, no wrapper.
+// structured logger satisfies it. Pass it directly, no wrapper.
 export const globalRateLimiter = createGlobalRateLimiter({ client: redis, logger: systemLogger })
 export const localRateLimiter = createLocalRateLimiter({ client: redis, logger: systemLogger })
 ```

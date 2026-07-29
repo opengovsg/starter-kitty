@@ -3,7 +3,7 @@ import type { RateLimitInfo } from './types.js'
 /**
  * Thrown when a key has exhausted its rate-limit allowance.
  *
- * Carries everything needed to build an HTTP 429 response; see
+ * Carries everything needed to build an HTTP 429 response. See
  * {@link constructRateLimitHeaders} for deriving a `Retry-After` header value.
  *
  * @public
