@@ -394,6 +394,33 @@ describe('createAuthnRateLimiter', () => {
     )
   })
 
+  it('resolves its own defaults, not the base blocking limiter defaults', () => {
+    const logger = createLoggerStub()
+
+    createAuthnRateLimiter({ logger })
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: { prefix: 'authn', points: 100, duration: 3600, block: { duration: 3600 } },
+      }),
+    )
+  })
+
+  it('warns about a clamped configuration value through the wrapper', () => {
+    const logger = createLoggerStub()
+    const prefix = uniquePrefix()
+
+    createAuthnRateLimiter({ logger, defaults: { duration: 60.7, prefix } })
+
+    // Once, not twice: the wrapper merges its own defaults and the factory
+    // merges again over the base, but only the factory validates.
+    expect(logger.warn).toHaveBeenCalledTimes(1)
+    expect(logger.warn).toHaveBeenCalledWith({
+      message: 'Rate limit duration was clamped',
+      context: { value: 60.7, clamped: 60, prefix },
+    })
+  })
+
   it('does not expose reset on the IP-keyed wrapper', () => {
     const limiter = createAuthnRateLimiter({ defaults: { prefix: uniquePrefix() } })
 

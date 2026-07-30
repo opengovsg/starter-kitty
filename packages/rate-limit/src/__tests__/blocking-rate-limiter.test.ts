@@ -166,6 +166,46 @@ describe('createBlockingRateLimiter', () => {
     expect((error as RateLimitExceededError).info.msToNextWindow).toBeLessThanOrEqual(1000)
   })
 
+  it('names the clamped field and reports the original and clamped values in the context', () => {
+    const logger = createLoggerStub()
+    const prefix = uniquePrefix()
+
+    createBlockingRateLimiter({ logger, defaults: { duration: 60.7, prefix } })
+
+    expect(logger.warn).toHaveBeenCalledWith({
+      message: 'Rate limit duration was clamped',
+      context: { value: 60.7, clamped: 60, prefix },
+    })
+  })
+
+  it('warns once per clamped field when several configuration fields are clamped at once', () => {
+    const logger = createLoggerStub()
+
+    createBlockingRateLimiter({
+      defaults: { points: 0, duration: NaN, block: { duration: Infinity }, prefix: uniquePrefix() },
+      logger,
+    })
+
+    const clampedFields = logger.warn.mock.calls
+      .map(([input]) => /^Rate limit (.+?) was clamped$/.exec(input.message)?.[1])
+      .filter(field => field !== undefined)
+    expect(clampedFields.sort()).toEqual(['block duration', 'duration', 'points'])
+    for (const [input] of logger.warn.mock.calls) {
+      expect(input.context).toMatchObject({ clamped: 1 })
+    }
+  })
+
+  it('stays silent when every configuration value is already valid', () => {
+    const logger = createLoggerStub()
+
+    createBlockingRateLimiter({
+      defaults: { points: 5, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      logger,
+    })
+
+    expect(logger.warn).not.toHaveBeenCalled()
+  })
+
   it('routes the block warning to the per-call logger instead of the factory logger', async () => {
     const factoryLogger = createLoggerStub()
     const requestLogger = createLoggerStub()

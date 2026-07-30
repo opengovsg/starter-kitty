@@ -1,5 +1,5 @@
-import type { BlockingRateLimitConfig, CreateBlockingRateLimiterOptions } from './blocking-rate-limiter.js'
-import { createBlockingRateLimiter } from './blocking-rate-limiter.js'
+import type { CreateBlockingRateLimiterOptions } from './blocking-rate-limiter.js'
+import { createBlockingRateLimiter, mergeBlockingConfig } from './blocking-rate-limiter.js'
 import { AUTHN_RATE_LIMIT_DEFAULTS } from './constants.js'
 import { resolveIpBucket } from './ip-bucket.js'
 import type { Logger } from './types.js'
@@ -49,17 +49,9 @@ export interface CreateAuthnRateLimiterOptions extends CreateBlockingRateLimiter
  */
 export const createAuthnRateLimiter = (options: CreateAuthnRateLimiterOptions = {}): AuthnRateLimiter => {
   const { validate = true, ...blockingOptions } = options
-  const requested: BlockingRateLimitConfig = blockingOptions.defaults ?? {}
   const limiter = createBlockingRateLimiter({
     ...blockingOptions,
-    defaults: {
-      points: requested.points ?? AUTHN_RATE_LIMIT_DEFAULTS.points,
-      duration: requested.duration ?? AUTHN_RATE_LIMIT_DEFAULTS.duration,
-      block: {
-        duration: requested.block?.duration ?? AUTHN_RATE_LIMIT_DEFAULTS.block.duration,
-      },
-      prefix: requested.prefix ?? AUTHN_RATE_LIMIT_DEFAULTS.prefix,
-    },
+    defaults: mergeBlockingConfig(AUTHN_RATE_LIMIT_DEFAULTS, blockingOptions.defaults),
   })
 
   const resolve = (ip: string | null, logger?: Logger) =>
