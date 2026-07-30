@@ -52,6 +52,13 @@ authn limiter to use each string verbatim. This disables IPv6 /64 bucketing
 and IPv4-mapped normalization, so do not use it with attacker-controlled or
 unnormalized values. A `null` authn IP still uses the shared `unknown` bucket.
 
+The factory `logger` receives an `error` when no client is configured, since
+enforcement is then degraded rather than merely misconfigured, and a `warn`
+whenever a rate-limit value is clamped to a safe integer, reporting the field's
+original and clamped values. Both fire once when the limiter is created.
+Per-request warnings take a separate, request-scoped logger on each `check`
+(see below).
+
 ### Local rate limiter
 
 Use the local limiter after authentication to apply per-actor, per-resource
