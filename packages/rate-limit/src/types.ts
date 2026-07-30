@@ -1,9 +1,8 @@
 import type { Redis } from 'ioredis'
 
 /**
- * An extra, short-lived allowance layered on top of the steady window to absorb
- * legitimate spikes, for example a page load firing several parallel API calls, or
- * many users behind a shared IP/NAT.
+ * A short-lived allowance layered on top of the steady window to absorb
+ * legitimate spikes, such as a page load firing several parallel API calls.
  *
  * @public
  */
@@ -15,14 +14,13 @@ export interface BurstConfig {
 }
 
 /**
- * Configuration for a rate-limit window. All fields are optional. Omitted
- * fields inherit from the limiter's defaults.
+ * Configuration for a rate-limit window. Omitted fields inherit the
+ * limiter's defaults.
  *
- * Numeric values, including the burst window's, are clamped to safe positive
- * integers. Non-finite or below-1 values degrade to 1, and fractional values
- * are truncated toward zero, since the Redis-backed limiter rejects
- * non-integer arguments at runtime. Each clamp is logged to the factory
- * logger the first time its resulting (post-clamp) configuration is used.
+ * Numeric values are clamped to safe positive integers: non-finite or
+ * below-1 values degrade to 1 and fractions are truncated, since the
+ * Redis-backed limiter rejects non-integer arguments at runtime. Each clamp
+ * is logged the first time its resulting configuration is used.
  *
  * @public
  */
@@ -66,17 +64,14 @@ export interface RateLimitInfo {
 }
 
 /**
- * The subset of a structured logger this package needs: a single `warn` method
- * for non-fatal conditions the consumer should know about, e.g. running without
- * Redis or an unexpected store error. Any logger whose `warn` accepts
- * `{ message, context?, error? }` satisfies it, including the logger from
- * `@opengovsg/logging`, whose `warn` accepts a superset. The
- * package takes no logging dependency. This is a structural interface.
+ * The subset of a structured logger this package needs: a single `warn`
+ * method for non-fatal conditions such as running without Redis. Any logger
+ * whose `warn` accepts `{ message, context?, error? }` satisfies it,
+ * including the logger from `@opengovsg/logging`. The package takes no
+ * logging dependency.
  *
- * The input mirrors a structured log call: `message`, optional structured
- * `context`, and an optional top-level `error`. An unexpected store error
- * is passed as `error` (kept out of `context`) and reaches a logger's error
- * serializer intact.
+ * An unexpected store error is passed as top-level `error`, not inside
+ * `context`, so it reaches a logger's error serializer intact.
  *
  * @public
  */
@@ -85,8 +80,8 @@ export interface Logger {
 }
 
 /**
- * The Redis client used to share rate-limit counters across instances.
- * This is an `ioredis` client. `ioredis` is an optional peer dependency.
+ * The `ioredis` client used to share rate-limit counters across instances.
+ * `ioredis` is an optional peer dependency.
  *
  * @public
  */
@@ -100,10 +95,9 @@ export type RedisClient = Redis
 export interface CreateRateLimiterOptions {
   /**
    * The Redis client backing the limiter's counters. When absent or `null`,
-   * the limiter falls back to in-memory counters. This is functional, but
-   * per-instance: limits are not shared across replicas. The factory
-   * {@link CreateRateLimiterOptions.logger | logger} is warned once per limiter
-   * configuration when this happens.
+   * the limiter falls back to in-memory counters, which are per-instance and
+   * not shared across replicas. The factory logger is warned once per
+   * limiter configuration when this happens.
    */
   client?: RedisClient | null
   /**
@@ -111,10 +105,9 @@ export interface CreateRateLimiterOptions {
    */
   defaults?: RateLimitConfig
   /**
-   * Logger receiving configuration warnings: when no Redis client is
-   * configured, and when a rate-limit value is clamped to a safe integer.
-   * Per-request warnings take a separate logger on each
-   * {@link RateLimiter.check | check}. Optional.
+   * Logger receiving configuration warnings: no Redis client configured, or
+   * a rate-limit value clamped to a safe integer. Per-request warnings take
+   * a separate logger on each {@link RateLimiter.check | check}.
    */
   logger?: Logger
 }

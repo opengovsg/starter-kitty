@@ -15,9 +15,9 @@ interface Config {
 }
 
 /**
- * Production-tested defaults: 5 requests per second on average, measured over
- * a 10-second window to smooth out legitimate spikes, plus a burst allowance
- * for the occasional flurry (e.g. a page load firing parallel API calls).
+ * Roughly 5 requests per second, measured over a 10-second window to smooth
+ * out spikes, plus a burst allowance for flurries like a page load firing
+ * parallel API calls.
  */
 const BASE_DEFAULTS: Config = {
   points: 50,
@@ -27,8 +27,8 @@ const BASE_DEFAULTS: Config = {
 }
 
 /**
- * Merge a partial config over a fully-resolved base. `burst` is inherited only
- * when omitted. An explicit `null` disables bursting.
+ * Merge a partial config over a resolved base. An omitted `burst` inherits
+ * the base's. An explicit `null` disables bursting.
  */
 export const mergeConfig = (base: Config, override?: RateLimitConfig): Config => ({
   points: override?.points ?? base.points,
@@ -38,20 +38,17 @@ export const mergeConfig = (base: Config, override?: RateLimitConfig): Config =>
 })
 
 /**
- * Clamp a points/duration value to a safe positive integer. Negative, zero,
- * `NaN`, and `Infinity` all degrade to 1 rather than reaching the underlying
- * limiter, where a negative would replenish the allowance and a non-finite
- * would corrupt the counter. Fractional values are truncated toward zero
- * because the Redis-backed limiter's `INCRBY`/`EXPIRE` calls reject
- * non-integer arguments at runtime.
+ * Clamp to a safe positive integer. Non-finite and below-1 values degrade to
+ * 1, where a negative would otherwise replenish the allowance. Fractions are
+ * truncated because the Redis-backed limiter rejects non-integer arguments
+ * at runtime.
  */
 const clamp = (value: number): number => {
   return Number.isFinite(value) && value >= 1 ? Math.trunc(value) : 1
 }
 
 /**
- * Apply {@link clamp} to every numeric field, since `override` values in
- * {@link mergeConfig} come from caller input and aren't validated at the type
+ * Clamp every numeric field, since caller input is not validated at the type
  * level.
  */
 const validateConfig = (config: Config, logger?: Logger): Config => {
@@ -127,9 +124,8 @@ const toRateLimitInfo = (res: RateLimiterRes): RateLimitInfo => ({
 })
 
 /**
- * Duck-typed check for a limit rejection. `instanceof RateLimiterRes` is
- * unreliable when a dual CJS/ESM dependency is loaded twice, so match on
- * shape instead.
+ * Match a limit rejection by shape, since `instanceof RateLimiterRes` is
+ * unreliable when a dual CJS/ESM dependency is loaded twice.
  */
 const isRateLimiterRes = (value: unknown): value is RateLimiterRes => {
   if (typeof value !== 'object' || value === null) return false
@@ -145,31 +141,27 @@ const isRateLimiterRes = (value: unknown): value is RateLimiterRes => {
  */
 export interface RateLimiter {
   /**
-   * Consume `points` (default 1) from `key`'s allowance. `points` and the
-   * numeric fields in `options` are clamped to safe positive integers, and
-   * each clamp is logged with the original and clamped values. See
+   * Consume `points` (default 1) from `key`'s allowance. Numeric values are
+   * clamped to safe positive integers and each clamp is logged. See
    * {@link RateLimitConfig} for the clamping rules.
    *
-   * Resolves with a {@link RateLimitInfo} snapshot when the request is within
-   * limits. Throws {@link RateLimitExceededError} when the allowance is
-   * exhausted. Any other error (e.g. a store failure that escapes the
-   * in-memory insurance limiter) is reported to `logger` (falling back to the
-   * factory logger) and rethrown as-is, so the caller decides between failing
-   * open and failing closed.
+   * Resolves with a {@link RateLimitInfo} snapshot when within limits. Throws
+   * {@link RateLimitExceededError} when the allowance is exhausted. Any other
+   * error is reported to `logger` and rethrown as-is, so the caller decides
+   * between failing open and failing closed.
    *
-   * Pass a request-scoped `logger` to attach request identity (path, user,
-   * client IP) to the request warnings this call may emit. Omit it to fall back
-   * to the factory {@link CreateRateLimiterOptions.logger}.
+   * Pass a request-scoped `logger` to attach request identity to the warnings
+   * this call may emit. Omit it to fall back to the factory logger.
    */
   check(args: { key: string; options?: RateLimitConfig; points?: number; logger?: Logger }): Promise<RateLimitInfo>
 }
 
 /**
- * Create a rate limiter backed by the injected Redis client, falling back to
- * per-instance in-memory counters when no client is configured.
+ * Create a rate limiter backed by the injected Redis client, or by in-memory
+ * counters when no client is configured.
  *
- * Underlying limiter instances are memoized per distinct configuration, so a
- * single factory can serve many differently-configured checks cheaply.
+ * Limiter instances are memoized per distinct configuration, so one factory
+ * serves many differently configured checks cheaply.
  *
  * @public
  */
@@ -222,15 +214,15 @@ export const createRateLimiter = (options: CreateRateLimiterOptions = {}): RateL
   }
 
   const getLimiter = (config: Config): RateLimiterAbstract | BurstyRateLimiter => {
-    // Resolve the config to its validated values to check if it has been memoized already.
+    // Key the cache on clamped values so equivalent configs share a limiter.
     const resolved = validateConfig(config)
     const cacheKey = `${resolved.prefix}:${resolved.points}:${resolved.duration}:${resolved.burst?.points ?? '-'}:${
       resolved.burst?.duration ?? '-'
     }`
     const cached = cache.get(cacheKey)
     if (cached) return cached
-    // If there is no memoized limiter, build a new one.
-    // While building a new limiter, validate the config and log any fields that are invalid.
+    // Pass the logger only here so clamp warnings fire once per new limiter,
+    // not on every check.
     const limiter = buildLimiter(validateConfig(config, logger))
     cache.set(cacheKey, limiter)
     return limiter
@@ -240,8 +232,6 @@ export const createRateLimiter = (options: CreateRateLimiterOptions = {}): RateL
     check: async ({ key, options, points = 1, logger: checkLogger }) => {
       const config = mergeConfig(defaults, options)
       const limiter = getLimiter(config)
-      // Request warnings prefer the per-call logger (request-scoped) and fall
-      // back to the factory logger.
       const lgr = checkLogger ?? logger
       const clampedPoints = clamp(points)
       if (clampedPoints !== points) {

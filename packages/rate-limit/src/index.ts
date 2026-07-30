@@ -1,21 +1,16 @@
 /**
  * A framework-agnostic rate-limiting core built on
- * {@link https://github.com/animir/node-rate-limiter-flexible | rate-limiter-flexible},
- * extracted from the production patterns shared by several OGP applications.
+ * {@link https://github.com/animir/node-rate-limiter-flexible | rate-limiter-flexible}.
  *
  * Counters live in an injected Redis (`ioredis`) client so limits are shared
- * across replicas, with an in-memory insurance limiter keeping enforcement
- * alive through Redis outages and a memory-only fallback when no client is
- * configured at all. A steady fixed window can be composed with a short-lived
- * burst allowance to absorb legitimate spikes without loosening the sustained
- * rate.
+ * across replicas, with an in-memory fallback that keeps enforcement alive
+ * through Redis outages or when no client is configured. A steady window can
+ * be composed with a short burst allowance to absorb legitimate spikes.
  *
- * Two opinionated limiters cover the common deployment shape:
- * {@link createGlobalRateLimiter} (pre-authentication, keyed purely by client
- * IP, shielding the infrastructure that authentication itself hits) and
- * {@link createLocalRateLimiter} (per-actor, per-resource quotas for identified
- * traffic). {@link createRateLimiter} exposes the underlying core for
- * anything else.
+ * {@link createGlobalRateLimiter} guards pre-authentication traffic by client
+ * IP. {@link createLocalRateLimiter} enforces per-actor, per-resource quotas
+ * for identified traffic. {@link createRateLimiter} exposes the underlying
+ * core for anything else.
  *
  * @packageDocumentation
  */

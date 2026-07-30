@@ -231,11 +231,9 @@ describe('createRateLimiter', () => {
       })
       const key = randomUUID()
 
-      // `0` and `-5` both clamp to the same effective `points: 1`. If the cache
-      // key were derived from the raw (unclamped) values, these would fragment
-      // into two limiter instances, each with its own fresh counter, so the
-      // second check would wrongly succeed instead of hitting the shared,
-      // already-exhausted allowance.
+      // `0` and `-5` both clamp to `points: 1`. A cache key derived from raw
+      // values would fragment these into two limiters with fresh counters,
+      // letting the second check wrongly succeed.
       await limiter.check({ key, options: { points: 0 } })
       await expect(limiter.check({ key, options: { points: -5 } })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
@@ -325,13 +323,11 @@ describe('createRateLimiter', () => {
         const key = randomUUID()
         const prefix = uniquePrefix()
 
-        // `2.1` and `2.9` both truncate to the same effective `points: 2`. If
-        // the cache key were derived from the raw (untruncated) values, these
-        // would fragment into two limiter instances, each with its own fresh
-        // counter, so the third check would wrongly succeed instead of
-        // hitting the shared, already-exhausted allowance. The warning only
-        // fires once, since the second check resolves to the same effective
-        // (already-built) configuration as the first.
+        // `2.1` and `2.9` both truncate to `points: 2`. A cache key derived
+        // from raw values would fragment these into two limiters with fresh
+        // counters, letting the third check wrongly succeed. The warning
+        // fires once, since the second check resolves to the already-built
+        // configuration.
         await limiter.check({ key, options: { points: 2.1, duration: 10, burst: null, prefix } })
         await limiter.check({ key, options: { points: 2.9, duration: 10, burst: null, prefix } })
         await expect(

@@ -3,9 +3,8 @@ import type { CreateRateLimiterOptions, Logger, RateLimitConfig, RateLimitInfo }
 import { normalizeIp } from './utilities.js'
 
 /**
- * Pre-authentication guard values: coarse but cheap shielding, keyed purely by
- * client IP, mounted before credential checks that hit critical infrastructure
- * (session lookups, API-key lookups, OTP tables).
+ * Coarse but cheap pre-authentication shielding, sized for the shared IPs a
+ * per-IP key must absorb.
  */
 const GLOBAL_DEFAULTS = {
   points: 100,
@@ -22,9 +21,9 @@ const LOCAL_DEFAULTS = {
 }
 
 /**
- * The bucket shared by every request whose client IP is missing or
- * unparseable. Unidentifiable traffic is never exempted, and never allowed to
- * mint fresh buckets from attacker-controlled input.
+ * Shared bucket for requests whose client IP is missing or unparseable.
+ * Unidentifiable traffic is limited, never exempted, and cannot mint fresh
+ * buckets from attacker-controlled input.
  */
 const UNKNOWN_BUCKET = 'unknown'
 
@@ -38,19 +37,17 @@ export interface GlobalRateLimiter {
   /**
    * Consume `points` (default 1) from the allowance of `ip`.
    *
-   * With the default validation enabled, IPv4 addresses are keyed per address.
-   * IPv6 addresses are bucketed by their /64 prefix, because a subscriber
-   * typically holds an entire /64 and per-address keying would let an attacker
-   * mint a fresh bucket per request by rotating within their prefix.
-   * IPv4-mapped IPv6 addresses (`::ffff:a.b.c.d`) are keyed by the embedded
-   * IPv4 address. With validation disabled, every non-null string is used
-   * verbatim instead.
+   * With validation enabled, IPv4 addresses are keyed per address and IPv6
+   * addresses by their /64 prefix, since a subscriber typically holds an
+   * entire /64 and could otherwise mint a fresh bucket per request.
+   * IPv4-mapped IPv6 addresses are keyed by the embedded IPv4 address. With
+   * validation disabled, every non-null string is used verbatim.
    *
-   * A `null` IP, or an unparseable IP when validation is enabled, falls into a
-   * shared `'unknown'` bucket rather than being exempted, and emits a request
-   * warning so a broken extractor shows up in logs, not just as 429s.
+   * A `null` or unparseable IP falls into a shared `'unknown'` bucket rather
+   * than being exempted, and emits a warning so a broken extractor shows up
+   * in logs, not just as 429s.
    *
-   * Pass a request-scoped `logger` to attach request identity to any request
+   * Pass a request-scoped `logger` to attach request identity to any
    * warnings this call emits. Omit it to fall back to the factory logger.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
@@ -65,14 +62,13 @@ export interface GlobalRateLimiter {
  */
 export interface CreateGlobalRateLimiterOptions extends CreateRateLimiterOptions {
   /**
-   * Whether to validate and normalize non-null IP addresses before using them
-   * as store keys. Defaults to `true`.
+   * Whether to validate and normalize non-null IPs before using them as
+   * store keys. Defaults to `true`.
    *
    * Set this to `false` only when the caller already supplies a trusted,
-   * canonical key. The value is then used verbatim: IPv6 addresses are not
-   * bucketed by /64, IPv4-mapped IPv6 addresses are not converted to IPv4,
-   * and unparseable strings do not fall into the shared `unknown` bucket. A
-   * `null` IP still uses the `unknown` bucket and emits a warning.
+   * canonical key, which is then used verbatim with no /64 bucketing and no
+   * `unknown` fallback for unparseable strings. A `null` IP still uses the
+   * `unknown` bucket and emits a warning.
    */
   validate?: boolean
 }
@@ -80,14 +76,13 @@ export interface CreateGlobalRateLimiterOptions extends CreateRateLimiterOptions
 /**
  * Create a pre-authentication rate limiter keyed purely by client IP.
  *
- * Mount this before authentication: credential checks usually hit critical
- * infrastructure (a database, an OTP table), and a per-user limiter cannot
- * protect that infrastructure because unauthenticated traffic has no user yet.
+ * Mount this before authentication. Credential checks hit critical
+ * infrastructure such as a database, and a per-user limiter cannot protect
+ * it because unauthenticated traffic has no user yet.
  *
  * Defaults to 100 points per second with no burst. Override via
- * {@link CreateRateLimiterOptions.defaults}. IP validation and normalization
- * are enabled by default. Pass `validate: false` to use each non-null IP
- * string verbatim as the store key.
+ * {@link CreateRateLimiterOptions.defaults}. Pass `validate: false` to use
+ * each non-null IP string verbatim as the store key.
  *
  * @public
  */
@@ -101,9 +96,8 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions 
     check: ({ ip, points, logger }) => {
       const key = ip === null ? null : validate ? normalizeIp(ip) : ip
       if (key === null) {
-        // Request warning: prefer the per-check (request-scoped) logger so the
-        // extraction failure carries request identity, like other request
-        // warnings.
+        // Prefer the request-scoped logger so the extraction failure carries
+        // request identity.
         const warnLogger = logger ?? rateLimiterOptions.logger
         warnLogger?.warn(
           ip === null
@@ -112,8 +106,8 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions 
               }
             : {
                 message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
-                // Truncated: an unparseable value is attacker-controlled input
-                // and must not flood logs at request rate.
+                // Truncated because an unparseable value is attacker-controlled
+                // input and must not flood logs.
                 context: { ip: ip.slice(0, 64) },
               },
         )
@@ -137,19 +131,17 @@ export interface LocalRateLimiter {
   /**
    * Consume `points` (default 1) from the allowance of `actor` on `resource`.
    *
-   * `actor` is caller-defined: a user ID, an API-key ID, a hash of a bearer
-   * token (hash secrets yourself so they never become store keys), or a
-   * client IP for anonymous traffic. Avoid `:` in actors because the store key is
-   * `actor:resource`, so a colon shifts the boundary between the two.
+   * `actor` is caller-defined: a user ID, an API-key ID, or a client IP for
+   * anonymous traffic. Hash secrets yourself so they never become store
+   * keys. Colons in either value are replaced with `-` so they cannot shift
+   * the `actor:resource` key boundary.
    *
    * `resource` must be a normalized route identity, such as an Express route
-   * template (`/users/:id`) or a tRPC procedure name. Never use the raw request
-   * URL. Keying on raw URLs makes every parameter value its own bucket,
-   * which fragments the actor's quota (defeating the limit), grows store key
-   * cardinality without bound, and breaks per-route overrides. Each actor
-   * gets an independent allowance per resource.
+   * template (`/users/:id`), never the raw request URL. Raw URLs make every
+   * parameter value its own bucket, which fragments the actor's quota, grows
+   * store key cardinality without bound, and breaks per-route overrides.
    *
-   * Pass a request-scoped `logger` to attach request identity to any request
+   * Pass a request-scoped `logger` to attach request identity to any
    * warnings this call emits. Omit it to fall back to the factory logger.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
@@ -165,12 +157,10 @@ export interface LocalRateLimiter {
 
 /**
  * Create a rate limiter enforcing per-actor, per-resource quotas for
- * identified traffic, the fair-use complement to
- * {@link createGlobalRateLimiter}.
+ * identified traffic.
  *
- * Defaults to 50 points per 10 seconds with a burst allowance of 20 per 30
- * seconds. Override via {@link CreateRateLimiterOptions.defaults} or per
- * check.
+ * Defaults to 50 points per 10 seconds with a burst of 20 per 30 seconds.
+ * Override via {@link CreateRateLimiterOptions.defaults} or per check.
  *
  * @public
  */
