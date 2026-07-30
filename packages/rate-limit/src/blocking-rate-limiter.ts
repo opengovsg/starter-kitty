@@ -26,9 +26,74 @@ const BASE_DEFAULTS: Config = {
   prefix: 'block',
 }
 
+export const mergeBlockingConfig = (base: Config, override?: BlockingRateLimitConfig): Config => ({
+  points: override?.points ?? base.points,
+  duration: override?.duration ?? base.duration,
+  block: {
+    duration: override?.block?.duration ?? base.block.duration,
+  },
+  prefix: override?.prefix ?? base.prefix,
+})
+
+/**
+ * Apply {@link clamp} to every numeric field, since `override` values in
+ * {@link mergeBlockingConfig} come from caller input and aren't validated at
+ * the type level. Each correction is surfaced rather than silently applied, so a
+ * misconfigured allowance or block duration shows up in logs instead of only
+ * as unexpected block behaviour.
+ */
+const validateConfig = (config: Config, logger?: Logger): Config => {
+  const validated: Config = {
+    points: clamp(config.points),
+    duration: clamp(config.duration),
+    block: {
+      duration: clamp(config.block.duration),
+    },
+    prefix: config.prefix,
+  }
+
+  if (validated.points !== config.points) {
+    logger?.warn({
+      message: 'Rate limit points was clamped',
+      context: {
+        value: config.points,
+        clamped: validated.points,
+        prefix: config.prefix,
+      },
+    })
+  }
+  if (validated.duration !== config.duration) {
+    logger?.warn({
+      message: 'Rate limit duration was clamped',
+      context: {
+        value: config.duration,
+        clamped: validated.duration,
+        prefix: config.prefix,
+      },
+    })
+  }
+  if (validated.block.duration !== config.block.duration) {
+    logger?.warn({
+      message: 'Rate limit block duration was clamped',
+      context: {
+        value: config.block.duration,
+        clamped: validated.block.duration,
+        prefix: config.prefix,
+      },
+    })
+  }
+
+  return validated
+}
+
 /**
  * Configuration for a failure-counting limiter. All fields are optional;
  * omitted fields inherit from the factory's defaults.
+ *
+ * Numeric values are clamped to safe positive integers. Non-finite or below-1
+ * values degrade to 1, and fractional values are truncated toward zero, since
+ * the Redis-backed limiter rejects non-integer arguments at runtime. Each
+ * clamp is logged to the factory logger.
  *
  * @public
  */
@@ -60,7 +125,12 @@ export interface CreateBlockingRateLimiterOptions {
   client?: RedisClient | null
   /** Default allowance, counting window, block duration, and namespace. */
   defaults?: BlockingRateLimitConfig
-  /** Factory logger for configuration and request warnings. */
+  /**
+   * Factory logger for configuration and request warnings: `warn` when a
+   * configuration value is clamped to a safe integer, `error` once when no
+   * Redis client is configured. Request diagnostics prefer the logger passed
+   * to the individual call and fall back to this one.
+   */
   logger?: Logger
 }
 
@@ -105,15 +175,7 @@ export interface BlockingRateLimiter {
  */
 export const createBlockingRateLimiter = (options: CreateBlockingRateLimiterOptions = {}): BlockingRateLimiter => {
   const { client = null, logger } = options
-  const requested = options.defaults
-  const config: Config = {
-    points: clamp(requested?.points ?? BASE_DEFAULTS.points),
-    duration: clamp(requested?.duration ?? BASE_DEFAULTS.duration),
-    block: {
-      duration: clamp(requested?.block?.duration ?? BASE_DEFAULTS.block.duration),
-    },
-    prefix: requested?.prefix ?? BASE_DEFAULTS.prefix,
-  }
+  const config = validateConfig(mergeBlockingConfig(BASE_DEFAULTS, options.defaults), logger)
   const { points, duration, block, prefix } = config
 
   let limiter: RateLimiterAbstract
