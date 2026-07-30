@@ -156,8 +156,8 @@ describe('createRateLimiter', () => {
 
       await limiter.check({ key })
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
-      const clampCall = logger.warn.mock.calls.find(([input]) => input.message.includes('fallback.points'))
-      expect(clampCall?.[0].context?.requested).toBe(0)
+      const clampCall = logger.warn.mock.calls.find(([input]) => input.message.includes('fallback points'))
+      expect(clampCall?.[0].context?.value).toBe(0)
     })
 
     it('clamps a non-positive fallback.duration to 1 and warns', () => {
@@ -168,8 +168,8 @@ describe('createRateLimiter', () => {
         fallback: { points: 5, duration: 0 },
       })
 
-      const clampCall = logger.warn.mock.calls.find(([input]) => input.message.includes('fallback.duration'))
-      expect(clampCall?.[0].context?.requested).toBe(0)
+      const clampCall = logger.warn.mock.calls.find(([input]) => input.message.includes('fallback duration'))
+      expect(clampCall?.[0].context?.value).toBe(0)
     })
 
     it('reports an unexpected limiter error to the logger with a top-level error and rethrows it', async () => {

@@ -218,14 +218,14 @@ export const createRateLimiter = (options: CreateRateLimiterOptions): RateLimite
   // factory logger, since the fallback is resolved once per factory.
   if (fallback.points !== fallbackOptions.points) {
     logger?.warn({
-      message: 'fallback.points was clamped to the minimum allowed value of 1',
-      context: { requested: fallbackOptions.points },
+      message: 'Rate limit fallback points was clamped',
+      context: { value: fallbackOptions.points, clamped: fallback.points },
     })
   }
   if (fallback.duration !== fallbackOptions.duration) {
     logger?.warn({
-      message: 'fallback.duration was clamped to the minimum allowed value of 1',
-      context: { requested: fallbackOptions.duration },
+      message: 'Rate limit fallback duration was clamped',
+      context: { value: fallbackOptions.duration, clamped: fallback.duration },
     })
   }
 
