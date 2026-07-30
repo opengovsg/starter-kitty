@@ -271,6 +271,7 @@ Store keys live under `rate-limit:<prefix>:` (steady) and
 `block: { duration }` (block length in seconds), and `prefix`. Their store keys
 live under `rate-limit-block:<prefix>:`. The authn wrapper defaults to
 `{ points: 100, duration: 3600, block: { duration: 3600 }, prefix: 'authn' }`.
+Their numeric fields are clamped and warned about like every other limiter's.
 
 See the [documentation website](https://kit.open.gov.sg/) for full API docs,
 and [ADR-0009](../../docs/adr/0009-rate-limit-package-design.md) for the
