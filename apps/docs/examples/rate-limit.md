@@ -261,6 +261,7 @@ import { createHash } from 'node:crypto'
 const actor = createHash('sha256').update(bearerToken).digest('hex')
 await localRateLimiter.check({ actor, resource: 'mcp.callTool' })
 ```
+
 ## Custom failure keys
 
 `createBlockingRateLimiter` provides the same `isBlocked`/`consume`/`reset`
