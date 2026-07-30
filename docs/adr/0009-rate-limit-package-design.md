@@ -59,6 +59,11 @@ The IP rules close known holes:
 - **A `null` or unparseable IP falls into a shared `unknown` bucket**, never
   skipped, and each such check logs a warning. Broken IP extraction funnels
   all traffic into one protective bucket, with logs pointing at the cause.
+  An attacker who can present an invalid client IP can exhaust this bucket
+  and deny service to other users in it. Legitimate users rarely lack a
+  recognisable IP, so the blast radius is small. If the consumer's IP
+  extraction is broken, all traffic shares the bucket and that assumption
+  no longer holds.
 
 ### Local limiter decisions
 
