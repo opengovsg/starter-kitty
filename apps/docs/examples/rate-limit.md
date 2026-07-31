@@ -13,7 +13,7 @@ fallback when no client is configured at all.
 npm i --save @opengovsg/rate-limit
 ```
 
-`ioredis` is an optional peer dependency; install it only if you back the
+`ioredis` is an optional peer dependency. Install it only if you back the
 limiter with Redis.
 
 ## Setup
@@ -63,7 +63,7 @@ API key, or an OTP may hit critical infrastructure such as your database. A
 per-user limiter only engages _after_ identity is established, so it cannot
 shield that infrastructure from an unauthenticated flood. The global limiter
 is keyed purely by client IP (100 points/second by default) and
-stands in front of authentication; the local limiter (keyed by `actor` + `resource`,
+stands in front of authentication. The local limiter (keyed by `actor` + `resource`,
 50 points/10 s with a 20 points/30 s burst by default) enforces fair per-user quotas
 once identity exists.
 
@@ -124,7 +124,7 @@ app.get('/api/reports', authenticate, rateLimited(reportRateLimiter), generateRe
 
 Client-IP resolution belongs to the application because it depends on the
 deployment's trusted-proxy configuration. Pass the same trusted value used for
-request logging; do not accept forwarding headers from untrusted clients.
+request logging. Do not accept forwarding headers from untrusted clients.
 
 ## tRPC
 

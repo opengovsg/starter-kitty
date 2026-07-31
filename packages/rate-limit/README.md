@@ -2,70 +2,49 @@
 
 A framework-agnostic rate-limiting core built on
 [rate-limiter-flexible](https://github.com/animir/node-rate-limiter-flexible).
-
 Counters live in an injected Redis ([ioredis](https://github.com/redis/ioredis))
 client so limits are shared across replicas, with an in-memory insurance
 limiter keeping enforcement alive through Redis outages — and a memory-only
-fallback when no client is configured at all. A steady fixed window is
-composed with a short-lived burst allowance, so the sustained rate stays
-honest while legitimate spikes (a page load firing parallel API calls, users
-behind shared IPs) are absorbed.
+fallback when no client is configured at all.
 
 The package reads **no environment variables** of its own and depends on no
-HTTP framework. `ioredis` is an optional peer dependency — memory-only usage
-needs nothing extra.
+HTTP framework. `ioredis` is an optional peer dependency. Install it only if
+you back the limiter with Redis.
 
 ## The two limiters
 
 Most deployments want both, mounted in this order:
 
-1. **`createGlobalRateLimiter`** — keyed purely by client IP, mounted
-   **before** authentication. Authentication itself hits critical infrastructure
-   (database lookups for sessions, API keys, OTPs); a per-user limiter cannot
-   protect that because unauthenticated traffic has no user yet. Defaults to
-   100 points per second per IP, no burst. IPv4-mapped IPv6 addresses are
-   normalized to their embedded IPv4 address; other IPv6 clients are bucketed
-   by /64 prefix (a subscriber typically holds a whole /64, so finer keying
-   would allow bucket-minting by address rotation). An unparseable IP shares
-   one `unknown` bucket and emits a request warning.
-2. **`createLocalRateLimiter`** — keyed by `actor` + `resource`, mounted
-   after identity exists. Enforces fair per-actor quotas per resource.
-   Defaults to 50 points per 10 seconds with a burst of 20 per 30 seconds.
+1. **`createGlobalRateLimiter`**, mounted **before** authentication.
+   Protects session, API-key, and OTP verification from unauthenticated floods.
+   Keyed by client IP, defaulting to 100 points per second.
+2. **`createLocalRateLimiter`**, mounted after identity exists. Keyed by
+   `actor` + `resource`, enforcing fair per-actor quotas per resource so one
+   identified caller cannot monopolize an endpoint. Defaults to 50 points per
+   10 seconds with a burst of 20 per 30 seconds.
 
 `createRateLimiter` exposes the underlying core for anything else (custom
 keys, throttling non-HTTP work such as database writes).
 
 ## Setup
 
-```ts
-// src/rate-limiters.ts - owned by your app
+Create the limiters once, injecting your app's Redis client, and re-export
+them:
+
+```javascript
+// src/rate-limiters.ts
 import { createGlobalRateLimiter, createLocalRateLimiter } from '@opengovsg/rate-limit'
 
-import { redis } from './redis.js' // your ioredis client (or omit for memory-only)
-import { systemLogger } from './logger.js' // a base/system logger
+// Recommended to use `@opengovsg/logging`.
+import { logger } from '~/logger' // a base/system logger
+import { redis } from '~/redis' // your ioredis client
 
-// `logger` needs `warn({ message, context?, error? })` and
-// `error({ message, context?, error? })` methods, so any
-// structured logger satisfies it. Pass it directly, no wrapper.
-export const globalRateLimiter = createGlobalRateLimiter({ client: redis, logger: systemLogger })
-export const localRateLimiter = createLocalRateLimiter({ client: redis, logger: systemLogger })
+export const globalRateLimiter = createGlobalRateLimiter({ client: redis, logger })
+export const localRateLimiter = createLocalRateLimiter({ client: redis, logger })
 ```
 
-The global limiter validates and normalizes IP addresses by default. If the
-application already supplies a trusted, canonical key, pass
-`skipKeyNormalization: true` to use every string verbatim. This also disables
-IPv6 /64 bucketing and IPv4-mapped normalization, so do not use it with
-attacker-controlled or unnormalized values.
-
-The factory `logger` receives a configuration warning when no Redis client is
-configured, and a separate warning whenever a rate-limit value is clamped to a
-safe integer (out of range, or a fractional value truncated toward zero),
-reporting the field's original and clamped values. Both warnings fire once
-when the limiter is created, so a base/system logger fits.
-
-Without a `client`, limits are enforced in memory — functional, but
-per-instance and not shared across replicas. The factory `logger` surfaces that
-trade-off.
+When `client` is omitted, the limiter runs on in-memory counters. This is suitable for tests and local development. However, as limits are
+per-instance and not shared across replicas, this is not suitable for a production use case.
 
 ## Checking limits
 
@@ -87,12 +66,11 @@ await localRateLimiter.check({
 
 Resolving the client IP is application-owned because the correct source depends
 on the deployment's trusted-proxy configuration. Pass the same trusted value
-your app uses for request logging; do not accept forwarding headers from
+your app uses for request logging. Do not accept forwarding headers from
 untrusted clients.
 
-`actor` is caller-defined: a user ID, an API-key ID, or a hash of a bearer
-token — hash secrets yourself so they never become store keys. `check` throws
-`RateLimitExceededError` when the allowance is exhausted; any other error is
+`actor` is caller-defined: a user ID, an API-key ID. `check` throws
+`RateLimitExceededError` when the allowance is exhausted. Any other error is
 reported via the per-call `logger`'s `error` method (falling back to the
 factory `logger`) and rethrown, so failing open or closed stays your decision.
 
@@ -112,6 +90,11 @@ try {
 }
 ```
 
+`instanceof` assumes a single copy of the package. If a mixed ESM/CJS
+dependency graph loads multiple copies, the constructors differ and the check
+can fail. At that boundary, use a structural guard that checks `name`, `info`,
+and `toHttpHeaders` instead.
+
 ## Configuration
 
 Every limiter accepts `overrides` of shape:
@@ -120,7 +103,7 @@ Every limiter accepts `overrides` of shape:
 | ---------- | -------------------------------- | ----------------------------------------------------------------------- |
 | `points`   | `50`                             | Consumption points per steady window                                    |
 | `duration` | `10`                             | Steady window in seconds                                                |
-| `burst`    | `{ points: 20, duration: 30 }`   | Extra short-lived allowance; omit to inherit, `null` to disable         |
+| `burst`    | `{ points: 20, duration: 30 }`   | Extra short-lived allowance (omit to inherit, `null` to disable)        |
 | `prefix`   | `'api'` / `'global'` / `'local'` | Namespace segment isolating this limiter's counters in the shared store |
 
 Configuration is fixed at creation. A route that needs different limits
