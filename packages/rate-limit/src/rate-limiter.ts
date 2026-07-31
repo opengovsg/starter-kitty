@@ -1,19 +1,9 @@
 import type { RateLimiterAbstract, RateLimiterRes } from 'rate-limiter-flexible'
-import {
-  BurstyRateLimiter,
-  RateLimiterMemory,
-  RateLimiterRedis,
-} from 'rate-limiter-flexible'
+import { BurstyRateLimiter, RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible'
 
 import { BASE_RATE_LIMIT_DEFAULTS } from './constants.js'
 import { RateLimitExceededError } from './errors.js'
-import type {
-  CreateRateLimiterOptions,
-  Logger,
-  RateLimitInfo,
-  RedisClient,
-  RequiredRateLimitConfig,
-} from './types.js'
+import type { CreateRateLimiterOptions, Logger, RateLimitInfo, RedisClient, RequiredRateLimitConfig } from './types.js'
 import { clamp, mergeConfig } from './utilities.js'
 
 const STEADY_NAMESPACE = 'rate-limit:'
@@ -23,10 +13,7 @@ const BURST_NAMESPACE = 'rate-limit-burst:'
  * Clamp every numeric field, since caller input is not validated at the type
  * level.
  */
-const validateConfig = (
-  config: RequiredRateLimitConfig,
-  logger: Logger,
-): RequiredRateLimitConfig => {
+const validateConfig = (config: RequiredRateLimitConfig, logger: Logger): RequiredRateLimitConfig => {
   const validated = {
     points: clamp(config.points),
     duration: clamp(config.duration),
@@ -103,10 +90,7 @@ const toRateLimitInfo = (res: RateLimiterRes): RateLimitInfo => ({
 const isRateLimiterRes = (value: unknown): value is RateLimiterRes => {
   if (typeof value !== 'object' || value === null) return false
   const res = value as Partial<RateLimiterRes>
-  return (
-    typeof res.remainingPoints === 'number' &&
-    typeof res.msBeforeNext === 'number'
-  )
+  return typeof res.remainingPoints === 'number' && typeof res.msBeforeNext === 'number'
 }
 
 /**
@@ -150,9 +134,7 @@ const buildLimiter = (
         'No Redis client configured, using in-memory rate limiting. Limits are per-instance and not shared across replicas.',
       context: { prefix: config.prefix },
     })
-    return burstMemoryLimiter
-      ? new BurstyRateLimiter(steadyMemoryLimiter, burstMemoryLimiter)
-      : steadyMemoryLimiter
+    return burstMemoryLimiter ? new BurstyRateLimiter(steadyMemoryLimiter, burstMemoryLimiter) : steadyMemoryLimiter
   }
 
   const steady = new RateLimiterRedis({
@@ -185,15 +167,10 @@ const buildLimiter = (
  *
  * @public
  */
-export const createRateLimiter = (
-  options: CreateRateLimiterOptions,
-): RateLimiter => {
+export const createRateLimiter = (options: CreateRateLimiterOptions): RateLimiter => {
   const { client = null, logger } = options
 
-  const config = validateConfig(
-    mergeConfig(BASE_RATE_LIMIT_DEFAULTS, options.defaults),
-    logger,
-  )
+  const config = validateConfig(mergeConfig(BASE_RATE_LIMIT_DEFAULTS, options.overrides), logger)
 
   const limiter = buildLimiter(config, client, logger)
 

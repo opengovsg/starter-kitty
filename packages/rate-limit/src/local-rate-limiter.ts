@@ -27,11 +27,7 @@ export interface LocalRateLimiter {
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */
-  check(args: {
-    actor: string
-    resource: string
-    logger?: Logger
-  }): Promise<RateLimitInfo>
+  check(args: { actor: string; resource: string; logger?: Logger }): Promise<RateLimitInfo>
 }
 
 /**
@@ -46,16 +42,14 @@ export type CreateLocalRateLimiterOptions = CreateRateLimiterOptions
  * identified traffic.
  *
  * Defaults to 50 points per 10 seconds with a burst of 20 per 30 seconds.
- * Override via {@link CreateRateLimiterOptions.defaults}.
+ * Override via {@link CreateRateLimiterOptions.overrides}.
  *
  * @public
  */
-export const createLocalRateLimiter = (
-  options: CreateLocalRateLimiterOptions,
-): LocalRateLimiter => {
+export const createLocalRateLimiter = (options: CreateLocalRateLimiterOptions): LocalRateLimiter => {
   const limiter = createRateLimiter({
     ...options,
-    defaults: mergeConfig(LOCAL_RATE_LIMIT_DEFAULTS, options.defaults),
+    overrides: mergeConfig(LOCAL_RATE_LIMIT_DEFAULTS, options.overrides),
   })
   return {
     check: ({ actor, resource, logger }) =>

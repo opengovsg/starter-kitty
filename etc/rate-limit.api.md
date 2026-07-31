@@ -32,8 +32,8 @@ export const createRateLimiter: (options: CreateRateLimiterOptions) => RateLimit
 // @public
 export interface CreateRateLimiterOptions {
     client?: RedisClient | null;
-    defaults?: RateLimitConfig;
     logger: Logger;
+    overrides?: RateLimitConfig;
 }
 
 // @public

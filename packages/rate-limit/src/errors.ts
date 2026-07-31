@@ -23,9 +23,7 @@ export class RateLimitExceededError extends Error {
   /** Derive the `Retry-After` HTTP 429 response header from this rejection. */
   toHttpHeaders() {
     return {
-      'Retry-After': String(
-        Math.max(1, Math.ceil(this.info.msToNextWindow / 1000)),
-      ),
+      'Retry-After': String(Math.max(1, Math.ceil(this.info.msToNextWindow / 1000))),
     }
   }
 }

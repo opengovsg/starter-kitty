@@ -111,7 +111,7 @@ gets its own limiter:
 export const reportRateLimiter = createLocalRateLimiter({
   client: redis,
   logger,
-  defaults: {
+  overrides: {
     points: 5,
     duration: 60,
   },
@@ -163,7 +163,7 @@ export const publicProcedure = t.procedure.use(rateLimitMiddleware)
 // Stricter limits where it matters: a dedicated limiter, referenced from meta.
 const otpRateLimiter = createLocalRateLimiter({
   client: redis,
-  defaults: { points: 5, duration: 60, burst: { points: 3, duration: 120 }, prefix: 'otp' },
+  overrides: { points: 5, duration: 60, burst: { points: 3, duration: 120 }, prefix: 'otp' },
 })
 
 const requestOtp = publicProcedure.meta({ rateLimiter: otpRateLimiter }).mutation(/* ... */)

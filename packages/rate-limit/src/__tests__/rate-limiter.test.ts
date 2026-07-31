@@ -22,7 +22,7 @@ describe('createRateLimiter', () => {
     it('resolves with rate-limit info while under the limit', async () => {
       const limiter = createRateLimiter({
         logger: defaultLogger,
-        defaults: {
+        overrides: {
           points: 5,
           duration: 10,
           burst: null,
@@ -43,7 +43,7 @@ describe('createRateLimiter', () => {
     it('throws RateLimitExceededError once the allowance is exhausted', async () => {
       const limiter = createRateLimiter({
         logger: defaultLogger,
-        defaults: {
+        overrides: {
           points: 2,
           duration: 10,
           burst: null,
@@ -66,7 +66,7 @@ describe('createRateLimiter', () => {
     it('grants extra requests from the burst allowance after the steady window is exhausted', async () => {
       const limiter = createRateLimiter({
         logger: defaultLogger,
-        defaults: {
+        overrides: {
           points: 1,
           duration: 10,
           burst: { points: 2, duration: 30 },
@@ -81,12 +81,12 @@ describe('createRateLimiter', () => {
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
 
-    it('inherits the built-in burst when defaults omit it and disables it when null', async () => {
+    it('inherits the built-in burst when overrides omit it and disables it when null', async () => {
       // Burst omitted: the built-in { points: 20, duration: 30 } applies, so
       // 1 steady + 20 burst checks pass before the 22nd is rejected.
       const inheriting = createRateLimiter({
         logger: defaultLogger,
-        defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
+        overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
       })
       const inheritingKey = randomUUID()
       for (let i = 0; i < 21; i++) {
@@ -96,7 +96,7 @@ describe('createRateLimiter', () => {
 
       const burstless = createRateLimiter({
         logger: defaultLogger,
-        defaults: {
+        overrides: {
           points: 1,
           duration: 10,
           burst: null,
@@ -112,7 +112,7 @@ describe('createRateLimiter', () => {
       const logger = createLoggerStub()
       const limiter = createRateLimiter({
         logger,
-        defaults: {
+        overrides: {
           points: 5,
           duration: 10,
           burst: null,
@@ -128,7 +128,7 @@ describe('createRateLimiter', () => {
     it('clamps invalid configuration values', async () => {
       const limiter = createRateLimiter({
         logger: defaultLogger,
-        defaults: {
+        overrides: {
           points: 0,
           duration: 10,
           burst: null,
@@ -151,7 +151,7 @@ describe('createRateLimiter', () => {
       try {
         const limiter = createRateLimiter({
           logger,
-          defaults: {
+          overrides: {
             points: 5,
             duration: 10,
             burst: null,
@@ -175,7 +175,7 @@ describe('createRateLimiter', () => {
       try {
         const limiter = createRateLimiter({
           logger: factoryLogger,
-          defaults: {
+          overrides: {
             points: 5,
             duration: 10,
             burst: null,
@@ -198,7 +198,7 @@ describe('createRateLimiter', () => {
       const requestLogger = createLoggerStub()
       const limiter = createRateLimiter({
         logger: factoryLogger,
-        defaults: {
+        overrides: {
           points: 5,
           duration: 10,
           burst: null,
@@ -217,7 +217,7 @@ describe('createRateLimiter', () => {
       it('truncates non-integer points, duration, and burst configuration values toward zero', async () => {
         const limiter = createRateLimiter({
           logger: defaultLogger,
-          defaults: {
+          overrides: {
             points: 2.9,
             duration: 10.5,
             burst: { points: 1.9, duration: 30.9 },
@@ -238,7 +238,7 @@ describe('createRateLimiter', () => {
         const logger = createLoggerStub()
         const limiter = createRateLimiter({
           logger,
-          defaults: {
+          overrides: {
             points: 2.9,
             duration: 10,
             burst: null,
@@ -260,7 +260,7 @@ describe('createRateLimiter', () => {
         const logger = createLoggerStub()
         const limiter = createRateLimiter({
           logger,
-          defaults: {
+          overrides: {
             points: 5,
             duration: 10.7,
             burst: null,
@@ -281,7 +281,7 @@ describe('createRateLimiter', () => {
         const logger = createLoggerStub()
         const limiter = createRateLimiter({
           logger,
-          defaults: {
+          overrides: {
             points: 2.9,
             duration: 10.5,
             burst: { points: 1.9, duration: 30.9 },
@@ -304,7 +304,7 @@ describe('createRateLimiter', () => {
           const logger = createLoggerStub()
           const limiter = createRateLimiter({
             logger,
-            defaults: {
+            overrides: {
               points,
               duration: 10,
               burst: null,
@@ -329,7 +329,7 @@ describe('createRateLimiter', () => {
       const limiter = createRateLimiter({
         logger: defaultLogger,
         client,
-        defaults: {
+        overrides: {
           points: 1,
           duration: 10,
           burst: null,

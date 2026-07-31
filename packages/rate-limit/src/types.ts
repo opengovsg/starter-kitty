@@ -73,16 +73,8 @@ export interface RateLimitInfo {
  * @public
  */
 export interface Logger {
-  warn(input: {
-    message: string
-    context?: Record<string, unknown>
-    error?: unknown
-  }): void
-  error(input: {
-    message: string
-    context?: Record<string, unknown>
-    error?: unknown
-  }): void
+  warn(input: { message: string; context?: Record<string, unknown>; error?: unknown }): void
+  error(input: { message: string; context?: Record<string, unknown>; error?: unknown }): void
 }
 
 /**
@@ -108,7 +100,7 @@ export interface CreateRateLimiterOptions {
   /**
    * Configuration merged over the limiter's built-in defaults.
    */
-  defaults?: RateLimitConfig
+  overrides?: RateLimitConfig
   /**
    * Logger receiving configuration warnings and runtime
    * problems such as an unexpected store failure. Per-request logging

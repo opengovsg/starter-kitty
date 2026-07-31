@@ -1,10 +1,6 @@
 import { GLOBAL_RATE_LIMIT_DEFAULTS, UNKNOWN_BUCKET } from './constants.js'
 import { createRateLimiter } from './rate-limiter.js'
-import type {
-  CreateRateLimiterOptions,
-  Logger,
-  RateLimitInfo,
-} from './types.js'
+import type { CreateRateLimiterOptions, Logger, RateLimitInfo } from './types.js'
 import { mergeConfig, normalizeIp } from './utilities.js'
 
 /**
@@ -41,8 +37,7 @@ export interface GlobalRateLimiter {
  *
  * @public
  */
-export interface CreateGlobalRateLimiterOptions
-  extends CreateRateLimiterOptions {
+export interface CreateGlobalRateLimiterOptions extends CreateRateLimiterOptions {
   /**
    * Whether to skip normalizing IPs before using them as store keys.
    * Defaults to `false`.
@@ -60,21 +55,16 @@ export interface CreateGlobalRateLimiterOptions
  * Mount this before authentication flows that rely on querying critical infrastructure.
  *
  * Defaults to 100 points per second with no burst. Override via
- * {@link CreateRateLimiterOptions.defaults}. Pass `skipKeyNormalization: true`
+ * {@link CreateRateLimiterOptions.overrides}. Pass `skipKeyNormalization: true`
  * to use each IP string verbatim as the store key.
  *
  * @public
  */
-export const createGlobalRateLimiter = (
-  options: CreateGlobalRateLimiterOptions,
-): GlobalRateLimiter => {
+export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions): GlobalRateLimiter => {
   const { skipKeyNormalization = false, ...rateLimiterOptions } = options
   const limiter = createRateLimiter({
     ...rateLimiterOptions,
-    defaults: mergeConfig(
-      GLOBAL_RATE_LIMIT_DEFAULTS,
-      rateLimiterOptions.defaults,
-    ),
+    overrides: mergeConfig(GLOBAL_RATE_LIMIT_DEFAULTS, rateLimiterOptions.overrides),
   })
   return {
     check: ({ ip, logger }) => {
@@ -86,12 +76,10 @@ export const createGlobalRateLimiter = (
         lgr.error(
           ip === null
             ? {
-                message:
-                  'Client IP extraction returned null, using the shared unknown bucket',
+                message: 'Client IP extraction returned null, using the shared unknown bucket',
               }
             : {
-                message:
-                  'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
+                message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
                 // Truncated because an unparseable value is attacker-controlled
                 // input and must not flood logs.
                 context: { ip: ip.slice(0, 64) },

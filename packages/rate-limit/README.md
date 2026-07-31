@@ -114,7 +114,7 @@ try {
 
 ## Configuration
 
-Every limiter accepts `defaults` of shape:
+Every limiter accepts `overrides` of shape:
 
 | Field      | Default                          | Meaning                                                                 |
 | ---------- | -------------------------------- | ----------------------------------------------------------------------- |
@@ -124,7 +124,7 @@ Every limiter accepts `defaults` of shape:
 | `prefix`   | `'api'` / `'global'` / `'local'` | Namespace segment isolating this limiter's counters in the shared store |
 
 Configuration is fixed at creation. A route that needs different limits
-creates its own limiter with its own `defaults`.
+creates its own limiter with its own `overrides`.
 
 Store keys live under `rate-limit:<prefix>:` (steady) and
 `rate-limit-burst:<prefix>:` (burst).
