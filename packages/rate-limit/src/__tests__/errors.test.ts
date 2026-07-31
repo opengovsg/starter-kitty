@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { constructRateLimitHeaders, RateLimitExceededError } from '../index.js'
+import { RateLimitExceededError } from '../index.js'
 
 const makeError = (msToNextWindow: number) =>
   new RateLimitExceededError({
@@ -18,9 +18,9 @@ describe('RateLimitExceededError', () => {
   })
 })
 
-describe('constructRateLimitHeaders', () => {
+describe('RateLimitExceededError.toHttpHeaders', () => {
   it('rounds Retry-After up to whole seconds', () => {
-    const headers = constructRateLimitHeaders(makeError(2500))
+    const headers = makeError(2500).toHttpHeaders()
 
     expect(headers).toEqual({
       'Retry-After': '3',
@@ -28,7 +28,7 @@ describe('constructRateLimitHeaders', () => {
   })
 
   it('never reports a Retry-After below one second', () => {
-    expect(constructRateLimitHeaders(makeError(0))).toEqual({ 'Retry-After': '1' })
-    expect(constructRateLimitHeaders(makeError(1))).toEqual({ 'Retry-After': '1' })
+    expect(makeError(0).toHttpHeaders()).toEqual({ 'Retry-After': '1' })
+    expect(makeError(1).toHttpHeaders()).toEqual({ 'Retry-After': '1' })
   })
 })

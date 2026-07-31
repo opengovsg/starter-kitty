@@ -7,16 +7,20 @@ import { createGlobalRateLimiter, createLocalRateLimiter, type Logger, RateLimit
 
 const uniquePrefix = () => `test-${randomUUID()}`
 
-// A Logger stub whose single `warn` method is a vitest mock, for asserting
-// which warnings reached which logger.
+// A Logger stub whose `warn` and `error` methods are vitest mocks, for
+// asserting which log reached which logger.
 const createLoggerStub = () => {
   const warn = vi.fn<Logger['warn']>()
-  return { warn } satisfies Logger
+  const error = vi.fn<Logger['error']>()
+  return { warn, error } satisfies Logger
 }
+
+const defaultLogger = createLoggerStub()
 
 describe('createGlobalRateLimiter', () => {
   it('keys purely by IP, isolating distinct clients', async () => {
     const limiter = createGlobalRateLimiter({
+      logger: defaultLogger,
       defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
     })
 
@@ -27,17 +31,9 @@ describe('createGlobalRateLimiter', () => {
     })
   })
 
-  it('buckets null IPs together as unknown instead of exempting them', async () => {
-    const limiter = createGlobalRateLimiter({
-      defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
-    })
-
-    await limiter.check({ ip: null })
-    await expect(limiter.check({ ip: null })).rejects.toBeInstanceOf(RateLimitExceededError)
-  })
-
   it('buckets IPv6 addresses by /64 prefix', async () => {
     const limiter = createGlobalRateLimiter({
+      logger: defaultLogger,
       defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
     })
 
@@ -52,6 +48,7 @@ describe('createGlobalRateLimiter', () => {
 
   it('normalizes equivalent IPv6 spellings into one bucket', async () => {
     const limiter = createGlobalRateLimiter({
+      logger: defaultLogger,
       defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
     })
 
@@ -62,6 +59,7 @@ describe('createGlobalRateLimiter', () => {
 
   it('keys a compressed spelling whose tail reaches into the /64 prefix identically to its expanded form', async () => {
     const limiter = createGlobalRateLimiter({
+      logger: defaultLogger,
       defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
     })
 
@@ -73,6 +71,7 @@ describe('createGlobalRateLimiter', () => {
 
   it('ignores IPv6 zone IDs, which never occupy the /64 prefix', async () => {
     const limiter = createGlobalRateLimiter({
+      logger: defaultLogger,
       defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
     })
 
@@ -82,6 +81,7 @@ describe('createGlobalRateLimiter', () => {
 
   it('normalizes IPv4-mapped IPv6 spellings to their embedded IPv4 address', async () => {
     const limiter = createGlobalRateLimiter({
+      logger: defaultLogger,
       defaults: { points: 2, duration: 10, prefix: uniquePrefix() },
     })
 
@@ -90,79 +90,43 @@ describe('createGlobalRateLimiter', () => {
     await expect(limiter.check({ ip: '::ffff:0102:0304' })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
 
-  it('warns when the IP is null, preferring the per-check logger', async () => {
-    const factoryLogger = createLoggerStub()
+  it('funnels unparseable IPs into the unknown bucket, logging an error', async () => {
     const requestLogger = createLoggerStub()
     const limiter = createGlobalRateLimiter({
-      logger: factoryLogger,
-      defaults: { points: 5, duration: 10, prefix: uniquePrefix() },
-    })
-
-    await limiter.check({ ip: null, logger: requestLogger })
-    expect(requestLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Client IP extraction returned null, using the shared unknown bucket',
-      }),
-    )
-    // The factory logger still receives configuration warnings (no Redis
-    // client), but the null-IP request warning must go to the request logger.
-    expect(factoryLogger.warn).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Client IP extraction returned null, using the shared unknown bucket',
-      }),
-    )
-
-    await limiter.check({ ip: null })
-    expect(factoryLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Client IP extraction returned null, using the shared unknown bucket',
-      }),
-    )
-  })
-
-  it('funnels unparseable IPs into the unknown bucket with a warning', async () => {
-    const requestLogger = createLoggerStub()
-    const limiter = createGlobalRateLimiter({
+      logger: defaultLogger,
       defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
     })
 
     await limiter.check({ ip: 'not-an-ip', logger: requestLogger })
-    expect(requestLogger.warn).toHaveBeenCalledWith(
+    expect(requestLogger.error).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
         context: { ip: 'not-an-ip' },
       }),
     )
-    // Shares the unknown bucket with null IPs rather than minting its own.
-    await expect(limiter.check({ ip: null })).rejects.toBeInstanceOf(RateLimitExceededError)
+    // Every unparseable value shares the unknown bucket rather than minting
+    // its own.
+    await expect(limiter.check({ ip: 'also-not-an-ip' })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
 
-  it('uses non-null IP strings verbatim when validation is disabled', async () => {
+  it('uses IP strings verbatim when key normalization is skipped', async () => {
     const requestLogger = createLoggerStub()
     const limiter = createGlobalRateLimiter({
-      validate: false,
+      logger: defaultLogger,
+      skipKeyNormalization: true,
       defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
     })
 
     await limiter.check({ ip: 'not-an-ip', logger: requestLogger })
     await expect(limiter.check({ ip: 'not-an-ip' })).rejects.toBeInstanceOf(RateLimitExceededError)
     expect(requestLogger.warn).not.toHaveBeenCalled()
-
-    // The invalid string has its own verbatim bucket rather than sharing the
-    // unknown bucket, but null remains an extraction failure and is warned.
-    await expect(limiter.check({ ip: null, logger: requestLogger })).resolves.toMatchObject({
-      points: { remaining: 0 },
-    })
-    expect(requestLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Client IP extraction returned null, using the shared unknown bucket',
-      }),
-    )
+    expect(requestLogger.error).not.toHaveBeenCalled()
   })
 
-  it('skips IPv6 /64 bucketing when validation is disabled', async () => {
+  it('skips IPv6 /64 bucketing when key normalization is skipped', async () => {
     const limiter = createGlobalRateLimiter({
-      validate: false,
+      logger: defaultLogger,
+      skipKeyNormalization: true,
       defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
     })
 
@@ -174,6 +138,7 @@ describe('createGlobalRateLimiter', () => {
 
   it('defaults to 100 points per second with no burst', async () => {
     const limiter = createGlobalRateLimiter({
+      logger: defaultLogger,
       defaults: { prefix: uniquePrefix() },
     })
     const ip = `10.0.0.${Math.floor(Math.random() * 255)}`
@@ -181,8 +146,9 @@ describe('createGlobalRateLimiter', () => {
     const first = await limiter.check({ ip })
     expect(first.points.remaining).toBe(99)
 
-    const rest = await limiter.check({ ip, points: 99 })
-    expect(rest.points.remaining).toBe(0)
+    for (let i = 0; i < 99; i++) {
+      await limiter.check({ ip })
+    }
     await expect(limiter.check({ ip })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
 
@@ -192,6 +158,7 @@ describe('createGlobalRateLimiter', () => {
     const spy = vi.spyOn(RateLimiterMemory.prototype, 'consume').mockRejectedValue(storeError)
     try {
       const limiter = createGlobalRateLimiter({
+        logger: defaultLogger,
         defaults: {
           points: 5,
           duration: 10,
@@ -202,7 +169,7 @@ describe('createGlobalRateLimiter', () => {
 
       await expect(limiter.check({ ip: '1.2.3.4', logger: requestLogger })).rejects.toBe(storeError)
 
-      expect(requestLogger.warn).toHaveBeenCalledWith(
+      expect(requestLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'Unexpected rate limiter error' }),
       )
     } finally {
@@ -214,6 +181,7 @@ describe('createGlobalRateLimiter', () => {
 describe('createLocalRateLimiter', () => {
   it('gives the same actor an independent allowance per resource', async () => {
     const limiter = createLocalRateLimiter({
+      logger: defaultLogger,
       defaults: {
         points: 1,
         duration: 10,
@@ -232,6 +200,7 @@ describe('createLocalRateLimiter', () => {
 
   it('isolates different actors on the same resource', async () => {
     const limiter = createLocalRateLimiter({
+      logger: defaultLogger,
       defaults: {
         points: 1,
         duration: 10,
@@ -253,6 +222,7 @@ describe('createLocalRateLimiter', () => {
     const spy = vi.spyOn(RateLimiterMemory.prototype, 'consume').mockRejectedValue(storeError)
     try {
       const limiter = createLocalRateLimiter({
+        logger: defaultLogger,
         defaults: {
           points: 5,
           duration: 10,
@@ -269,7 +239,7 @@ describe('createLocalRateLimiter', () => {
         }),
       ).rejects.toBe(storeError)
 
-      expect(requestLogger.warn).toHaveBeenCalledWith(
+      expect(requestLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'Unexpected rate limiter error' }),
       )
     } finally {

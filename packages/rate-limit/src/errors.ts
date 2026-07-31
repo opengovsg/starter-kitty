@@ -4,7 +4,8 @@ import type { RateLimitInfo } from './types.js'
  * Thrown when a key has exhausted its rate-limit allowance.
  *
  * Carries everything needed to build an HTTP 429 response. See
- * {@link constructRateLimitHeaders} for deriving a `Retry-After` header value.
+ * {@link RateLimitExceededError.toHttpHeaders} for deriving a `Retry-After`
+ * header value.
  *
  * @public
  */
@@ -17,5 +18,14 @@ export class RateLimitExceededError extends Error {
     super(`Rate limit exceeded. Try again in ${retryAfterSeconds}s.`)
     this.name = 'RateLimitExceededError'
     this.info = info
+  }
+
+  /** Derive the `Retry-After` HTTP 429 response header from this rejection. */
+  toHttpHeaders() {
+    return {
+      'Retry-After': String(
+        Math.max(1, Math.ceil(this.info.msToNextWindow / 1000)),
+      ),
+    }
   }
 }

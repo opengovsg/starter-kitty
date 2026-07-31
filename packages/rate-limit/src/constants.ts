@@ -22,15 +22,11 @@ export const GLOBAL_RATE_LIMIT_DEFAULTS = {
 }
 
 export const LOCAL_RATE_LIMIT_DEFAULTS = {
-  points: 50,
-  duration: 10,
-  burst: { points: 20, duration: 30 },
+  ...BASE_RATE_LIMIT_DEFAULTS,
   prefix: 'local',
 }
 
 /**
- * Shared bucket for requests whose client IP is missing or unparseable.
- * Unidentifiable traffic is limited, never exempted, and cannot mint fresh
- * buckets from attacker-controlled input.
+ * Key for a shared bucket for requests whose client IP is unparseable.
  */
 export const UNKNOWN_BUCKET = 'unknown'

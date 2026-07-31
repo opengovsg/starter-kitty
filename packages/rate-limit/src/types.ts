@@ -19,27 +19,24 @@ export interface BurstConfig {
  *
  * Numeric values are clamped to safe positive integers: non-finite or
  * below-1 values degrade to 1 and fractions are truncated, since the
- * Redis-backed limiter rejects non-integer arguments at runtime. Each clamp
- * is logged when the limiter is created.
+ * Redis-backed limiter rejects non-integer arguments at runtime.
  *
  * @public
  */
 export interface RateLimitConfig {
-  /** Consumption points available per steady window. Defaults to 50. */
+  /** Consumption points available per steady window. */
   points?: number
-  /** Steady window in seconds. Defaults to 10. */
+  /** Steady window in seconds. */
   duration?: number
   /**
    * Burst window layered on top of the steady window. Omit to inherit the
    * limiter's default burst. Pass `null` to disable bursting entirely.
-   * Defaults to `{ points: 20, duration: 30 }`.
    */
   burst?: BurstConfig | null
   /**
    * Namespace segment isolating this limiter's counters from other limiters
    * sharing the same store. Steady counters are stored under
    * `rate-limit:<prefix>:` and burst counters under `rate-limit-burst:<prefix>:`.
-   * Defaults to `'api'`.
    */
   prefix?: string
 }
@@ -66,19 +63,26 @@ export interface RateLimitInfo {
 }
 
 /**
- * The subset of a structured logger this package needs: a single `warn`
- * method for non-fatal conditions such as running without Redis. Any logger
- * whose `warn` accepts `{ message, context?, error? }` satisfies it,
- * including the logger from `@opengovsg/logging`. The package takes no
- * logging dependency.
+ * The subset of a structured logger this package needs.
  *
- * An unexpected store error is passed as top-level `error`, not inside
- * `context`, so it reaches a logger's error serializer intact.
+ * Any logger whose `warn`/`error` accept `{ message, context?, error? }`
+ * satisfies it, including the logger from `@opengovsg/logging`.
+ *
+ * The package takes no logging dependency.
  *
  * @public
  */
 export interface Logger {
-  warn(input: { message: string; context?: Record<string, unknown>; error?: unknown }): void
+  warn(input: {
+    message: string
+    context?: Record<string, unknown>
+    error?: unknown
+  }): void
+  error(input: {
+    message: string
+    context?: Record<string, unknown>
+    error?: unknown
+  }): void
 }
 
 /**
@@ -98,8 +102,7 @@ export interface CreateRateLimiterOptions {
   /**
    * The Redis client backing the limiter's counters. When absent or `null`,
    * the limiter falls back to in-memory counters, which are per-instance and
-   * not shared across replicas. The factory logger is warned once at
-   * creation when this happens.
+   * not shared across replicas.
    */
   client?: RedisClient | null
   /**
@@ -107,9 +110,9 @@ export interface CreateRateLimiterOptions {
    */
   defaults?: RateLimitConfig
   /**
-   * Logger receiving configuration warnings: no Redis client configured, or
-   * a rate-limit value clamped to a safe integer. Per-request warnings take
-   * a separate logger on each {@link RateLimiter.check | check}.
+   * Logger receiving configuration warnings and runtime
+   * problems such as an unexpected store failure. Per-request logging
+   * takes a separate logger on each {@link RateLimiter.check | check}.
    */
-  logger?: Logger
+  logger: Logger
 }

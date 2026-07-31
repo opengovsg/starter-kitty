@@ -22,73 +22,77 @@ Create the limiters once, injecting your app's Redis client, and re-export
 them:
 
 ```javascript
-// src/rate-limiters.ts — owned by your app
+// src/rate-limiters.ts
 import { createGlobalRateLimiter, createLocalRateLimiter } from '@opengovsg/rate-limit'
 
-import { systemLogger } from '~/logger' // a base/system logger
+// Recommended to use `@opengovsg/logging`.
+import { logger } from '~/logger' // a base/system logger
 import { redis } from '~/redis' // your ioredis client
 
-// `logger` needs only a `warn({ message, context?, error? })` method, so any
-// structured logger satisfies it — pass it directly, no wrapper.
-export const globalRateLimiter = createGlobalRateLimiter({ client: redis, logger: systemLogger })
-export const localRateLimiter = createLocalRateLimiter({ client: redis, logger: systemLogger })
+export const globalRateLimiter = createGlobalRateLimiter({ client: redis, logger })
+export const localRateLimiter = createLocalRateLimiter({ client: redis, logger })
 ```
 
-The global limiter validates and normalizes IP addresses by default. If the
-application already supplies a trusted, canonical key, pass `validate: false`
-to use every non-null string verbatim. This also disables IPv6 /64 bucketing
+When `client` is omitted, the limiter runs on in-memory counters. This is suitable for tests and local development. However, as limits are
+per-instance and not shared across replicas, this is not suitable for a production use case.
+
+### Global rate limiter
+
+Use the global limiter before authentication to protect work such as session,
+API-key, or OTP verification. It groups requests by client IP, so it can reject
+a flood before the caller's identity is known.
+
+The global limiter validates and normalizes IP addresses by default.
+When the IP is invalid or missing, requests are bucketed into an `unknown` bucket.
+
+If the application already supplies a trusted, canonical key, pass `skipKeyNormalization: true`
+to use every string verbatim. This also disables IPv6 /64 bucketing
 and IPv4-mapped normalization, so do not use it with attacker-controlled or
-unnormalized values. A `null` IP still uses the shared `unknown` bucket.
+unnormalized values.
 
-The factory `logger` receives a configuration warning when no client is
-configured, and another whenever a rate-limit value is clamped to a safe
-integer. Both fire once when the limiter is created. Per-request warnings take
-a separate, request-scoped logger on each `check` (see below).
+### Local rate limiter
 
-Omit `client` and the limiter runs on in-memory counters — fine for tests,
-local development, and single-instance deployments, but limits are then
-per-instance and not shared across replicas. The factory `logger` fires once
-at creation to make that explicit.
+Use the local limiter after authentication to apply per-actor, per-resource
+quotas, such as limiting a user or API key on a particular route or procedure.
+This prevents one identified caller from monopolizing an endpoint.
 
 ## Why two limiters?
 
 **Mount the global limiter before authentication.** Verifying a session, an
-API key, or an OTP hits critical infrastructure — usually your database. A
+API key, or an OTP may hit critical infrastructure such as your database. A
 per-user limiter only engages _after_ identity is established, so it cannot
 shield that infrastructure from an unauthenticated flood. The global limiter
-is keyed purely by client IP (100 points/second by default, no burst) and
-stands in front of auth; the local limiter (keyed by `actor` + `resource`,
-50 points/10 s with a 20/30 s burst by default) enforces fair per-user quotas
+is keyed purely by client IP (100 points/second by default) and
+stands in front of authentication; the local limiter (keyed by `actor` + `resource`,
+50 points/10 s with a 20 points/30 s burst by default) enforces fair per-user quotas
 once identity exists.
-
-A `null` IP falls into a shared `unknown` bucket rather than being exempted.
 
 ## Express
 
 ```javascript
-import { constructRateLimitHeaders, RateLimitExceededError } from '@opengovsg/rate-limit'
+import { RateLimitExceededError } from '@opengovsg/rate-limit'
 
 import { globalRateLimiter, localRateLimiter } from '~/rate-limiters'
 
-const respond429 = (res, error) =>
-  res.status(429).set(constructRateLimitHeaders(error)).json({ message: error.message })
+const respond429 = (res, error) => res.status(429).set(error.toHttpHeaders()).json({ message: error.message })
 
-// Before auth: coarse per-IP shielding.
+// Before authn: coarse per-IP shielding.
 app.use(async (req, res, next) => {
   try {
-    await globalRateLimiter.check({ ip: req.ip ?? null })
+    // IP extraction depends on your application's deployment.
+    await globalRateLimiter.check({ ip: req.ip })
     next()
   } catch (error) {
     if (error instanceof RateLimitExceededError) return respond429(res, error)
-    next(error) // infra error: your call whether to fail open or closed
+    next(error) // Unexpected error: your call whether to fail open or closed
   }
 })
 
-// After auth: fair per-actor, per-route quotas. Passing the request logger
-// means any request warnings carry this request's identity (path, user, IP).
+// After authn: fair per-actor, per-route quotas. Passing the request logger
+// means anything logged for this request carries its identity (path, user, IP).
 const rateLimited = limiter => async (req, res, next) => {
   try {
-    await limiter.check({ actor: req.session.userId, resource: req.route.path, logger: req.log })
+    await limiter.check({ actor: req.session.userId, resource: `${req.method} ${req.route.path}`, logger: req.log })
     next()
   } catch (error) {
     if (error instanceof RateLimitExceededError) return respond429(res, error)
@@ -96,27 +100,26 @@ const rateLimited = limiter => async (req, res, next) => {
   }
 }
 
-app.post('/api/bookings', authenticate, rateLimited(localRateLimiter), createBooking)
+app.post('/api/submission', authenticate, rateLimited(localRateLimiter), createSubmission)
 ```
 
 Configuration is fixed at creation, so a route that needs different limits
-gets its own limiter with its own `prefix`:
+gets its own limiter:
 
 ```javascript
 // src/rate-limiters.ts
 export const reportRateLimiter = createLocalRateLimiter({
   client: redis,
-  logger: systemLogger,
+  logger,
   defaults: {
     points: 5,
     duration: 60,
-    prefix: 'reports',
   },
 })
 ```
 
 ```javascript
-app.post('/api/reports', authenticate, rateLimited(reportRateLimiter), generateReport)
+app.get('/api/reports', authenticate, rateLimited(reportRateLimiter), generateReport)
 ```
 
 Client-IP resolution belongs to the application because it depends on the
@@ -144,7 +147,7 @@ const rateLimitMiddleware = t.middleware(async ({ ctx, meta, path, next }) => {
     await limiter.check({
       actor: ctx.session?.userId ?? ctx.clientIp ?? 'unknown',
       resource: path,
-      logger: ctx.logger, // request-scoped, so request warnings carry request identity
+      logger: ctx.logger, // request-scoped, so anything logged carries request identity
     })
   } catch (error) {
     if (error instanceof RateLimitExceededError) {
@@ -168,8 +171,9 @@ const requestOtp = publicProcedure.meta({ rateLimiter: otpRateLimiter }).mutatio
 
 ## Choosing an actor
 
-`actor` is caller-defined. Use a stable identifier for the authenticated
-principal — a user ID or an API-key ID. For bearer tokens, hash before keying
+In the local rate limiter, `actor` is caller-defined. Use a stable identifier for the authenticated principal such as a user ID or an API-key ID.
+
+For bearer tokens, hash before keying
 so raw secrets never become store keys:
 
 ```javascript
@@ -177,26 +181,4 @@ import { createHash } from 'node:crypto'
 
 const actor = createHash('sha256').update(bearerToken).digest('hex')
 await localRateLimiter.check({ actor, resource: 'mcp.callTool' })
-```
-
-## Beyond HTTP
-
-The core `createRateLimiter` fits any throttling job — e.g. limiting a
-`lastUsedAt` bookkeeping write to once per key per ten minutes:
-
-```javascript
-import { createRateLimiter, RateLimitExceededError } from '@opengovsg/rate-limit'
-
-const touchThrottle = createRateLimiter({
-  client: redis,
-  defaults: { points: 1, duration: 600, burst: null, prefix: 'secretkey-touch' },
-})
-
-try {
-  await touchThrottle.check({ key: apiKeyId })
-  await db.apiKey.update({ where: { id: apiKeyId }, data: { lastUsedAt: new Date() } })
-} catch (error) {
-  if (!(error instanceof RateLimitExceededError)) throw error
-  // Throttled: skip the write.
-}
 ```

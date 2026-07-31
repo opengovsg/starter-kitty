@@ -56,8 +56,8 @@ The IP rules close known holes:
 - **IPv6 is bucketed by /64 prefix** (IPv4 stays per-address). A home
   subscriber usually holds an entire /64, so per-address keying would hand an
   attacker a fresh bucket per request just by rotating within their prefix.
-- **A `null` or unparseable IP falls into a shared `unknown` bucket**, never
-  skipped, and each such check logs a warning. Broken IP extraction funnels
+- **An unparseable IP falls into a shared `unknown` bucket**, never
+  skipped, and each such check logs an error. Broken IP extraction funnels
   all traffic into one protective bucket, with logs pointing at the cause.
   An attacker who can present an invalid client IP can exhaust this bucket
   and deny service to other users in it. Legitimate users rarely lack a
@@ -92,7 +92,7 @@ the following suggestions for the traffic that does not fit:
 
 ### IP extraction is the app's responsibility
 
-The global limiter takes an `ip: string | null` and never reads headers
+The global limiter takes an `ip: string` and never reads headers
 itself, because the trusted source of a client IP depends on the
 application's infrastructure.
 
@@ -111,7 +111,8 @@ open or fail closed is a product decision the package does not make.
 
 ### `Retry-After` is the only response header
 
-`constructRateLimitHeaders` returns a `Retry-After` value and nothing else.
+`RateLimitExceededError.toHttpHeaders()` returns a `Retry-After` value and
+nothing else.
 
 The `RateLimit-*` headers are deferred for now because the spec is still a
 draft.
@@ -142,4 +143,4 @@ draft.
 - Consumers own 429 response shaping and client-IP extraction. The package
   stays framework-neutral, and the docs carry the spoofing warning.
 - Existing hand-rolled limiters migrate step by step: a static limiter service
-  is a thin shim away from `check({ key, points })`.
+  is a thin shim away from `check({ key })`.

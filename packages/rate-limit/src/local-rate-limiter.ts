@@ -11,11 +11,10 @@ import { mergeConfig } from './utilities.js'
  */
 export interface LocalRateLimiter {
   /**
-   * Consume `points` (default 1) from the allowance of `actor` on `resource`.
+   * Consume from the allowance of `actor` on `resource`.
    *
    * `actor` is caller-defined: a user ID, an API-key ID, or a client IP for
-   * anonymous traffic. Hash secrets yourself so they never become store
-   * keys. Colons in either value are replaced with `-` so they cannot shift
+   * anonymous traffic. Colons in either value are replaced with `-` so they cannot shift
    * the `actor:resource` key boundary.
    *
    * `resource` must be a normalized route identity, such as an Express route
@@ -23,12 +22,16 @@ export interface LocalRateLimiter {
    * parameter value its own bucket, which fragments the actor's quota and
    * grows store key cardinality without bound.
    *
-   * Pass a request-scoped `logger` to attach request identity to any
-   * warnings this call emits. Omit it to fall back to the factory logger.
+   * Pass a request-scoped `logger` to attach request identity to anything
+   * this call logs. Omit it to fall back to the factory logger.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */
-  check(args: { actor: string; resource: string; points?: number; logger?: Logger }): Promise<RateLimitInfo>
+  check(args: {
+    actor: string
+    resource: string
+    logger?: Logger
+  }): Promise<RateLimitInfo>
 }
 
 /**
@@ -47,16 +50,17 @@ export type CreateLocalRateLimiterOptions = CreateRateLimiterOptions
  *
  * @public
  */
-export const createLocalRateLimiter = (options: CreateLocalRateLimiterOptions = {}): LocalRateLimiter => {
+export const createLocalRateLimiter = (
+  options: CreateLocalRateLimiterOptions,
+): LocalRateLimiter => {
   const limiter = createRateLimiter({
     ...options,
     defaults: mergeConfig(LOCAL_RATE_LIMIT_DEFAULTS, options.defaults),
   })
   return {
-    check: ({ actor, resource, points, logger }) =>
+    check: ({ actor, resource, logger }) =>
       limiter.check({
         key: `${actor.replaceAll(':', '-')}:${resource.replaceAll(':', '-')}`,
-        points,
         logger,
       }),
   }

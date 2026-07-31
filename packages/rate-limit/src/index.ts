@@ -9,17 +9,23 @@
  *
  * {@link createGlobalRateLimiter} guards pre-authentication traffic by client
  * IP. {@link createLocalRateLimiter} enforces per-actor, per-resource quotas
- * for identified traffic. {@link createRateLimiter} exposes the underlying
- * core for anything else.
+ * for identified traffic.
+ *
+ * {@link createRateLimiter} exposes the underlying core for anything else.
  *
  * @packageDocumentation
  */
 
 export { RateLimitExceededError } from './errors.js'
-export type { CreateGlobalRateLimiterOptions, GlobalRateLimiter } from './global-rate-limiter.js'
+export type {
+  CreateGlobalRateLimiterOptions,
+  GlobalRateLimiter,
+} from './global-rate-limiter.js'
 export { createGlobalRateLimiter } from './global-rate-limiter.js'
-export { constructRateLimitHeaders } from './headers.js'
-export type { CreateLocalRateLimiterOptions, LocalRateLimiter } from './local-rate-limiter.js'
+export type {
+  CreateLocalRateLimiterOptions,
+  LocalRateLimiter,
+} from './local-rate-limiter.js'
 export { createLocalRateLimiter } from './local-rate-limiter.js'
 export type { RateLimiter } from './rate-limiter.js'
 export { createRateLimiter } from './rate-limiter.js'

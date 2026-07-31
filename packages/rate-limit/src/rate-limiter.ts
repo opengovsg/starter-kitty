@@ -1,9 +1,19 @@
 import type { RateLimiterAbstract, RateLimiterRes } from 'rate-limiter-flexible'
-import { BurstyRateLimiter, RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible'
+import {
+  BurstyRateLimiter,
+  RateLimiterMemory,
+  RateLimiterRedis,
+} from 'rate-limiter-flexible'
 
 import { BASE_RATE_LIMIT_DEFAULTS } from './constants.js'
 import { RateLimitExceededError } from './errors.js'
-import type { CreateRateLimiterOptions, Logger, RateLimitInfo, RedisClient, RequiredRateLimitConfig } from './types.js'
+import type {
+  CreateRateLimiterOptions,
+  Logger,
+  RateLimitInfo,
+  RedisClient,
+  RequiredRateLimitConfig,
+} from './types.js'
 import { clamp, mergeConfig } from './utilities.js'
 
 const STEADY_NAMESPACE = 'rate-limit:'
@@ -13,7 +23,10 @@ const BURST_NAMESPACE = 'rate-limit-burst:'
  * Clamp every numeric field, since caller input is not validated at the type
  * level.
  */
-const validateConfig = (config: RequiredRateLimitConfig, logger?: Logger): RequiredRateLimitConfig => {
+const validateConfig = (
+  config: RequiredRateLimitConfig,
+  logger: Logger,
+): RequiredRateLimitConfig => {
   const validated = {
     points: clamp(config.points),
     duration: clamp(config.duration),
@@ -26,48 +39,46 @@ const validateConfig = (config: RequiredRateLimitConfig, logger?: Logger): Requi
     prefix: config.prefix,
   }
 
-  if (logger) {
-    if (validated.points !== config.points) {
-      logger?.warn({
-        message: 'Rate limit points was clamped',
+  if (validated.points !== config.points) {
+    logger.warn({
+      message: 'Rate limit points was clamped',
+      context: {
+        value: config.points,
+        clamped: validated.points,
+        prefix: config.prefix,
+      },
+    })
+  }
+  if (validated.duration !== config.duration) {
+    logger.warn({
+      message: 'Rate limit duration was clamped',
+      context: {
+        value: config.duration,
+        clamped: validated.duration,
+        prefix: config.prefix,
+      },
+    })
+  }
+  if (config.burst && validated.burst) {
+    if (validated.burst.points !== config.burst.points) {
+      logger.warn({
+        message: 'Rate limit burst points was clamped',
         context: {
-          value: config.points,
-          clamped: validated.points,
+          value: config.burst.points,
+          clamped: validated.burst.points,
           prefix: config.prefix,
         },
       })
     }
-    if (validated.duration !== config.duration) {
-      logger?.warn({
-        message: 'Rate limit duration was clamped',
+    if (validated.burst.duration !== config.burst.duration) {
+      logger.warn({
+        message: 'Rate limit burst duration was clamped',
         context: {
-          value: config.duration,
-          clamped: validated.duration,
+          value: config.burst.duration,
+          clamped: validated.burst.duration,
           prefix: config.prefix,
         },
       })
-    }
-    if (config.burst && validated.burst) {
-      if (validated.burst.points !== config.burst.points) {
-        logger?.warn({
-          message: 'Rate limit burst points was clamped',
-          context: {
-            value: config.burst.points,
-            clamped: validated.burst.points,
-            prefix: config.prefix,
-          },
-        })
-      }
-      if (validated.burst.duration !== config.burst.duration) {
-        logger?.warn({
-          message: 'Rate limit burst duration was clamped',
-          context: {
-            value: config.burst.duration,
-            clamped: validated.burst.duration,
-            prefix: config.prefix,
-          },
-        })
-      }
     }
   }
 
@@ -92,7 +103,10 @@ const toRateLimitInfo = (res: RateLimiterRes): RateLimitInfo => ({
 const isRateLimiterRes = (value: unknown): value is RateLimiterRes => {
   if (typeof value !== 'object' || value === null) return false
   const res = value as Partial<RateLimiterRes>
-  return typeof res.remainingPoints === 'number' && typeof res.msBeforeNext === 'number'
+  return (
+    typeof res.remainingPoints === 'number' &&
+    typeof res.msBeforeNext === 'number'
+  )
 }
 
 /**
@@ -103,25 +117,23 @@ const isRateLimiterRes = (value: unknown): value is RateLimiterRes => {
  */
 export interface RateLimiter {
   /**
-   * Consume `points` (default 1) from `key`'s allowance. Numeric values are
-   * clamped to safe positive integers and each clamp is logged. See
-   * {@link RateLimitConfig} for the clamping rules.
+   * Consume one point from `key`'s allowance.
    *
    * Resolves with a {@link RateLimitInfo} snapshot when within limits. Throws
    * {@link RateLimitExceededError} when the allowance is exhausted. Any other
-   * error is reported to `logger` and rethrown as-is, so the caller decides
-   * between failing open and failing closed.
+   * error is reported via `logger.error` and rethrown as-is, so the caller
+   * decides between failing open and failing closed.
    *
-   * Pass a request-scoped `logger` to attach request identity to the warnings
-   * this call may emit. Omit it to fall back to the factory logger.
+   * Pass a request-scoped `logger` to attach request identity to anything
+   * this call may log. Omit it to fall back to the factory logger.
    */
-  check(args: { key: string; points?: number; logger?: Logger }): Promise<RateLimitInfo>
+  check(args: { key: string; logger?: Logger }): Promise<RateLimitInfo>
 }
 
 const buildLimiter = (
   config: RequiredRateLimitConfig,
   client: RedisClient | null,
-  logger?: Logger,
+  logger: Logger,
 ): RateLimiterAbstract | BurstyRateLimiter => {
   const { points, duration, burst } = config
   const steadyMemoryLimiter = new RateLimiterMemory({ points, duration })
@@ -133,12 +145,14 @@ const buildLimiter = (
     : null
 
   if (!client) {
-    logger?.warn({
+    logger.warn({
       message:
         'No Redis client configured, using in-memory rate limiting. Limits are per-instance and not shared across replicas.',
       context: { prefix: config.prefix },
     })
-    return burstMemoryLimiter ? new BurstyRateLimiter(steadyMemoryLimiter, burstMemoryLimiter) : steadyMemoryLimiter
+    return burstMemoryLimiter
+      ? new BurstyRateLimiter(steadyMemoryLimiter, burstMemoryLimiter)
+      : steadyMemoryLimiter
   }
 
   const steady = new RateLimiterRedis({
@@ -171,35 +185,29 @@ const buildLimiter = (
  *
  * @public
  */
-export const createRateLimiter = (options: CreateRateLimiterOptions = {}): RateLimiter => {
+export const createRateLimiter = (
+  options: CreateRateLimiterOptions,
+): RateLimiter => {
   const { client = null, logger } = options
 
-  const config = validateConfig(mergeConfig(BASE_RATE_LIMIT_DEFAULTS, options.defaults), logger)
+  const config = validateConfig(
+    mergeConfig(BASE_RATE_LIMIT_DEFAULTS, options.defaults),
+    logger,
+  )
 
   const limiter = buildLimiter(config, client, logger)
 
   return {
-    check: async ({ key, points = 1, logger: checkLogger }) => {
+    check: async ({ key, logger: checkLogger }) => {
       const lgr = checkLogger ?? logger
-      const clampedPoints = clamp(points)
-      if (clampedPoints !== points) {
-        lgr?.warn({
-          message: 'Rate limit consumption points was clamped',
-          context: {
-            value: points,
-            clamped: clampedPoints,
-            prefix: config.prefix,
-          },
-        })
-      }
       try {
-        const res = await limiter.consume(key, clampedPoints)
+        const res = await limiter.consume(key, 1)
         return toRateLimitInfo(res)
       } catch (error) {
         if (isRateLimiterRes(error)) {
           throw new RateLimitExceededError(toRateLimitInfo(error))
         }
-        lgr?.warn({
+        lgr.error({
           message: 'Unexpected rate limiter error',
           context: { prefix: config.prefix },
           error,

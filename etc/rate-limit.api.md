@@ -13,39 +13,33 @@ export interface BurstConfig {
 }
 
 // @public
-export const constructRateLimitHeaders: (error: RateLimitExceededError) => {
-    "Retry-After": string;
-};
-
-// @public
-export const createGlobalRateLimiter: (options?: CreateGlobalRateLimiterOptions) => GlobalRateLimiter;
+export const createGlobalRateLimiter: (options: CreateGlobalRateLimiterOptions) => GlobalRateLimiter;
 
 // @public
 export interface CreateGlobalRateLimiterOptions extends CreateRateLimiterOptions {
-    validate?: boolean;
+    skipKeyNormalization?: boolean;
 }
 
 // @public
-export const createLocalRateLimiter: (options?: CreateLocalRateLimiterOptions) => LocalRateLimiter;
+export const createLocalRateLimiter: (options: CreateLocalRateLimiterOptions) => LocalRateLimiter;
 
 // @public
 export type CreateLocalRateLimiterOptions = CreateRateLimiterOptions;
 
 // @public
-export const createRateLimiter: (options?: CreateRateLimiterOptions) => RateLimiter;
+export const createRateLimiter: (options: CreateRateLimiterOptions) => RateLimiter;
 
 // @public
 export interface CreateRateLimiterOptions {
     client?: RedisClient | null;
     defaults?: RateLimitConfig;
-    logger?: Logger;
+    logger: Logger;
 }
 
 // @public
 export interface GlobalRateLimiter {
     check(args: {
-        ip: string | null;
-        points?: number;
+        ip: string;
         logger?: Logger;
     }): Promise<RateLimitInfo>;
 }
@@ -55,13 +49,18 @@ export interface LocalRateLimiter {
     check(args: {
         actor: string;
         resource: string;
-        points?: number;
         logger?: Logger;
     }): Promise<RateLimitInfo>;
 }
 
 // @public
 export interface Logger {
+    // (undocumented)
+    error(input: {
+        message: string;
+        context?: Record<string, unknown>;
+        error?: unknown;
+    }): void;
     // (undocumented)
     warn(input: {
         message: string;
@@ -85,7 +84,6 @@ export interface RateLimitConfig {
 export interface RateLimiter {
     check(args: {
         key: string;
-        points?: number;
         logger?: Logger;
     }): Promise<RateLimitInfo>;
 }
@@ -94,6 +92,9 @@ export interface RateLimiter {
 export class RateLimitExceededError extends Error {
     constructor(info: RateLimitInfo);
     readonly info: RateLimitInfo;
+    toHttpHeaders(): {
+        'Retry-After': string;
+    };
 }
 
 // @public

@@ -7,17 +7,21 @@ import { createRateLimiter, type Logger, RateLimitExceededError, type RedisClien
 
 const uniquePrefix = () => `test-${randomUUID()}`
 
-// A Logger stub whose single `warn` method is a vitest mock, for asserting
-// which warnings reached which logger.
+// A Logger stub whose `warn` and `error` methods are vitest mocks, for
+// asserting which log reached which logger.
 const createLoggerStub = () => {
   const warn = vi.fn<Logger['warn']>()
-  return { warn } satisfies Logger
+  const error = vi.fn<Logger['error']>()
+  return { warn, error } satisfies Logger
 }
+
+const defaultLogger = createLoggerStub()
 
 describe('createRateLimiter', () => {
   describe('memory path (no client)', () => {
     it('resolves with rate-limit info while under the limit', async () => {
       const limiter = createRateLimiter({
+        logger: defaultLogger,
         defaults: {
           points: 5,
           duration: 10,
@@ -38,6 +42,7 @@ describe('createRateLimiter', () => {
 
     it('throws RateLimitExceededError once the allowance is exhausted', async () => {
       const limiter = createRateLimiter({
+        logger: defaultLogger,
         defaults: {
           points: 2,
           duration: 10,
@@ -60,6 +65,7 @@ describe('createRateLimiter', () => {
 
     it('grants extra requests from the burst allowance after the steady window is exhausted', async () => {
       const limiter = createRateLimiter({
+        logger: defaultLogger,
         defaults: {
           points: 1,
           duration: 10,
@@ -79,6 +85,7 @@ describe('createRateLimiter', () => {
       // Burst omitted: the built-in { points: 20, duration: 30 } applies, so
       // 1 steady + 20 burst checks pass before the 22nd is rejected.
       const inheriting = createRateLimiter({
+        logger: defaultLogger,
         defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
       })
       const inheritingKey = randomUUID()
@@ -88,6 +95,7 @@ describe('createRateLimiter', () => {
       await expect(inheriting.check({ key: inheritingKey })).rejects.toBeInstanceOf(RateLimitExceededError)
 
       const burstless = createRateLimiter({
+        logger: defaultLogger,
         defaults: {
           points: 1,
           duration: 10,
@@ -98,23 +106,6 @@ describe('createRateLimiter', () => {
       const burstlessKey = randomUUID()
       await burstless.check({ key: burstlessKey })
       await expect(burstless.check({ key: burstlessKey })).rejects.toBeInstanceOf(RateLimitExceededError)
-    })
-
-    it('consumes the requested number of points', async () => {
-      const limiter = createRateLimiter({
-        defaults: {
-          points: 5,
-          duration: 10,
-          burst: null,
-          prefix: uniquePrefix(),
-        },
-      })
-      const key = randomUUID()
-
-      const info = await limiter.check({ key, points: 5 })
-
-      expect(info.points.remaining).toBe(0)
-      await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
 
     it('warns that limits are per-instance when no client is configured', async () => {
@@ -134,43 +125,9 @@ describe('createRateLimiter', () => {
       expect(logger.warn.mock.calls.some(([input]) => input.message.includes('in-memory'))).toBe(true)
     })
 
-    it('clamps non-positive consumption points to 1', async () => {
-      const limiter = createRateLimiter({
-        defaults: {
-          points: 2,
-          duration: 10,
-          burst: null,
-          prefix: uniquePrefix(),
-        },
-      })
-      const key = randomUUID()
-
-      // A negative consume would replenish the bucket via rate-limiter-flexible's
-      // incrby. Clamping to 1 keeps it a real consumption.
-      const info = await limiter.check({ key, points: -10 })
-
-      expect(info.points.consumed).toBe(1)
-      expect(info.points.remaining).toBe(1)
-    })
-
-    it.each([0, NaN, Infinity])('clamps invalid consumption points (%p) to 1', async points => {
-      const limiter = createRateLimiter({
-        defaults: {
-          points: 5,
-          duration: 10,
-          burst: null,
-          prefix: uniquePrefix(),
-        },
-      })
-
-      const info = await limiter.check({ key: randomUUID(), points })
-
-      expect(info.points.consumed).toBe(1)
-      expect(info.points.remaining).toBe(4)
-    })
-
     it('clamps invalid configuration values', async () => {
       const limiter = createRateLimiter({
+        logger: defaultLogger,
         defaults: {
           points: 0,
           duration: 10,
@@ -189,7 +146,7 @@ describe('createRateLimiter', () => {
       const logger = createLoggerStub()
       const storeError = new Error('boom')
       // A non-RateLimiterRes rejection is neither a limit nor absorbed by the
-      // insurance limiter, so it reaches the warn error path and is rethrown.
+      // insurance limiter, so it reaches the error path and is rethrown.
       const spy = vi.spyOn(RateLimiterMemory.prototype, 'consume').mockRejectedValue(storeError)
       try {
         const limiter = createRateLimiter({
@@ -203,7 +160,7 @@ describe('createRateLimiter', () => {
         })
 
         await expect(limiter.check({ key: randomUUID() })).rejects.toBe(storeError)
-        const errorCall = logger.warn.mock.calls.find(([input]) => input.message === 'Unexpected rate limiter error')
+        const errorCall = logger.error.mock.calls.find(([input]) => input.message === 'Unexpected rate limiter error')
         expect(errorCall?.[0].error).toBe(storeError)
       } finally {
         spy.mockRestore()
@@ -229,8 +186,8 @@ describe('createRateLimiter', () => {
         await expect(limiter.check({ key: randomUUID(), logger: requestLogger })).rejects.toBe(storeError)
 
         const unexpected = (input: { message: string }) => input.message === 'Unexpected rate limiter error'
-        expect(requestLogger.warn.mock.calls.some(([input]) => unexpected(input))).toBe(true)
-        expect(factoryLogger.warn.mock.calls.some(([input]) => unexpected(input))).toBe(false)
+        expect(requestLogger.error.mock.calls.some(([input]) => unexpected(input))).toBe(true)
+        expect(factoryLogger.error.mock.calls.some(([input]) => unexpected(input))).toBe(false)
       } finally {
         spy.mockRestore()
       }
@@ -257,71 +214,9 @@ describe('createRateLimiter', () => {
     })
 
     describe('clamp warnings', () => {
-      it('truncates non-integer consumption points toward zero', async () => {
-        const limiter = createRateLimiter({
-          defaults: {
-            points: 5,
-            duration: 10,
-            burst: null,
-            prefix: uniquePrefix(),
-          },
-        })
-        const key = randomUUID()
-
-        const info = await limiter.check({ key, points: 2.9 })
-
-        expect(info.points.consumed).toBe(2)
-        expect(info.points.remaining).toBe(3)
-      })
-
-      it('warns every time consumption points is clamped', async () => {
-        const logger = createLoggerStub()
-        const limiter = createRateLimiter({
-          logger,
-          defaults: {
-            points: 10,
-            duration: 10,
-            burst: null,
-            prefix: uniquePrefix(),
-          },
-        })
-        const key = randomUUID()
-
-        await limiter.check({ key, points: 2.5 })
-        await limiter.check({ key, points: 2.5 })
-
-        const clampWarnings = logger.warn.mock.calls.filter(([input]) =>
-          input.message.includes('consumption points was clamped'),
-        )
-        expect(clampWarnings).toHaveLength(2)
-      })
-
-      it('routes a per-check logger the consumption-points clamp warning, overriding the factory logger', async () => {
-        const factoryLogger = createLoggerStub()
-        const requestLogger = createLoggerStub()
-        const limiter = createRateLimiter({
-          logger: factoryLogger,
-          defaults: {
-            points: 10,
-            duration: 10,
-            burst: null,
-            prefix: uniquePrefix(),
-          },
-        })
-
-        await limiter.check({
-          key: randomUUID(),
-          points: 2.5,
-          logger: requestLogger,
-        })
-
-        const clamped = (input: { message: string }) => input.message.includes('consumption points was clamped')
-        expect(requestLogger.warn.mock.calls.some(([input]) => clamped(input))).toBe(true)
-        expect(factoryLogger.warn.mock.calls.some(([input]) => clamped(input))).toBe(false)
-      })
-
       it('truncates non-integer points, duration, and burst configuration values toward zero', async () => {
         const limiter = createRateLimiter({
+          logger: defaultLogger,
           defaults: {
             points: 2.9,
             duration: 10.5,
@@ -425,31 +320,6 @@ describe('createRateLimiter', () => {
           })
         },
       )
-
-      it.each([0, NaN, Infinity, -5])(
-        'warns with the original and clamped values when the invalid consumption points %p degrades to 1',
-        async points => {
-          const logger = createLoggerStub()
-          const limiter = createRateLimiter({
-            logger,
-            defaults: {
-              points: 5,
-              duration: 10,
-              burst: null,
-              prefix: uniquePrefix(),
-            },
-          })
-
-          await limiter.check({ key: randomUUID(), points })
-
-          const call = logger.warn.mock.calls.find(([input]) =>
-            input.message.includes('consumption points was clamped'),
-          )
-          expect(call?.[0]).toMatchObject({
-            context: { value: points, clamped: 1 },
-          })
-        },
-      )
     })
   })
 
@@ -457,6 +327,7 @@ describe('createRateLimiter', () => {
     it('falls back to the insurance memory limiter when the client is not ready', async () => {
       const client = { status: 'end' } as unknown as RedisClient
       const limiter = createRateLimiter({
+        logger: defaultLogger,
         client,
         defaults: {
           points: 1,

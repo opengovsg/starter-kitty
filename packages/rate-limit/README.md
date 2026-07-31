@@ -1,8 +1,7 @@
 # `@opengovsg/rate-limit`
 
 A framework-agnostic rate-limiting core built on
-[rate-limiter-flexible](https://github.com/animir/node-rate-limiter-flexible),
-extracted from the production patterns shared by several OGP applications.
+[rate-limiter-flexible](https://github.com/animir/node-rate-limiter-flexible).
 
 Counters live in an injected Redis ([ioredis](https://github.com/redis/ioredis))
 client so limits are shared across replicas, with an in-memory insurance
@@ -27,8 +26,8 @@ Most deployments want both, mounted in this order:
    100 points per second per IP, no burst. IPv4-mapped IPv6 addresses are
    normalized to their embedded IPv4 address; other IPv6 clients are bucketed
    by /64 prefix (a subscriber typically holds a whole /64, so finer keying
-   would allow bucket-minting by address rotation). A `null` or unparseable IP
-   shares one `unknown` bucket and emits a request warning.
+   would allow bucket-minting by address rotation). An unparseable IP shares
+   one `unknown` bucket and emits a request warning.
 2. **`createLocalRateLimiter`** — keyed by `actor` + `resource`, mounted
    after identity exists. Enforces fair per-actor quotas per resource.
    Defaults to 50 points per 10 seconds with a burst of 20 per 30 seconds.
@@ -45,17 +44,18 @@ import { createGlobalRateLimiter, createLocalRateLimiter } from '@opengovsg/rate
 import { redis } from './redis.js' // your ioredis client (or omit for memory-only)
 import { systemLogger } from './logger.js' // a base/system logger
 
-// `logger` needs only a `warn({ message, context?, error? })` method, so any
+// `logger` needs `warn({ message, context?, error? })` and
+// `error({ message, context?, error? })` methods, so any
 // structured logger satisfies it. Pass it directly, no wrapper.
 export const globalRateLimiter = createGlobalRateLimiter({ client: redis, logger: systemLogger })
 export const localRateLimiter = createLocalRateLimiter({ client: redis, logger: systemLogger })
 ```
 
 The global limiter validates and normalizes IP addresses by default. If the
-application already supplies a trusted, canonical key, pass `validate: false`
-to use every non-null string verbatim. This also disables IPv6 /64 bucketing
-and IPv4-mapped normalization, so do not use it with attacker-controlled or
-unnormalized values. A `null` IP still uses the shared `unknown` bucket.
+application already supplies a trusted, canonical key, pass
+`skipKeyNormalization: true` to use every string verbatim. This also disables
+IPv6 /64 bucketing and IPv4-mapped normalization, so do not use it with
+attacker-controlled or unnormalized values.
 
 The factory `logger` receives a configuration warning when no Redis client is
 configured, and a separate warning whenever a rate-limit value is clamped to a
@@ -71,7 +71,7 @@ trade-off.
 
 ```ts
 // Before auth: coarse per-IP shielding.
-await globalRateLimiter.check({ ip: req.ip ?? null })
+await globalRateLimiter.check({ ip: req.ip })
 
 // After auth: fair per-actor, per-resource quotas.
 await localRateLimiter.check({
@@ -79,7 +79,7 @@ await localRateLimiter.check({
   // A normalized route identity (route template or procedure name), never
   // the raw URL: raw URLs give every parameter value its own bucket.
   resource: 'bookings.create',
-  // Optional request-scoped logger: request warnings (an unexpected store
+  // Optional request-scoped logger: request errors (an unexpected store
   // error) then carry this request's identity.
   logger: req.log,
 })
@@ -93,19 +93,19 @@ untrusted clients.
 `actor` is caller-defined: a user ID, an API-key ID, or a hash of a bearer
 token — hash secrets yourself so they never become store keys. `check` throws
 `RateLimitExceededError` when the allowance is exhausted; any other error is
-reported to the per-call `logger` (falling back to the factory `logger`) and
-rethrown, so failing open or closed stays your decision.
+reported via the per-call `logger`'s `error` method (falling back to the
+factory `logger`) and rethrown, so failing open or closed stays your decision.
 
 ## Handling rejections
 
 ```ts
-import { constructRateLimitHeaders, RateLimitExceededError } from '@opengovsg/rate-limit'
+import { RateLimitExceededError } from '@opengovsg/rate-limit'
 
 try {
   await localRateLimiter.check({ actor, resource })
 } catch (error) {
   if (error instanceof RateLimitExceededError) {
-    const headers = constructRateLimitHeaders(error) // { 'Retry-After': '3' }
+    const headers = error.toHttpHeaders() // { 'Retry-After': '3' }
     return res.status(429).set(headers).json({ message: error.message })
   }
   throw error

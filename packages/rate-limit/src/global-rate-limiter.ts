@@ -1,6 +1,10 @@
 import { GLOBAL_RATE_LIMIT_DEFAULTS, UNKNOWN_BUCKET } from './constants.js'
 import { createRateLimiter } from './rate-limiter.js'
-import type { CreateRateLimiterOptions, Logger, RateLimitInfo } from './types.js'
+import type {
+  CreateRateLimiterOptions,
+  Logger,
+  RateLimitInfo,
+} from './types.js'
 import { mergeConfig, normalizeIp } from './utilities.js'
 
 /**
@@ -11,24 +15,25 @@ import { mergeConfig, normalizeIp } from './utilities.js'
  */
 export interface GlobalRateLimiter {
   /**
-   * Consume `points` (default 1) from the allowance of `ip`.
+   * Consume from the allowance of `ip`.
    *
-   * With validation enabled, IPv4 addresses are keyed per address and IPv6
-   * addresses by their /64 prefix, since a subscriber typically holds an
-   * entire /64 and could otherwise mint a fresh bucket per request.
-   * IPv4-mapped IPv6 addresses are keyed by the embedded IPv4 address. With
-   * validation disabled, every non-null string is used verbatim.
+   * By default, IPv4 addresses are keyed per address and IPv6 addresses by
+   * their /64 prefix, since a subscriber typically holds an entire /64 and
+   * could otherwise mint a fresh bucket per request. IPv4-mapped IPv6
+   * addresses are keyed by the embedded IPv4 address. Pass
+   * `skipKeyNormalization: true` to use every string verbatim instead.
    *
-   * A `null` or unparseable IP falls into a shared `'unknown'` bucket rather
-   * than being exempted, and emits a warning so a broken extractor shows up
-   * in logs, not just as 429s.
+   * An unparseable IP falls into a shared `'unknown'` bucket rather than
+   * being exempted, and logs an error so a broken extractor shows up in
+   * logs, not just as 429s. A non-string or `null` value from a
+   * non-TypeScript caller is treated the same way.
    *
-   * Pass a request-scoped `logger` to attach request identity to any
-   * warnings this call emits. Omit it to fall back to the factory logger.
+   * Pass a request-scoped `logger` to attach request identity to anything
+   * this call logs. Omit it to fall back to the factory logger.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */
-  check(args: { ip: string | null; points?: number; logger?: Logger }): Promise<RateLimitInfo>
+  check(args: { ip: string; logger?: Logger }): Promise<RateLimitInfo>
 }
 
 /**
@@ -36,52 +41,57 @@ export interface GlobalRateLimiter {
  *
  * @public
  */
-export interface CreateGlobalRateLimiterOptions extends CreateRateLimiterOptions {
+export interface CreateGlobalRateLimiterOptions
+  extends CreateRateLimiterOptions {
   /**
-   * Whether to validate and normalize non-null IPs before using them as
-   * store keys. Defaults to `true`.
+   * Whether to skip normalizing IPs before using them as store keys.
+   * Defaults to `false`.
    *
-   * Set this to `false` only when the caller already supplies a trusted,
+   * Set this to `true` only when the caller already supplies a trusted,
    * canonical key, which is then used verbatim with no /64 bucketing and no
-   * `unknown` fallback for unparseable strings. A `null` IP still uses the
-   * `unknown` bucket and emits a warning.
+   * `unknown` fallback for unparseable strings.
    */
-  validate?: boolean
+  skipKeyNormalization?: boolean
 }
 
 /**
  * Create a pre-authentication rate limiter keyed purely by client IP.
  *
- * Mount this before authentication. Credential checks hit critical
- * infrastructure such as a database, and a per-user limiter cannot protect
- * it because unauthenticated traffic has no user yet.
+ * Mount this before authentication flows that rely on querying critical infrastructure.
  *
  * Defaults to 100 points per second with no burst. Override via
- * {@link CreateRateLimiterOptions.defaults}. Pass `validate: false` to use
- * each non-null IP string verbatim as the store key.
+ * {@link CreateRateLimiterOptions.defaults}. Pass `skipKeyNormalization: true`
+ * to use each IP string verbatim as the store key.
  *
  * @public
  */
-export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions = {}): GlobalRateLimiter => {
-  const { validate = true, ...rateLimiterOptions } = options
+export const createGlobalRateLimiter = (
+  options: CreateGlobalRateLimiterOptions,
+): GlobalRateLimiter => {
+  const { skipKeyNormalization = false, ...rateLimiterOptions } = options
   const limiter = createRateLimiter({
     ...rateLimiterOptions,
-    defaults: mergeConfig(GLOBAL_RATE_LIMIT_DEFAULTS, rateLimiterOptions.defaults),
+    defaults: mergeConfig(
+      GLOBAL_RATE_LIMIT_DEFAULTS,
+      rateLimiterOptions.defaults,
+    ),
   })
   return {
-    check: ({ ip, points, logger }) => {
-      const key = ip === null ? null : validate ? normalizeIp(ip) : ip
+    check: ({ ip, logger }) => {
+      const key = skipKeyNormalization ? ip : normalizeIp(ip)
       if (key === null) {
         // Prefer the request-scoped logger so the extraction failure carries
         // request identity.
-        const warnLogger = logger ?? rateLimiterOptions.logger
-        warnLogger?.warn(
+        const lgr = logger ?? rateLimiterOptions.logger
+        lgr.error(
           ip === null
             ? {
-                message: 'Client IP extraction returned null, using the shared unknown bucket',
+                message:
+                  'Client IP extraction returned null, using the shared unknown bucket',
               }
             : {
-                message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
+                message:
+                  'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
                 // Truncated because an unparseable value is attacker-controlled
                 // input and must not flood logs.
                 context: { ip: ip.slice(0, 64) },
@@ -90,7 +100,6 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions 
       }
       return limiter.check({
         key: key?.replaceAll(':', '-') ?? UNKNOWN_BUCKET,
-        points,
         logger,
       })
     },
