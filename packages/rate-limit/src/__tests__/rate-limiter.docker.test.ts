@@ -57,7 +57,12 @@ describe('rate limiters against a real, healthy Redis', () => {
   it("enforces the local limiter's creation-time defaults when Redis is healthy", async () => {
     const limiter = createLocalRateLimiter({
       client,
-      defaults: { points: 1, duration: 10, burst: null, prefix: uniquePrefix() },
+      defaults: {
+        points: 1,
+        duration: 10,
+        burst: null,
+        prefix: uniquePrefix(),
+      },
     })
     const actor = randomUUID()
 
@@ -68,7 +73,12 @@ describe('rate limiters against a real, healthy Redis', () => {
   it('grants extra requests from the burst allowance when Redis is healthy', async () => {
     const limiter = createLocalRateLimiter({
       client,
-      defaults: { points: 1, duration: 10, burst: { points: 2, duration: 30 }, prefix: uniquePrefix() },
+      defaults: {
+        points: 1,
+        duration: 10,
+        burst: { points: 2, duration: 30 },
+        prefix: uniquePrefix(),
+      },
     })
     const actor = randomUUID()
 

@@ -3,28 +3,11 @@ import { BurstyRateLimiter, RateLimiterMemory, RateLimiterRedis } from 'rate-lim
 
 import { BASE_RATE_LIMIT_DEFAULTS } from './constants.js'
 import { RateLimitExceededError } from './errors.js'
-import type {
-  CreateRateLimiterOptions,
-  FallbackConfig,
-  Logger,
-  RateLimitInfo,
-  RedisClient,
-  RequiredRateLimitConfig,
-} from './types.js'
-import { clamp, mergeConfig, mergeFallback } from './utilities.js'
+import type { CreateRateLimiterOptions, Logger, RateLimitInfo, RedisClient, RequiredRateLimitConfig } from './types.js'
+import { clamp, mergeConfig } from './utilities.js'
 
 const STEADY_NAMESPACE = 'rate-limit:'
 const BURST_NAMESPACE = 'rate-limit-burst:'
-
-type RequiredFallbackConfig = Required<FallbackConfig>
-
-/**
- * The in-memory limiter's built-in fallback allowance: used as insurance
- * behind a Redis-backed window during an outage, and as the sole limiter when
- * no `client` is configured. A fixed, factory-independent constant rather
- * than derived from the primary configuration — see ADR 0010.
- */
-const BASE_FALLBACK: RequiredFallbackConfig = { points: 10, duration: 1 }
 
 /**
  * Clamp every numeric field, since caller input is not validated at the type
@@ -40,6 +23,10 @@ const validateConfig = (config: RequiredRateLimitConfig, logger: Logger): Requir
           duration: clamp(config.burst.duration),
         }
       : null,
+    fallback: {
+      points: clamp(config.fallback.points),
+      duration: clamp(config.fallback.duration),
+    },
     prefix: config.prefix,
   }
 
@@ -60,6 +47,24 @@ const validateConfig = (config: RequiredRateLimitConfig, logger: Logger): Requir
         value: config.duration,
         clamped: validated.duration,
         prefix: config.prefix,
+      },
+    })
+  }
+  if (validated.fallback.points !== config.fallback.points) {
+    logger.warn({
+      message: 'Rate limit fallback points was clamped',
+      context: {
+        value: config.fallback.points,
+        clamped: validated.fallback.points,
+      },
+    })
+  }
+  if (validated.fallback.duration !== config.fallback.duration) {
+    logger.warn({
+      message: 'Rate limit fallback duration was clamped',
+      context: {
+        value: config.fallback.duration,
+        clamped: validated.fallback.duration,
       },
     })
   }
@@ -133,16 +138,15 @@ export interface RateLimiter {
 
 const buildLimiter = (
   config: RequiredRateLimitConfig,
-  fallback: RequiredFallbackConfig,
   client: RedisClient | null,
   logger: Logger,
 ): RateLimiterAbstract | BurstyRateLimiter => {
-  const { points, duration, burst } = config
+  const { points, duration, burst, fallback } = config
   // The fallback allowance (ADR 0010) stands in for the primary window
   // whenever enforcement runs off memory, as insurance during a Redis outage
   // or as the sole limiter with no `client` configured, so it must never
   // reflect the (possibly much larger) primary points/duration.
-  const fallbackMemory = new RateLimiterMemory({
+  const memory = new RateLimiterMemory({
     points: fallback.points,
     duration: fallback.duration,
   })
@@ -157,7 +161,7 @@ const buildLimiter = (
         fallbackDuration: fallback.duration,
       },
     })
-    return fallbackMemory
+    return memory
   }
 
   const steady = new RateLimiterRedis({
@@ -166,7 +170,7 @@ const buildLimiter = (
     points,
     duration,
     keyPrefix: `${STEADY_NAMESPACE}${config.prefix}:`,
-    insuranceLimiter: fallbackMemory,
+    insuranceLimiter: memory,
   })
   if (!burst) {
     return steady
@@ -203,33 +207,7 @@ export const createRateLimiter = (options: CreateRateLimiterOptions): RateLimite
 
   const config = validateConfig(mergeConfig(BASE_RATE_LIMIT_DEFAULTS, options.overrides), logger)
 
-  // The fallback allowance is resolved once per factory. Keep it separate
-  // from the primary rate limit so an outage cannot grant the larger primary
-  // allowance.
-  const fallbackOptions = mergeFallback(BASE_FALLBACK, options.fallback)
-  const fallback: RequiredFallbackConfig = {
-    points: clamp(fallbackOptions.points),
-    duration: clamp(fallbackOptions.duration),
-  }
-  // A clamped fallback value is surfaced rather than silently corrected. The
-  // fallback governs the degraded path (ADR 0010), so a non-positive or
-  // non-finite value quietly becoming 1 would hide a misconfiguration in the
-  // path that matters most during an outage. Configuration warnings go to the
-  // factory logger, since the fallback is resolved once per factory.
-  if (fallback.points !== fallbackOptions.points) {
-    logger?.warn({
-      message: 'Rate limit fallback points was clamped',
-      context: { value: fallbackOptions.points, clamped: fallback.points },
-    })
-  }
-  if (fallback.duration !== fallbackOptions.duration) {
-    logger?.warn({
-      message: 'Rate limit fallback duration was clamped',
-      context: { value: fallbackOptions.duration, clamped: fallback.duration },
-    })
-  }
-
-  const limiter = buildLimiter(config, fallback, client, logger)
+  const limiter = buildLimiter(config, client, logger)
 
   return {
     check: async ({ key, logger: checkLogger }) => {

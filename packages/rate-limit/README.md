@@ -115,15 +115,34 @@ and `toHttpHeaders` instead.
 
 Every limiter accepts `overrides` of shape:
 
-| Field      | Default                          | Meaning                                                                 |
-| ---------- | -------------------------------- | ----------------------------------------------------------------------- |
-| `points`   | `50`                             | Consumption points per steady window                                    |
-| `duration` | `10`                             | Steady window in seconds                                                |
-| `burst`    | `{ points: 20, duration: 30 }`   | Extra short-lived allowance (omit to inherit, `null` to disable)        |
-| `prefix`   | `'api'` / `'global'` / `'local'` | Namespace segment isolating this limiter's counters in the shared store |
+| Field      | Default                                         | Meaning                                                                    |
+| ---------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
+| `points`   | `50`                                            | Consumption points per steady window                                       |
+| `duration` | `10`                                            | Steady window in seconds                                                   |
+| `burst`    | `{ points: 20, duration: 30 }`                  | Extra short-lived allowance; omit to inherit, `null` to disable            |
+| `fallback` | `{ points: 10, duration: 1 }` (`5/1` for local) | Independent in-memory allowance; burst grants nothing extra while degraded |
+| `prefix`   | `'api'` / `'global'` / `'local'`                | Namespace segment isolating this limiter's counters in the shared store    |
 
 Configuration is fixed at creation. A route that needs different limits
 creates its own limiter with its own `overrides`.
+
+```ts
+const reportRateLimiter = createLocalRateLimiter({
+  client: redis,
+  logger,
+  overrides: {
+    points: 5,
+    duration: 60,
+    fallback: { points: 5, duration: 60 },
+    prefix: 'reports',
+  },
+})
+```
+
+Fallback is independent of the primary window. Omit `fallback` to use the
+factory default: 10 points per second for the base and global limiters, or 5
+points per second for the local limiter. An override must provide both
+`points` and `duration`.
 
 Store keys live under `rate-limit:<prefix>:` (steady) and
 `rate-limit-burst:<prefix>:` (burst).

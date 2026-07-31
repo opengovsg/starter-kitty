@@ -114,9 +114,16 @@ export const reportRateLimiter = createLocalRateLimiter({
   overrides: {
     points: 5,
     duration: 60,
+    fallback: { points: 5, duration: 60 },
+    prefix: 'reports',
   },
 })
 ```
+
+The nested fallback is the independent in-memory allowance used when Redis is
+unavailable. Omit it to use 10 points per second by default, or 5 points per
+second for `createLocalRateLimiter`. An override must provide both `points` and
+`duration`, and never receives extra burst capacity.
 
 ```javascript
 app.get('/api/reports', authenticate, rateLimited(reportRateLimiter), generateReport)

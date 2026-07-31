@@ -21,8 +21,12 @@ describe('createGlobalRateLimiter', () => {
   it('keys purely by IP, isolating distinct clients', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
-      fallback: { points: 1, duration: 10 },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: '1.2.3.4' })
@@ -35,8 +39,12 @@ describe('createGlobalRateLimiter', () => {
   it('buckets IPv6 addresses by /64 prefix', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
-      fallback: { points: 1, duration: 10 },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: '2001:db8:85a3:1::1' })
@@ -51,8 +59,12 @@ describe('createGlobalRateLimiter', () => {
   it('normalizes equivalent IPv6 spellings into one bucket', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
-      fallback: { points: 1, duration: 10 },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: '2001:db8::1' })
@@ -63,8 +75,12 @@ describe('createGlobalRateLimiter', () => {
   it('keys a compressed spelling whose tail reaches into the /64 prefix identically to its expanded form', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
-      fallback: { points: 1, duration: 10 },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     // `::` here compresses a single zero group inside the first four groups,
@@ -76,8 +92,12 @@ describe('createGlobalRateLimiter', () => {
   it('ignores IPv6 zone IDs, which never occupy the /64 prefix', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
-      fallback: { points: 1, duration: 10 },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: 'fe80::1%eth0' })
@@ -87,8 +107,12 @@ describe('createGlobalRateLimiter', () => {
   it('normalizes IPv4-mapped IPv6 spellings to their embedded IPv4 address', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 2, duration: 10, prefix: uniquePrefix() },
-      fallback: { points: 2, duration: 10 },
+      overrides: {
+        points: 2,
+        duration: 10,
+        fallback: { points: 2, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: '1.2.3.4' })
@@ -100,8 +124,12 @@ describe('createGlobalRateLimiter', () => {
     const requestLogger = createLoggerStub()
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
-      fallback: { points: 1, duration: 10 },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: 'not-an-ip', logger: requestLogger })
@@ -178,8 +206,12 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       skipKeyNormalization: true,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
-      fallback: { points: 1, duration: 10 },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: 'not-an-ip', logger: requestLogger })
@@ -192,8 +224,12 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       skipKeyNormalization: true,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
-      fallback: { points: 1, duration: 10 },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: '2001:db8::1' })
@@ -236,9 +272,9 @@ describe('createLocalRateLimiter', () => {
         points: 1,
         duration: 10,
         burst: null,
+        fallback: { points: 1, duration: 10 },
         prefix: uniquePrefix(),
       },
-      fallback: { points: 1, duration: 10 },
     })
     const actor = randomUUID()
 
@@ -256,9 +292,9 @@ describe('createLocalRateLimiter', () => {
         points: 1,
         duration: 10,
         burst: null,
+        fallback: { points: 1, duration: 10 },
         prefix: uniquePrefix(),
       },
-      fallback: { points: 1, duration: 10 },
     })
     const resource = 'auth.login'
 

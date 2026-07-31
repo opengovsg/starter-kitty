@@ -1,8 +1,4 @@
-import {
-  COLON_REPLACEMENT,
-  LOCAL_RATE_LIMIT_DEFAULTS,
-  VERTICAL_BAR,
-} from './constants.js'
+import { COLON_REPLACEMENT, LOCAL_RATE_LIMIT_DEFAULTS, VERTICAL_BAR } from './constants.js'
 import { createRateLimiter } from './rate-limiter.js'
 import { CreateRateLimiterOptions, Logger, RateLimitInfo } from './types.js'
 import { mergeConfig } from './utilities.js'
@@ -32,11 +28,7 @@ export interface LocalRateLimiter {
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */
-  check(args: {
-    actor: string
-    resource: string
-    logger?: Logger
-  }): Promise<RateLimitInfo>
+  check(args: { actor: string; resource: string; logger?: Logger }): Promise<RateLimitInfo>
 }
 
 /**
@@ -55,9 +47,7 @@ export type CreateLocalRateLimiterOptions = CreateRateLimiterOptions
  *
  * @public
  */
-export const createLocalRateLimiter = (
-  options: CreateLocalRateLimiterOptions,
-): LocalRateLimiter => {
+export const createLocalRateLimiter = (options: CreateLocalRateLimiterOptions): LocalRateLimiter => {
   const limiter = createRateLimiter({
     ...options,
     overrides: mergeConfig(LOCAL_RATE_LIMIT_DEFAULTS, options.overrides),
@@ -65,9 +55,7 @@ export const createLocalRateLimiter = (
   return {
     check: ({ actor, resource, logger }) =>
       limiter.check({
-        key: `resource:${resource
-          .replaceAll('|', VERTICAL_BAR)
-          .replaceAll(':', COLON_REPLACEMENT)}:actor:${actor}`,
+        key: `resource:${resource.replaceAll('|', VERTICAL_BAR).replaceAll(':', COLON_REPLACEMENT)}:actor:${actor}`,
         logger,
       }),
   }
