@@ -1,7 +1,7 @@
-import { LOCAL_RATE_LIMIT_DEFAULTS, LOCAL_RATE_LIMIT_FALLBACK } from './constants.js'
+import { LOCAL_RATE_LIMIT_DEFAULTS } from './constants.js'
 import { createRateLimiter } from './rate-limiter.js'
 import { CreateRateLimiterOptions, Logger, RateLimitInfo } from './types.js'
-import { mergeConfig, mergeFallback } from './utilities.js'
+import { mergeConfig } from './utilities.js'
 
 /**
  * A rate limiter keyed by actor and resource, for identified traffic. Obtain
@@ -50,7 +50,6 @@ export const createLocalRateLimiter = (options: CreateLocalRateLimiterOptions): 
   const limiter = createRateLimiter({
     ...options,
     overrides: mergeConfig(LOCAL_RATE_LIMIT_DEFAULTS, options.overrides),
-    fallback: mergeFallback(LOCAL_RATE_LIMIT_FALLBACK, options.fallback),
   })
   return {
     check: ({ actor, resource, logger }) =>

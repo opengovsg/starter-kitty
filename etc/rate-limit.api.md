@@ -32,15 +32,14 @@ export const createRateLimiter: (options: CreateRateLimiterOptions) => RateLimit
 // @public
 export interface CreateRateLimiterOptions {
     client?: RedisClient | null;
-    fallback?: FallbackConfig;
     logger: Logger;
     overrides?: RateLimitConfig;
 }
 
 // @public
 export interface FallbackConfig {
-    duration?: number;
-    points?: number;
+    duration: number;
+    points: number;
 }
 
 // @public
@@ -83,6 +82,7 @@ export const normalizeIp: (ip: string) => string | null;
 export interface RateLimitConfig {
     burst?: BurstConfig | null;
     duration?: number;
+    fallback?: FallbackConfig;
     points?: number;
     prefix?: string;
 }

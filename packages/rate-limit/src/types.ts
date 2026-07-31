@@ -14,6 +14,22 @@ export interface BurstConfig {
 }
 
 /**
+ * Fallback allowance for the in-memory limiter used as insurance during a
+ * Redis outage, and as the sole limiter when no `client` is configured. Both
+ * fields are required when overriding the factory's built-in fallback. There
+ * is no `burst` field: burst grants nothing extra while enforcement runs off
+ * memory, regardless of the primary configuration — see ADR 0010.
+ *
+ * @public
+ */
+export interface FallbackConfig {
+  /** Consumption points available per fallback window. */
+  points: number
+  /** Fallback window in seconds. */
+  duration: number
+}
+
+/**
  * Configuration for a rate-limit window. Omitted fields inherit the
  * limiter's defaults.
  *
@@ -34,6 +50,16 @@ export interface RateLimitConfig {
    */
   burst?: BurstConfig | null
   /**
+   * Fallback allowance for the in-memory limiter used as insurance during a
+   * Redis outage, and as the sole limiter when no client is configured.
+   * Omit this property to use the factory's fallback default: 10 points per
+   * second, or 5 points per second for `createLocalRateLimiter`. When
+   * overriding it, both `points` and `duration` are required. This allowance
+   * is independent of the steady window, and burst grants nothing extra while
+   * enforcement runs off memory. See ADR 0010.
+   */
+  fallback?: FallbackConfig
+  /**
    * Namespace segment isolating this limiter's counters from other limiters
    * sharing the same store. Steady counters are stored under
    * `rate-limit:<prefix>:` and burst counters under `rate-limit-burst:<prefix>:`.
@@ -41,7 +67,9 @@ export interface RateLimitConfig {
   prefix?: string
 }
 
-export type RequiredRateLimitConfig = Required<RateLimitConfig>
+export type RequiredRateLimitConfig = Required<RateLimitConfig> & {
+  fallback: Required<FallbackConfig>
+}
 
 /**
  * A snapshot of a key's rate-limit state after a check.
@@ -60,23 +88,6 @@ export interface RateLimitInfo {
   msToNextWindow: number
   /** Whether this check opened a new window. */
   isFirstInWindow: boolean
-}
-
-/**
- * Fallback allowance for the in-memory limiter used as insurance during a
- * Redis outage, and as the sole limiter when no `client` is configured. All
- * fields are optional; omitted fields inherit from the factory's built-in
- * fallback default. There is no `burst` field: burst grants nothing extra
- * while enforcement runs off memory, regardless of the primary configuration
- * — see ADR 0010.
- *
- * @public
- */
-export interface FallbackConfig {
-  /** Consumption points available per fallback window. Defaults to 10 (5 for `createLocalRateLimiter`). */
-  points?: number
-  /** Fallback window in seconds. Defaults to 1. */
-  duration?: number
 }
 
 /**
@@ -118,17 +129,6 @@ export interface CreateRateLimiterOptions {
    * Configuration merged over the limiter's built-in defaults.
    */
   overrides?: RateLimitConfig
-  /**
-   * Fallback allowance for the in-memory limiter used as insurance during a
-   * Redis outage, and as the sole limiter when no
-   * {@link CreateRateLimiterOptions.client | client} is configured. Defaults
-   * to 10 points per second (`createLocalRateLimiter` overrides this down to
-   * 5 points per second). This is independent of
-   * {@link CreateRateLimiterOptions.overrides | overrides}: a larger primary
-   * window does not raise the fallback, and burst is never part of it. See
-   * ADR 0010.
-   */
-  fallback?: FallbackConfig
   /**
    * Logger receiving configuration warnings and runtime
    * problems such as an unexpected store failure. Per-request logging

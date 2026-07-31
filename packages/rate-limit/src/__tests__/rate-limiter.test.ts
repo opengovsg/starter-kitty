@@ -26,9 +26,9 @@ describe('createRateLimiter', () => {
           points: 5,
           duration: 10,
           burst: null,
+          fallback: { points: 5, duration: 10 },
           prefix: uniquePrefix(),
         },
-        fallback: { points: 5, duration: 10 },
       })
 
       const info = await limiter.check({ key: randomUUID() })
@@ -48,9 +48,9 @@ describe('createRateLimiter', () => {
           points: 2,
           duration: 10,
           burst: null,
+          fallback: { points: 2, duration: 10 },
           prefix: uniquePrefix(),
         },
-        fallback: { points: 2, duration: 10 },
       })
       const key = randomUUID()
 
@@ -72,9 +72,9 @@ describe('createRateLimiter', () => {
           points: 1,
           duration: 10,
           burst: { points: 5, duration: 30 },
+          fallback: { points: 1, duration: 10 },
           prefix: uniquePrefix(),
         },
-        fallback: { points: 1, duration: 10 },
       })
       const key = randomUUID()
 
@@ -109,9 +109,9 @@ describe('createRateLimiter', () => {
           points: 0,
           duration: 10,
           burst: null,
+          fallback: { points: 1, duration: 10 },
           prefix: uniquePrefix(),
         },
-        fallback: { points: 1, duration: 10 },
       })
       const key = randomUUID()
 
@@ -124,19 +124,34 @@ describe('createRateLimiter', () => {
 
     it('enforces the default fallback allowance (10 points per second) regardless of a larger primary window', async () => {
       const limiter = createRateLimiter({
-        defaults: { points: 1000, duration: 10, burst: null, prefix: uniquePrefix() },
+        logger: defaultLogger,
+        overrides: {
+          points: 1000,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
       const key = randomUUID()
 
-      const info = await limiter.check({ key, points: 10 })
+      for (let i = 0; i < 9; i++) {
+        await limiter.check({ key })
+      }
+      const info = await limiter.check({ key })
       expect(info.points.remaining).toBe(0)
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
 
-    it('overrides the default fallback allowance via the fallback option', async () => {
+    it('overrides the default fallback allowance via overrides.fallback', async () => {
       const limiter = createRateLimiter({
-        defaults: { points: 1000, duration: 10, burst: null, prefix: uniquePrefix() },
-        fallback: { points: 2, duration: 30 },
+        logger: defaultLogger,
+        overrides: {
+          points: 1000,
+          duration: 10,
+          burst: null,
+          fallback: { points: 2, duration: 30 },
+          prefix: uniquePrefix(),
+        },
       })
       const key = randomUUID()
 
@@ -149,8 +164,13 @@ describe('createRateLimiter', () => {
       const logger = createLoggerStub()
       const limiter = createRateLimiter({
         logger,
-        defaults: { points: 1000, duration: 10, burst: null, prefix: uniquePrefix() },
-        fallback: { points: 0, duration: 10 },
+        overrides: {
+          points: 1000,
+          duration: 10,
+          burst: null,
+          fallback: { points: 0, duration: 10 },
+          prefix: uniquePrefix(),
+        },
       })
       const key = randomUUID()
 
@@ -164,8 +184,13 @@ describe('createRateLimiter', () => {
       const logger = createLoggerStub()
       createRateLimiter({
         logger,
-        defaults: { points: 1000, duration: 10, burst: null, prefix: uniquePrefix() },
-        fallback: { points: 5, duration: 0 },
+        overrides: {
+          points: 1000,
+          duration: 10,
+          burst: null,
+          fallback: { points: 5, duration: 0 },
+          prefix: uniquePrefix(),
+        },
       })
 
       const clampCall = logger.warn.mock.calls.find(([input]) => input.message.includes('fallback duration'))
@@ -252,9 +277,9 @@ describe('createRateLimiter', () => {
             points: 2.9,
             duration: 10.5,
             burst: { points: 1.9, duration: 30.9 },
+            fallback: { points: 2, duration: 10 },
             prefix: uniquePrefix(),
           },
-          fallback: { points: 2, duration: 10 },
         })
         const key = randomUUID()
 
@@ -365,9 +390,9 @@ describe('createRateLimiter', () => {
           points: 1,
           duration: 10,
           burst: null,
+          fallback: { points: 1, duration: 10 },
           prefix: uniquePrefix(),
         },
-        fallback: { points: 1, duration: 10 },
       })
       const key = randomUUID()
 
@@ -380,14 +405,15 @@ describe('createRateLimiter', () => {
     it('grants nothing extra from burst when Redis is not ready, even though burst is configured', async () => {
       const client = { status: 'end' } as unknown as RedisClient
       const limiter = createRateLimiter({
+        logger: defaultLogger,
         client,
-        defaults: {
+        overrides: {
           points: 1,
           duration: 10,
           burst: { points: 5, duration: 30 },
+          fallback: { points: 1, duration: 10 },
           prefix: uniquePrefix(),
         },
-        fallback: { points: 1, duration: 10 },
       })
       const key = randomUUID()
 
