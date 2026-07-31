@@ -1,64 +1,19 @@
 import type { RateLimiterAbstract, RateLimiterRes } from 'rate-limiter-flexible'
 import { BurstyRateLimiter, RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible'
 
+import { BASE_RATE_LIMIT_DEFAULTS } from './constants.js'
 import { RateLimitExceededError } from './errors.js'
-import type {
-  BurstConfig,
-  CreateRateLimiterOptions,
-  Logger,
-  RateLimitConfig,
-  RateLimitInfo,
-  RedisClient,
-} from './types.js'
+import type { CreateRateLimiterOptions, Logger, RateLimitInfo, RedisClient, RequiredRateLimitConfig } from './types.js'
+import { clamp, mergeConfig } from './utilities.js'
 
 const STEADY_NAMESPACE = 'rate-limit:'
 const BURST_NAMESPACE = 'rate-limit-burst:'
-
-interface Config {
-  points: number
-  duration: number
-  burst: BurstConfig | null
-  prefix: string
-}
-
-/**
- * Roughly 5 requests per second, measured over a 10-second window to smooth
- * out spikes, plus a burst allowance for flurries like a page load firing
- * parallel API calls.
- */
-const BASE_DEFAULTS: Config = {
-  points: 50,
-  duration: 10,
-  burst: { points: 20, duration: 30 },
-  prefix: 'api',
-}
-
-/**
- * Merge a partial config over a resolved base. An omitted `burst` inherits
- * the base's. An explicit `null` disables bursting.
- */
-export const mergeConfig = (base: Config, override?: RateLimitConfig): Config => ({
-  points: override?.points ?? base.points,
-  duration: override?.duration ?? base.duration,
-  burst: override?.burst !== undefined ? override.burst : base.burst,
-  prefix: override?.prefix ?? base.prefix,
-})
-
-/**
- * Clamp to a safe positive integer. Non-finite and below-1 values degrade to
- * 1, where a negative would otherwise replenish the allowance. Fractions are
- * truncated because the Redis-backed limiter rejects non-integer arguments
- * at runtime.
- */
-const clamp = (value: number): number => {
-  return Number.isFinite(value) && value >= 1 ? Math.trunc(value) : 1
-}
 
 /**
  * Clamp every numeric field, since caller input is not validated at the type
  * level.
  */
-const validateConfig = (config: Config, logger?: Logger): Config => {
+const validateConfig = (config: RequiredRateLimitConfig, logger?: Logger): RequiredRateLimitConfig => {
   const validated = {
     points: clamp(config.points),
     duration: clamp(config.duration),
@@ -164,7 +119,7 @@ export interface RateLimiter {
 }
 
 const buildLimiter = (
-  config: Config,
+  config: RequiredRateLimitConfig,
   client: RedisClient | null,
   logger?: Logger,
 ): RateLimiterAbstract | BurstyRateLimiter => {
@@ -219,7 +174,7 @@ const buildLimiter = (
 export const createRateLimiter = (options: CreateRateLimiterOptions = {}): RateLimiter => {
   const { client = null, logger } = options
 
-  const config = validateConfig(mergeConfig(BASE_DEFAULTS, options.defaults), logger)
+  const config = validateConfig(mergeConfig(BASE_RATE_LIMIT_DEFAULTS, options.defaults), logger)
 
   const limiter = buildLimiter(config, client, logger)
 

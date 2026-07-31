@@ -18,7 +18,12 @@ describe('createRateLimiter', () => {
   describe('memory path (no client)', () => {
     it('resolves with rate-limit info while under the limit', async () => {
       const limiter = createRateLimiter({
-        defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 5,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
 
       const info = await limiter.check({ key: randomUUID() })
@@ -33,7 +38,12 @@ describe('createRateLimiter', () => {
 
     it('throws RateLimitExceededError once the allowance is exhausted', async () => {
       const limiter = createRateLimiter({
-        defaults: { points: 2, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 2,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
       const key = randomUUID()
 
@@ -78,7 +88,12 @@ describe('createRateLimiter', () => {
       await expect(inheriting.check({ key: inheritingKey })).rejects.toBeInstanceOf(RateLimitExceededError)
 
       const burstless = createRateLimiter({
-        defaults: { points: 1, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 1,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
       const burstlessKey = randomUUID()
       await burstless.check({ key: burstlessKey })
@@ -87,7 +102,12 @@ describe('createRateLimiter', () => {
 
     it('consumes the requested number of points', async () => {
       const limiter = createRateLimiter({
-        defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 5,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
       const key = randomUUID()
 
@@ -101,7 +121,12 @@ describe('createRateLimiter', () => {
       const logger = createLoggerStub()
       const limiter = createRateLimiter({
         logger,
-        defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 5,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
 
       await limiter.check({ key: randomUUID() })
@@ -111,7 +136,12 @@ describe('createRateLimiter', () => {
 
     it('clamps non-positive consumption points to 1', async () => {
       const limiter = createRateLimiter({
-        defaults: { points: 2, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 2,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
       const key = randomUUID()
 
@@ -125,7 +155,12 @@ describe('createRateLimiter', () => {
 
     it.each([0, NaN, Infinity])('clamps invalid consumption points (%p) to 1', async points => {
       const limiter = createRateLimiter({
-        defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 5,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
 
       const info = await limiter.check({ key: randomUUID(), points })
@@ -136,7 +171,12 @@ describe('createRateLimiter', () => {
 
     it('clamps invalid configuration values', async () => {
       const limiter = createRateLimiter({
-        defaults: { points: 0, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 0,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
       const key = randomUUID()
 
@@ -154,7 +194,12 @@ describe('createRateLimiter', () => {
       try {
         const limiter = createRateLimiter({
           logger,
-          defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+          defaults: {
+            points: 5,
+            duration: 10,
+            burst: null,
+            prefix: uniquePrefix(),
+          },
         })
 
         await expect(limiter.check({ key: randomUUID() })).rejects.toBe(storeError)
@@ -173,7 +218,12 @@ describe('createRateLimiter', () => {
       try {
         const limiter = createRateLimiter({
           logger: factoryLogger,
-          defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+          defaults: {
+            points: 5,
+            duration: 10,
+            burst: null,
+            prefix: uniquePrefix(),
+          },
         })
 
         await expect(limiter.check({ key: randomUUID(), logger: requestLogger })).rejects.toBe(storeError)
@@ -191,7 +241,12 @@ describe('createRateLimiter', () => {
       const requestLogger = createLoggerStub()
       const limiter = createRateLimiter({
         logger: factoryLogger,
-        defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 5,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
 
       await limiter.check({ key: randomUUID(), logger: requestLogger })
@@ -204,7 +259,12 @@ describe('createRateLimiter', () => {
     describe('clamp warnings', () => {
       it('truncates non-integer consumption points toward zero', async () => {
         const limiter = createRateLimiter({
-          defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+          defaults: {
+            points: 5,
+            duration: 10,
+            burst: null,
+            prefix: uniquePrefix(),
+          },
         })
         const key = randomUUID()
 
@@ -218,7 +278,12 @@ describe('createRateLimiter', () => {
         const logger = createLoggerStub()
         const limiter = createRateLimiter({
           logger,
-          defaults: { points: 10, duration: 10, burst: null, prefix: uniquePrefix() },
+          defaults: {
+            points: 10,
+            duration: 10,
+            burst: null,
+            prefix: uniquePrefix(),
+          },
         })
         const key = randomUUID()
 
@@ -236,10 +301,19 @@ describe('createRateLimiter', () => {
         const requestLogger = createLoggerStub()
         const limiter = createRateLimiter({
           logger: factoryLogger,
-          defaults: { points: 10, duration: 10, burst: null, prefix: uniquePrefix() },
+          defaults: {
+            points: 10,
+            duration: 10,
+            burst: null,
+            prefix: uniquePrefix(),
+          },
         })
 
-        await limiter.check({ key: randomUUID(), points: 2.5, logger: requestLogger })
+        await limiter.check({
+          key: randomUUID(),
+          points: 2.5,
+          logger: requestLogger,
+        })
 
         const clamped = (input: { message: string }) => input.message.includes('consumption points was clamped')
         expect(requestLogger.warn.mock.calls.some(([input]) => clamped(input))).toBe(true)
@@ -269,7 +343,12 @@ describe('createRateLimiter', () => {
         const logger = createLoggerStub()
         const limiter = createRateLimiter({
           logger,
-          defaults: { points: 2.9, duration: 10, burst: null, prefix: uniquePrefix() },
+          defaults: {
+            points: 2.9,
+            duration: 10,
+            burst: null,
+            prefix: uniquePrefix(),
+          },
         })
         const key = randomUUID()
 
@@ -286,7 +365,12 @@ describe('createRateLimiter', () => {
         const logger = createLoggerStub()
         const limiter = createRateLimiter({
           logger,
-          defaults: { points: 5, duration: 10.7, burst: null, prefix: uniquePrefix() },
+          defaults: {
+            points: 5,
+            duration: 10.7,
+            burst: null,
+            prefix: uniquePrefix(),
+          },
         })
 
         await limiter.check({ key: randomUUID() })
@@ -325,7 +409,12 @@ describe('createRateLimiter', () => {
           const logger = createLoggerStub()
           const limiter = createRateLimiter({
             logger,
-            defaults: { points, duration: 10, burst: null, prefix: uniquePrefix() },
+            defaults: {
+              points,
+              duration: 10,
+              burst: null,
+              prefix: uniquePrefix(),
+            },
           })
 
           await limiter.check({ key: randomUUID() })
@@ -343,7 +432,12 @@ describe('createRateLimiter', () => {
           const logger = createLoggerStub()
           const limiter = createRateLimiter({
             logger,
-            defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+            defaults: {
+              points: 5,
+              duration: 10,
+              burst: null,
+              prefix: uniquePrefix(),
+            },
           })
 
           await limiter.check({ key: randomUUID(), points })
@@ -364,11 +458,18 @@ describe('createRateLimiter', () => {
       const client = { status: 'end' } as unknown as RedisClient
       const limiter = createRateLimiter({
         client,
-        defaults: { points: 1, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 1,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
       const key = randomUUID()
 
-      await expect(limiter.check({ key })).resolves.toMatchObject({ points: { remaining: 0 } })
+      await expect(limiter.check({ key })).resolves.toMatchObject({
+        points: { remaining: 0 },
+      })
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
   })

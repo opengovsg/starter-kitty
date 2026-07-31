@@ -22,7 +22,9 @@ describe('createGlobalRateLimiter', () => {
 
     await limiter.check({ ip: '1.2.3.4' })
     await expect(limiter.check({ ip: '1.2.3.4' })).rejects.toBeInstanceOf(RateLimitExceededError)
-    await expect(limiter.check({ ip: '5.6.7.8' })).resolves.toMatchObject({ points: { remaining: 0 } })
+    await expect(limiter.check({ ip: '5.6.7.8' })).resolves.toMatchObject({
+      points: { remaining: 0 },
+    })
   })
 
   it('buckets null IPs together as unknown instead of exempting them', async () => {
@@ -98,17 +100,23 @@ describe('createGlobalRateLimiter', () => {
 
     await limiter.check({ ip: null, logger: requestLogger })
     expect(requestLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
+      expect.objectContaining({
+        message: 'Client IP extraction returned null, using the shared unknown bucket',
+      }),
     )
     // The factory logger still receives configuration warnings (no Redis
     // client), but the null-IP request warning must go to the request logger.
     expect(factoryLogger.warn).not.toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
+      expect.objectContaining({
+        message: 'Client IP extraction returned null, using the shared unknown bucket',
+      }),
     )
 
     await limiter.check({ ip: null })
     expect(factoryLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
+      expect.objectContaining({
+        message: 'Client IP extraction returned null, using the shared unknown bucket',
+      }),
     )
   })
 
@@ -146,7 +154,9 @@ describe('createGlobalRateLimiter', () => {
       points: { remaining: 0 },
     })
     expect(requestLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
+      expect.objectContaining({
+        message: 'Client IP extraction returned null, using the shared unknown bucket',
+      }),
     )
   })
 
@@ -157,7 +167,9 @@ describe('createGlobalRateLimiter', () => {
     })
 
     await limiter.check({ ip: '2001:db8::1' })
-    await expect(limiter.check({ ip: '2001:db8::2' })).resolves.toMatchObject({ points: { remaining: 0 } })
+    await expect(limiter.check({ ip: '2001:db8::2' })).resolves.toMatchObject({
+      points: { remaining: 0 },
+    })
   })
 
   it('defaults to 100 points per second with no burst', async () => {
@@ -180,7 +192,12 @@ describe('createGlobalRateLimiter', () => {
     const spy = vi.spyOn(RateLimiterMemory.prototype, 'consume').mockRejectedValue(storeError)
     try {
       const limiter = createGlobalRateLimiter({
-        defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 5,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
 
       await expect(limiter.check({ ip: '1.2.3.4', logger: requestLogger })).rejects.toBe(storeError)
@@ -197,7 +214,12 @@ describe('createGlobalRateLimiter', () => {
 describe('createLocalRateLimiter', () => {
   it('gives the same actor an independent allowance per resource', async () => {
     const limiter = createLocalRateLimiter({
-      defaults: { points: 1, duration: 10, burst: null, prefix: uniquePrefix() },
+      defaults: {
+        points: 1,
+        duration: 10,
+        burst: null,
+        prefix: uniquePrefix(),
+      },
     })
     const actor = randomUUID()
 
@@ -210,7 +232,12 @@ describe('createLocalRateLimiter', () => {
 
   it('isolates different actors on the same resource', async () => {
     const limiter = createLocalRateLimiter({
-      defaults: { points: 1, duration: 10, burst: null, prefix: uniquePrefix() },
+      defaults: {
+        points: 1,
+        duration: 10,
+        burst: null,
+        prefix: uniquePrefix(),
+      },
     })
     const resource = 'auth.login'
 
@@ -226,11 +253,20 @@ describe('createLocalRateLimiter', () => {
     const spy = vi.spyOn(RateLimiterMemory.prototype, 'consume').mockRejectedValue(storeError)
     try {
       const limiter = createLocalRateLimiter({
-        defaults: { points: 5, duration: 10, burst: null, prefix: uniquePrefix() },
+        defaults: {
+          points: 5,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
       })
 
       await expect(
-        limiter.check({ actor: randomUUID(), resource: 'bookings.create', logger: requestLogger }),
+        limiter.check({
+          actor: randomUUID(),
+          resource: 'bookings.create',
+          logger: requestLogger,
+        }),
       ).rejects.toBe(storeError)
 
       expect(requestLogger.warn).toHaveBeenCalledWith(

@@ -1,5 +1,7 @@
 import ipaddr from 'ipaddr.js'
 
+import { RateLimitConfig, RequiredRateLimitConfig } from './types.js'
+
 /**
  * Derive the store key for a client IP, or `null` when the input is not a
  * valid IP address so the caller can warn and fall back to the shared bucket.
@@ -27,3 +29,24 @@ export const normalizeIp = (ip: string): string | null => {
     .map(group => group.toString(16))
     .join('-')
 }
+
+/**
+ * Clamp to a safe positive integer. Non-finite and below-1 values degrade to
+ * 1, where a negative would otherwise replenish the allowance. Fractions are
+ * truncated because the Redis-backed limiter rejects non-integer arguments
+ * at runtime.
+ */
+export const clamp = (value: number): number => {
+  return Number.isFinite(value) && value >= 1 ? Math.trunc(value) : 1
+}
+
+/**
+ * Merge a partial config over a resolved base. Omitted `burst`
+ * values inherit the base's. An explicit `null` disables bursting.
+ */
+export const mergeConfig = (base: RequiredRateLimitConfig, override?: RateLimitConfig): RequiredRateLimitConfig => ({
+  points: override?.points ?? base.points,
+  duration: override?.duration ?? base.duration,
+  burst: override?.burst !== undefined ? override.burst : base.burst,
+  prefix: override?.prefix ?? base.prefix,
+})

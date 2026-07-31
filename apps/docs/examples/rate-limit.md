@@ -107,7 +107,11 @@ gets its own limiter with its own `prefix`:
 export const reportRateLimiter = createLocalRateLimiter({
   client: redis,
   logger: systemLogger,
-  defaults: { points: 5, duration: 60, prefix: 'reports' },
+  defaults: {
+    points: 5,
+    duration: 60,
+    prefix: 'reports',
+  },
 })
 ```
 

@@ -44,6 +44,8 @@ export interface RateLimitConfig {
   prefix?: string
 }
 
+export type RequiredRateLimitConfig = Required<RateLimitConfig>
+
 /**
  * A snapshot of a key's rate-limit state after a check.
  *

@@ -16,9 +16,11 @@
  */
 
 export { RateLimitExceededError } from './errors.js'
+export type { CreateGlobalRateLimiterOptions, GlobalRateLimiter } from './global-rate-limiter.js'
+export { createGlobalRateLimiter } from './global-rate-limiter.js'
 export { constructRateLimitHeaders } from './headers.js'
-export type { CreateGlobalRateLimiterOptions, GlobalRateLimiter, LocalRateLimiter } from './limiters.js'
-export { createGlobalRateLimiter, createLocalRateLimiter } from './limiters.js'
+export type { CreateLocalRateLimiterOptions, LocalRateLimiter } from './local-rate-limiter.js'
+export { createLocalRateLimiter } from './local-rate-limiter.js'
 export type { RateLimiter } from './rate-limiter.js'
 export { createRateLimiter } from './rate-limiter.js'
 export type {

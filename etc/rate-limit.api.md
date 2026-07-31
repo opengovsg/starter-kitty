@@ -26,7 +26,10 @@ export interface CreateGlobalRateLimiterOptions extends CreateRateLimiterOptions
 }
 
 // @public
-export const createLocalRateLimiter: (options?: CreateRateLimiterOptions) => LocalRateLimiter;
+export const createLocalRateLimiter: (options?: CreateLocalRateLimiterOptions) => LocalRateLimiter;
+
+// @public
+export type CreateLocalRateLimiterOptions = CreateRateLimiterOptions;
 
 // @public
 export const createRateLimiter: (options?: CreateRateLimiterOptions) => RateLimiter;

@@ -1,31 +1,7 @@
-import { createRateLimiter, mergeConfig } from './rate-limiter.js'
+import { GLOBAL_RATE_LIMIT_DEFAULTS, UNKNOWN_BUCKET } from './constants.js'
+import { createRateLimiter } from './rate-limiter.js'
 import type { CreateRateLimiterOptions, Logger, RateLimitInfo } from './types.js'
-import { normalizeIp } from './utilities.js'
-
-/**
- * Coarse but cheap pre-authentication shielding, sized for the shared IPs a
- * per-IP key must absorb.
- */
-const GLOBAL_DEFAULTS = {
-  points: 100,
-  duration: 1,
-  burst: null,
-  prefix: 'global',
-}
-
-const LOCAL_DEFAULTS = {
-  points: 50,
-  duration: 10,
-  burst: { points: 20, duration: 30 },
-  prefix: 'local',
-}
-
-/**
- * Shared bucket for requests whose client IP is missing or unparseable.
- * Unidentifiable traffic is limited, never exempted, and cannot mint fresh
- * buckets from attacker-controlled input.
- */
-const UNKNOWN_BUCKET = 'unknown'
+import { mergeConfig, normalizeIp } from './utilities.js'
 
 /**
  * A rate limiter keyed purely by client IP, for use before authentication.
@@ -90,7 +66,7 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions 
   const { validate = true, ...rateLimiterOptions } = options
   const limiter = createRateLimiter({
     ...rateLimiterOptions,
-    defaults: mergeConfig(GLOBAL_DEFAULTS, rateLimiterOptions.defaults),
+    defaults: mergeConfig(GLOBAL_RATE_LIMIT_DEFAULTS, rateLimiterOptions.defaults),
   })
   return {
     check: ({ ip, points, logger }) => {
@@ -118,57 +94,5 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions 
         logger,
       })
     },
-  }
-}
-
-/**
- * A rate limiter keyed by actor and resource, for identified traffic. Obtain
- * one via {@link createLocalRateLimiter}.
- *
- * @public
- */
-export interface LocalRateLimiter {
-  /**
-   * Consume `points` (default 1) from the allowance of `actor` on `resource`.
-   *
-   * `actor` is caller-defined: a user ID, an API-key ID, or a client IP for
-   * anonymous traffic. Hash secrets yourself so they never become store
-   * keys. Colons in either value are replaced with `-` so they cannot shift
-   * the `actor:resource` key boundary.
-   *
-   * `resource` must be a normalized route identity, such as an Express route
-   * template (`/users/:id`), never the raw request URL. Raw URLs make every
-   * parameter value its own bucket, which fragments the actor's quota and
-   * grows store key cardinality without bound.
-   *
-   * Pass a request-scoped `logger` to attach request identity to any
-   * warnings this call emits. Omit it to fall back to the factory logger.
-   *
-   * Throws {@link RateLimitExceededError} when the allowance is exhausted.
-   */
-  check(args: { actor: string; resource: string; points?: number; logger?: Logger }): Promise<RateLimitInfo>
-}
-
-/**
- * Create a rate limiter enforcing per-actor, per-resource quotas for
- * identified traffic.
- *
- * Defaults to 50 points per 10 seconds with a burst of 20 per 30 seconds.
- * Override via {@link CreateRateLimiterOptions.defaults}.
- *
- * @public
- */
-export const createLocalRateLimiter = (options: CreateRateLimiterOptions = {}): LocalRateLimiter => {
-  const limiter = createRateLimiter({
-    ...options,
-    defaults: mergeConfig(LOCAL_DEFAULTS, options.defaults),
-  })
-  return {
-    check: ({ actor, resource, points, logger }) =>
-      limiter.check({
-        key: `${actor.replaceAll(':', '-')}:${resource.replaceAll(':', '-')}`,
-        points,
-        logger,
-      }),
   }
 }
