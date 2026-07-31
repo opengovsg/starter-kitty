@@ -41,14 +41,14 @@ and IPv4-mapped normalization, so do not use it with attacker-controlled or
 unnormalized values. A `null` IP still uses the shared `unknown` bucket.
 
 The factory `logger` receives a configuration warning when no client is
-configured. Out-of-range rate-limit values are silently clamped to a safe
-minimum. Per-request warnings take a separate, request-scoped logger on each
-`check` (see below).
+configured, and another whenever a rate-limit value is clamped to a safe
+integer. Both fire once when the limiter is created. Per-request warnings take
+a separate, request-scoped logger on each `check` (see below).
 
 Omit `client` and the limiter runs on in-memory counters — fine for tests,
 local development, and single-instance deployments, but limits are then
 per-instance and not shared across replicas. The factory `logger` fires once
-per configuration to make that explicit.
+at creation to make that explicit.
 
 ## Why two limiters?
 
@@ -86,9 +86,9 @@ app.use(async (req, res, next) => {
 
 // After auth: fair per-actor, per-route quotas. Passing the request logger
 // means any request warnings carry this request's identity (path, user, IP).
-const rateLimited = options => async (req, res, next) => {
+const rateLimited = limiter => async (req, res, next) => {
   try {
-    await localRateLimiter.check({ actor: req.session.userId, resource: req.route.path, options, logger: req.log })
+    await limiter.check({ actor: req.session.userId, resource: req.route.path, logger: req.log })
     next()
   } catch (error) {
     if (error instanceof RateLimitExceededError) return respond429(res, error)
@@ -96,7 +96,23 @@ const rateLimited = options => async (req, res, next) => {
   }
 }
 
-app.post('/api/bookings', authenticate, rateLimited({ points: 5, duration: 60 }), createBooking)
+app.post('/api/bookings', authenticate, rateLimited(localRateLimiter), createBooking)
+```
+
+Configuration is fixed at creation, so a route that needs different limits
+gets its own limiter with its own `prefix`:
+
+```javascript
+// src/rate-limiters.ts
+export const reportRateLimiter = createLocalRateLimiter({
+  client: redis,
+  logger: systemLogger,
+  defaults: { points: 5, duration: 60, prefix: 'reports' },
+})
+```
+
+```javascript
+app.post('/api/reports', authenticate, rateLimited(reportRateLimiter), generateReport)
 ```
 
 Client-IP resolution belongs to the application because it depends on the
@@ -105,26 +121,25 @@ request logging; do not accept forwarding headers from untrusted clients.
 
 ## tRPC
 
-Drive per-procedure limits from procedure `meta`:
+Drive per-procedure limits from procedure `meta`, referencing a limiter
+instance:
 
 ```javascript
-import { RateLimitExceededError } from '@opengovsg/rate-limit'
+import { createLocalRateLimiter, RateLimitExceededError } from '@opengovsg/rate-limit'
 import { initTRPC, TRPCError } from '@trpc/server'
 
 import { localRateLimiter } from '~/rate-limiters'
+import { redis } from '~/redis'
 
-const t = initTRPC
-  .context()
-  .meta()
-  .create({ defaultMeta: { rateLimitOptions: {} } })
+const t = initTRPC.context().meta().create()
 
 const rateLimitMiddleware = t.middleware(async ({ ctx, meta, path, next }) => {
-  if (meta?.rateLimitOptions === null) return next() // opt-out per procedure
+  if (meta?.rateLimiter === null) return next() // opt-out per procedure
+  const limiter = meta?.rateLimiter ?? localRateLimiter
   try {
-    await localRateLimiter.check({
+    await limiter.check({
       actor: ctx.session?.userId ?? ctx.clientIp ?? 'unknown',
-      path,
-      options: meta?.rateLimitOptions,
+      resource: path,
       logger: ctx.logger, // request-scoped, so request warnings carry request identity
     })
   } catch (error) {
@@ -138,10 +153,13 @@ const rateLimitMiddleware = t.middleware(async ({ ctx, meta, path, next }) => {
 
 export const publicProcedure = t.procedure.use(rateLimitMiddleware)
 
-// Stricter limits where it matters:
-const login = publicProcedure
-  .meta({ rateLimitOptions: { points: 5, duration: 60, burst: { points: 3, duration: 120 } } })
-  .mutation(/* ... */)
+// Stricter limits where it matters: a dedicated limiter, referenced from meta.
+const otpRateLimiter = createLocalRateLimiter({
+  client: redis,
+  defaults: { points: 5, duration: 60, burst: { points: 3, duration: 120 }, prefix: 'otp' },
+})
+
+const requestOtp = publicProcedure.meta({ rateLimiter: otpRateLimiter }).mutation(/* ... */)
 ```
 
 ## Choosing an actor

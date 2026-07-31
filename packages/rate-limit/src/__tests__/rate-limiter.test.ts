@@ -65,24 +65,24 @@ describe('createRateLimiter', () => {
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
 
-    it('inherits the default burst when omitted and disables it when null', async () => {
-      const defaults = { points: 1, duration: 10, burst: { points: 1, duration: 30 } }
-      const limiter = createRateLimiter({ defaults })
-
+    it('inherits the built-in burst when defaults omit it and disables it when null', async () => {
+      // Burst omitted: the built-in { points: 20, duration: 30 } applies, so
+      // 1 steady + 20 burst checks pass before the 22nd is rejected.
+      const inheriting = createRateLimiter({
+        defaults: { points: 1, duration: 10, prefix: uniquePrefix() },
+      })
       const inheritingKey = randomUUID()
-      const inheritingOptions = { prefix: uniquePrefix() }
-      await limiter.check({ key: inheritingKey, options: inheritingOptions })
-      await limiter.check({ key: inheritingKey, options: inheritingOptions })
-      await expect(limiter.check({ key: inheritingKey, options: inheritingOptions })).rejects.toBeInstanceOf(
-        RateLimitExceededError,
-      )
+      for (let i = 0; i < 21; i++) {
+        await inheriting.check({ key: inheritingKey })
+      }
+      await expect(inheriting.check({ key: inheritingKey })).rejects.toBeInstanceOf(RateLimitExceededError)
 
+      const burstless = createRateLimiter({
+        defaults: { points: 1, duration: 10, burst: null, prefix: uniquePrefix() },
+      })
       const burstlessKey = randomUUID()
-      const burstlessOptions = { prefix: uniquePrefix(), burst: null }
-      await limiter.check({ key: burstlessKey, options: burstlessOptions })
-      await expect(limiter.check({ key: burstlessKey, options: burstlessOptions })).rejects.toBeInstanceOf(
-        RateLimitExceededError,
-      )
+      await burstless.check({ key: burstlessKey })
+      await expect(burstless.check({ key: burstlessKey })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
 
     it('consumes the requested number of points', async () => {
@@ -95,30 +95,6 @@ describe('createRateLimiter', () => {
 
       expect(info.points.remaining).toBe(0)
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
-    })
-
-    it('isolates counters between different prefixes', async () => {
-      const limiter = createRateLimiter({
-        defaults: { points: 1, duration: 10, burst: null },
-      })
-      const key = randomUUID()
-
-      await limiter.check({ key, options: { prefix: uniquePrefix() } })
-      await expect(limiter.check({ key, options: { prefix: uniquePrefix() } })).resolves.toMatchObject({
-        points: { remaining: 0 },
-      })
-    })
-
-    it('shares one underlying limiter across checks with the same configuration', async () => {
-      const options = { points: 2, duration: 10, burst: null, prefix: uniquePrefix() }
-      const limiter = createRateLimiter()
-      const key = randomUUID()
-
-      const first = await limiter.check({ key, options })
-      const second = await limiter.check({ key, options })
-
-      expect(first.points.consumed).toBe(1)
-      expect(second.points.consumed).toBe(2)
     })
 
     it('warns that limits are per-instance when no client is configured', async () => {
@@ -158,7 +134,7 @@ describe('createRateLimiter', () => {
       expect(info.points.remaining).toBe(4)
     })
 
-    it('clamps invalid configuration values at first use', async () => {
+    it('clamps invalid configuration values', async () => {
       const limiter = createRateLimiter({
         defaults: { points: 0, duration: 10, burst: null, prefix: uniquePrefix() },
       })
@@ -225,19 +201,6 @@ describe('createRateLimiter', () => {
       expect(requestLogger.warn.mock.calls.some(([input]) => inMemory(input))).toBe(false)
     })
 
-    it('treats distinct invalid configuration values that clamp to the same effective value as one limiter', async () => {
-      const limiter = createRateLimiter({
-        defaults: { points: 1, duration: 10, burst: null, prefix: uniquePrefix() },
-      })
-      const key = randomUUID()
-
-      // `0` and `-5` both clamp to `points: 1`. A cache key derived from raw
-      // values would fragment these into two limiters with fresh counters,
-      // letting the second check wrongly succeed.
-      await limiter.check({ key, options: { points: 0 } })
-      await expect(limiter.check({ key, options: { points: -5 } })).rejects.toBeInstanceOf(RateLimitExceededError)
-    })
-
     describe('clamp warnings', () => {
       it('truncates non-integer consumption points toward zero', async () => {
         const limiter = createRateLimiter({
@@ -302,37 +265,16 @@ describe('createRateLimiter', () => {
         await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
       })
 
-      it('warns about a clamped configuration once per distinct configuration, not on every check', async () => {
+      it('warns about a clamped configuration once at creation, not on every check', async () => {
         const logger = createLoggerStub()
-        const limiter = createRateLimiter({ logger })
-        const options = { points: 2.9, duration: 10, burst: null, prefix: uniquePrefix() }
+        const limiter = createRateLimiter({
+          logger,
+          defaults: { points: 2.9, duration: 10, burst: null, prefix: uniquePrefix() },
+        })
         const key = randomUUID()
 
-        await limiter.check({ key, options })
-        await limiter.check({ key, options })
-
-        const clampWarnings = logger.warn.mock.calls.filter(
-          ([input]) => input.message === 'Rate limit points was clamped',
-        )
-        expect(clampWarnings).toHaveLength(1)
-      })
-
-      it('treats distinct fractional configuration values that truncate to the same effective value as one limiter', async () => {
-        const logger = createLoggerStub()
-        const limiter = createRateLimiter({ logger })
-        const key = randomUUID()
-        const prefix = uniquePrefix()
-
-        // `2.1` and `2.9` both truncate to `points: 2`. A cache key derived
-        // from raw values would fragment these into two limiters with fresh
-        // counters, letting the third check wrongly succeed. The warning
-        // fires once, since the second check resolves to the already-built
-        // configuration.
-        await limiter.check({ key, options: { points: 2.1, duration: 10, burst: null, prefix } })
-        await limiter.check({ key, options: { points: 2.9, duration: 10, burst: null, prefix } })
-        await expect(
-          limiter.check({ key, options: { points: 2.9, duration: 10, burst: null, prefix } }),
-        ).rejects.toBeInstanceOf(RateLimitExceededError)
+        await limiter.check({ key })
+        await limiter.check({ key })
 
         const clampWarnings = logger.warn.mock.calls.filter(
           ([input]) => input.message === 'Rate limit points was clamped',

@@ -52,7 +52,6 @@ export interface LocalRateLimiter {
     check(args: {
         actor: string;
         resource: string;
-        options?: RateLimitConfig;
         points?: number;
         logger?: Logger;
     }): Promise<RateLimitInfo>;
@@ -83,7 +82,6 @@ export interface RateLimitConfig {
 export interface RateLimiter {
     check(args: {
         key: string;
-        options?: RateLimitConfig;
         points?: number;
         logger?: Logger;
     }): Promise<RateLimitInfo>;

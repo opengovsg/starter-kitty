@@ -60,8 +60,8 @@ unnormalized values. A `null` IP still uses the shared `unknown` bucket.
 The factory `logger` receives a configuration warning when no Redis client is
 configured, and a separate warning whenever a rate-limit value is clamped to a
 safe integer (out of range, or a fractional value truncated toward zero),
-reporting the field's original and clamped values. Both warnings fire roughly
-once per configuration, so a base/system logger fits.
+reporting the field's original and clamped values. Both warnings fire once
+when the limiter is created, so a base/system logger fits.
 
 Without a `client`, limits are enforced in memory — functional, but
 per-instance and not shared across replicas. The factory `logger` surfaces that
@@ -79,8 +79,6 @@ await localRateLimiter.check({
   // A normalized route identity (route template or procedure name), never
   // the raw URL: raw URLs give every parameter value its own bucket.
   resource: 'bookings.create',
-  // Optional per-call override for expensive routes:
-  options: { points: 5, duration: 60, burst: null },
   // Optional request-scoped logger: request warnings (an unexpected store
   // error) then carry this request's identity.
   logger: req.log,
@@ -116,8 +114,7 @@ try {
 
 ## Configuration
 
-Every limiter accepts `defaults`, and `createRateLimiter`/`createLocalRateLimiter`
-accept per-check `options`, both of shape:
+Every limiter accepts `defaults` of shape:
 
 | Field      | Default                          | Meaning                                                                 |
 | ---------- | -------------------------------- | ----------------------------------------------------------------------- |
@@ -125,6 +122,9 @@ accept per-check `options`, both of shape:
 | `duration` | `10`                             | Steady window in seconds                                                |
 | `burst`    | `{ points: 20, duration: 30 }`   | Extra short-lived allowance; omit to inherit, `null` to disable         |
 | `prefix`   | `'api'` / `'global'` / `'local'` | Namespace segment isolating this limiter's counters in the shared store |
+
+Configuration is fixed at creation. A route that needs different limits
+creates its own limiter with its own `defaults`.
 
 Store keys live under `rate-limit:<prefix>:` (steady) and
 `rate-limit-burst:<prefix>:` (burst).

@@ -1,5 +1,5 @@
 import { createRateLimiter, mergeConfig } from './rate-limiter.js'
-import type { CreateRateLimiterOptions, Logger, RateLimitConfig, RateLimitInfo } from './types.js'
+import type { CreateRateLimiterOptions, Logger, RateLimitInfo } from './types.js'
 import { normalizeIp } from './utilities.js'
 
 /**
@@ -138,21 +138,15 @@ export interface LocalRateLimiter {
    *
    * `resource` must be a normalized route identity, such as an Express route
    * template (`/users/:id`), never the raw request URL. Raw URLs make every
-   * parameter value its own bucket, which fragments the actor's quota, grows
-   * store key cardinality without bound, and breaks per-route overrides.
+   * parameter value its own bucket, which fragments the actor's quota and
+   * grows store key cardinality without bound.
    *
    * Pass a request-scoped `logger` to attach request identity to any
    * warnings this call emits. Omit it to fall back to the factory logger.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */
-  check(args: {
-    actor: string
-    resource: string
-    options?: RateLimitConfig
-    points?: number
-    logger?: Logger
-  }): Promise<RateLimitInfo>
+  check(args: { actor: string; resource: string; points?: number; logger?: Logger }): Promise<RateLimitInfo>
 }
 
 /**
@@ -160,7 +154,7 @@ export interface LocalRateLimiter {
  * identified traffic.
  *
  * Defaults to 50 points per 10 seconds with a burst of 20 per 30 seconds.
- * Override via {@link CreateRateLimiterOptions.defaults} or per check.
+ * Override via {@link CreateRateLimiterOptions.defaults}.
  *
  * @public
  */
@@ -170,10 +164,9 @@ export const createLocalRateLimiter = (options: CreateRateLimiterOptions = {}): 
     defaults: mergeConfig(LOCAL_DEFAULTS, options.defaults),
   })
   return {
-    check: ({ actor, resource, options: checkOptions, points, logger }) =>
+    check: ({ actor, resource, points, logger }) =>
       limiter.check({
         key: `${actor.replaceAll(':', '-')}:${resource.replaceAll(':', '-')}`,
-        options: checkOptions,
         points,
         logger,
       }),

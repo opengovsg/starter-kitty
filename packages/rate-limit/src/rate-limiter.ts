@@ -2,7 +2,14 @@ import type { RateLimiterAbstract, RateLimiterRes } from 'rate-limiter-flexible'
 import { BurstyRateLimiter, RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible'
 
 import { RateLimitExceededError } from './errors.js'
-import type { BurstConfig, CreateRateLimiterOptions, Logger, RateLimitConfig, RateLimitInfo } from './types.js'
+import type {
+  BurstConfig,
+  CreateRateLimiterOptions,
+  Logger,
+  RateLimitConfig,
+  RateLimitInfo,
+  RedisClient,
+} from './types.js'
 
 const STEADY_NAMESPACE = 'rate-limit:'
 const BURST_NAMESPACE = 'rate-limit-burst:'
@@ -153,85 +160,71 @@ export interface RateLimiter {
    * Pass a request-scoped `logger` to attach request identity to the warnings
    * this call may emit. Omit it to fall back to the factory logger.
    */
-  check(args: { key: string; options?: RateLimitConfig; points?: number; logger?: Logger }): Promise<RateLimitInfo>
+  check(args: { key: string; points?: number; logger?: Logger }): Promise<RateLimitInfo>
+}
+
+const buildLimiter = (
+  config: Config,
+  client: RedisClient | null,
+  logger?: Logger,
+): RateLimiterAbstract | BurstyRateLimiter => {
+  const { points, duration, burst } = config
+  const steadyMemoryLimiter = new RateLimiterMemory({ points, duration })
+  const burstMemoryLimiter = burst
+    ? new RateLimiterMemory({
+        points: burst.points,
+        duration: burst.duration,
+      })
+    : null
+
+  if (!client) {
+    logger?.warn({
+      message:
+        'No Redis client configured, using in-memory rate limiting. Limits are per-instance and not shared across replicas.',
+      context: { prefix: config.prefix },
+    })
+    return burstMemoryLimiter ? new BurstyRateLimiter(steadyMemoryLimiter, burstMemoryLimiter) : steadyMemoryLimiter
+  }
+
+  const steady = new RateLimiterRedis({
+    storeClient: client,
+    rejectIfRedisNotReady: true,
+    points,
+    duration,
+    keyPrefix: `${STEADY_NAMESPACE}${config.prefix}:`,
+    insuranceLimiter: steadyMemoryLimiter,
+  })
+  if (!burst || !burstMemoryLimiter) {
+    return steady
+  }
+  return new BurstyRateLimiter(
+    steady,
+    new RateLimiterRedis({
+      storeClient: client,
+      rejectIfRedisNotReady: true,
+      points: burst.points,
+      duration: burst.duration,
+      keyPrefix: `${BURST_NAMESPACE}${config.prefix}:`,
+      insuranceLimiter: burstMemoryLimiter,
+    }),
+  )
 }
 
 /**
  * Create a rate limiter backed by the injected Redis client, or by in-memory
  * counters when no client is configured.
  *
- * Limiter instances are memoized per distinct configuration, so one factory
- * serves many differently configured checks cheaply.
- *
  * @public
  */
 export const createRateLimiter = (options: CreateRateLimiterOptions = {}): RateLimiter => {
   const { client = null, logger } = options
-  const defaults = mergeConfig(BASE_DEFAULTS, options.defaults)
-  const cache = new Map<string, RateLimiterAbstract | BurstyRateLimiter>()
 
-  const buildLimiter = (resolved: Config): RateLimiterAbstract | BurstyRateLimiter => {
-    const { points, duration, burst } = resolved
-    const steadyMemoryLimiter = new RateLimiterMemory({ points, duration })
-    const burstMemoryLimiter = burst
-      ? new RateLimiterMemory({
-          points: burst.points,
-          duration: burst.duration,
-        })
-      : null
+  const config = validateConfig(mergeConfig(BASE_DEFAULTS, options.defaults), logger)
 
-    if (!client) {
-      logger?.warn({
-        message:
-          'No Redis client configured, using in-memory rate limiting. Limits are per-instance and not shared across replicas.',
-        context: { prefix: resolved.prefix },
-      })
-      return burstMemoryLimiter ? new BurstyRateLimiter(steadyMemoryLimiter, burstMemoryLimiter) : steadyMemoryLimiter
-    }
-
-    const steady = new RateLimiterRedis({
-      storeClient: client,
-      rejectIfRedisNotReady: true,
-      points,
-      duration,
-      keyPrefix: `${STEADY_NAMESPACE}${resolved.prefix}:`,
-      insuranceLimiter: steadyMemoryLimiter,
-    })
-    if (!burst || !burstMemoryLimiter) {
-      return steady
-    }
-    return new BurstyRateLimiter(
-      steady,
-      new RateLimiterRedis({
-        storeClient: client,
-        rejectIfRedisNotReady: true,
-        points: burst.points,
-        duration: burst.duration,
-        keyPrefix: `${BURST_NAMESPACE}${resolved.prefix}:`,
-        insuranceLimiter: burstMemoryLimiter,
-      }),
-    )
-  }
-
-  const getLimiter = (config: Config): RateLimiterAbstract | BurstyRateLimiter => {
-    // Key the cache on clamped values so equivalent configs share a limiter.
-    const resolved = validateConfig(config)
-    const cacheKey = `${resolved.prefix}:${resolved.points}:${resolved.duration}:${resolved.burst?.points ?? '-'}:${
-      resolved.burst?.duration ?? '-'
-    }`
-    const cached = cache.get(cacheKey)
-    if (cached) return cached
-    // Pass the logger only here so clamp warnings fire once per new limiter,
-    // not on every check.
-    const limiter = buildLimiter(validateConfig(config, logger))
-    cache.set(cacheKey, limiter)
-    return limiter
-  }
+  const limiter = buildLimiter(config, client, logger)
 
   return {
-    check: async ({ key, options, points = 1, logger: checkLogger }) => {
-      const config = mergeConfig(defaults, options)
-      const limiter = getLimiter(config)
+    check: async ({ key, points = 1, logger: checkLogger }) => {
       const lgr = checkLogger ?? logger
       const clampedPoints = clamp(points)
       if (clampedPoints !== points) {

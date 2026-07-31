@@ -70,13 +70,11 @@ The IP rules close known holes:
 The key is `actor:resource`, and `resource` must be a normalised route
 identity (e.g. an Express route template, `/users/:id`), **never the raw
 request URL**. Raw URLs make every parameter value its own bucket, which
-splits an actor's quota, grows the Redis key count without bound, and breaks
-per-route overrides.
+splits an actor's quota and grows the Redis key count without bound.
 
 The default is 50 points per 10 seconds with a burst of 20 per 30 seconds.
 This translates to roughly 5 rps sustained per actor per resource, with a
-burst buffer for initial page loads that fire waterfall API calls. Expensive
-routes may pass a per-check `options` override at the mount site.
+burst buffer for initial page loads that fire waterfall API calls.
 
 A nested `burst` object inherits the limiter's default when omitted, and an
 explicit `null` disables it.
@@ -144,4 +142,4 @@ draft.
 - Consumers own 429 response shaping and client-IP extraction. The package
   stays framework-neutral, and the docs carry the spoofing warning.
 - Existing hand-rolled limiters migrate step by step: a static limiter service
-  is a thin shim away from `check({ key, options, points })`.
+  is a thin shim away from `check({ key, points })`.

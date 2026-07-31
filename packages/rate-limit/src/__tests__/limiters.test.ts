@@ -220,17 +220,6 @@ describe('createLocalRateLimiter', () => {
     })
   })
 
-  it('respects per-check option overrides', async () => {
-    const limiter = createLocalRateLimiter({
-      defaults: { prefix: uniquePrefix() },
-    })
-    const actor = randomUUID()
-    const options = { points: 1, duration: 10, burst: null }
-
-    await limiter.check({ actor, resource: 'auth.otp', options })
-    await expect(limiter.check({ actor, resource: 'auth.otp', options })).rejects.toBeInstanceOf(RateLimitExceededError)
-  })
-
   it('forwards a per-check logger through to the underlying limiter', async () => {
     const requestLogger = createLoggerStub()
     const storeError = new Error('boom')

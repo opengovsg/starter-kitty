@@ -20,7 +20,7 @@ export interface BurstConfig {
  * Numeric values are clamped to safe positive integers: non-finite or
  * below-1 values degrade to 1 and fractions are truncated, since the
  * Redis-backed limiter rejects non-integer arguments at runtime. Each clamp
- * is logged the first time its resulting configuration is used.
+ * is logged when the limiter is created.
  *
  * @public
  */
@@ -96,12 +96,12 @@ export interface CreateRateLimiterOptions {
   /**
    * The Redis client backing the limiter's counters. When absent or `null`,
    * the limiter falls back to in-memory counters, which are per-instance and
-   * not shared across replicas. The factory logger is warned once per
-   * limiter configuration when this happens.
+   * not shared across replicas. The factory logger is warned once at
+   * creation when this happens.
    */
   client?: RedisClient | null
   /**
-   * Default configuration merged under each check's options.
+   * Configuration merged over the limiter's built-in defaults.
    */
   defaults?: RateLimitConfig
   /**
