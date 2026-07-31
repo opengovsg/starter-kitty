@@ -54,31 +54,27 @@ describe('rate limiters against a real, healthy Redis', () => {
     await expect(limiter.check({ ip })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
 
-  it('honors a per-check options override on the local limiter when Redis is healthy', async () => {
+  it("enforces the local limiter's creation-time defaults when Redis is healthy", async () => {
     const limiter = createLocalRateLimiter({
       client,
-      defaults: { prefix: uniquePrefix() },
+      defaults: { points: 1, duration: 10, burst: null, prefix: uniquePrefix() },
     })
     const actor = randomUUID()
-    const options = { points: 1, duration: 10, burst: null }
 
-    await limiter.check({ actor, resource: 'auth.otp', options })
-    await expect(limiter.check({ actor, resource: 'auth.otp', options })).rejects.toBeInstanceOf(RateLimitExceededError)
+    await limiter.check({ actor, resource: 'auth.otp' })
+    await expect(limiter.check({ actor, resource: 'auth.otp' })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
 
   it('grants extra requests from the burst allowance when Redis is healthy', async () => {
     const limiter = createLocalRateLimiter({
       client,
-      defaults: { prefix: uniquePrefix() },
+      defaults: { points: 1, duration: 10, burst: { points: 2, duration: 30 }, prefix: uniquePrefix() },
     })
     const actor = randomUUID()
-    const options = { points: 1, duration: 10, burst: { points: 2, duration: 30 } }
 
-    await limiter.check({ actor, resource: 'bookings.create', options })
-    await limiter.check({ actor, resource: 'bookings.create', options })
-    await limiter.check({ actor, resource: 'bookings.create', options })
-    await expect(limiter.check({ actor, resource: 'bookings.create', options })).rejects.toBeInstanceOf(
-      RateLimitExceededError,
-    )
+    await limiter.check({ actor, resource: 'bookings.create' })
+    await limiter.check({ actor, resource: 'bookings.create' })
+    await limiter.check({ actor, resource: 'bookings.create' })
+    await expect(limiter.check({ actor, resource: 'bookings.create' })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
 })
