@@ -21,15 +21,15 @@ export interface GlobalRateLimiter {
    *
    * An unparseable IP falls into a shared `'unknown'` bucket rather than
    * being exempted, and logs an error so a broken extractor shows up in
-   * logs, not just as 429s. A non-string or `null` value from a
-   * non-TypeScript caller is treated the same way.
+   * logs, not just as 429s. `null`, `undefined`, and non-string values from
+   * JavaScript callers are treated the same way.
    *
    * Pass a request-scoped `logger` to attach request identity to anything
    * this call logs. Omit it to fall back to the factory logger.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */
-  check(args: { ip: string; logger?: Logger }): Promise<RateLimitInfo>
+  check(args: { ip: string | null | undefined; logger?: Logger }): Promise<RateLimitInfo>
 }
 
 /**
@@ -68,23 +68,22 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions)
   })
   return {
     check: ({ ip, logger }) => {
-      const key = skipKeyNormalization ? ip : normalizeIp(ip)
+      // Non-strings never reach normalizeIp or the verbatim path, so a broken
+      // extractor cannot crash the limiter on either path.
+      const key = typeof ip !== 'string' ? null : skipKeyNormalization ? ip : normalizeIp(ip)
       if (key === null) {
         // Prefer the request-scoped logger so the extraction failure carries
         // request identity.
         const lgr = logger ?? rateLimiterOptions.logger
-        lgr.error(
-          ip === null
-            ? {
-                message: 'Client IP extraction returned null, using the shared unknown bucket',
-              }
-            : {
-                message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
-                // Truncated because an unparseable value is attacker-controlled
-                // input and must not flood logs.
-                context: { ip: ip.slice(0, 64) },
-              },
-        )
+        lgr.error({
+          message:
+            typeof ip !== 'string'
+              ? 'Client IP extraction did not return a string, using the shared unknown bucket'
+              : 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
+          // Truncated because an unparseable value is attacker-controlled
+          // input and must not flood logs.
+          context: { ip: String(ip).slice(0, 64) },
+        })
       }
       return limiter.check({
         key: key?.replaceAll(':', '-') ?? UNKNOWN_BUCKET,

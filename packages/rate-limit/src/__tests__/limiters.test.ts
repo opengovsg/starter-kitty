@@ -109,6 +109,63 @@ describe('createGlobalRateLimiter', () => {
     await expect(limiter.check({ ip: 'also-not-an-ip' })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
 
+  it.each([null, undefined])('funnels a %s IP into the unknown bucket, logging an error', async invalidIp => {
+    const requestLogger = createLoggerStub()
+    const limiter = createGlobalRateLimiter({
+      logger: defaultLogger,
+      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+    })
+
+    await limiter.check({ ip: invalidIp, logger: requestLogger })
+    expect(requestLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Client IP extraction did not return a string, using the shared unknown bucket',
+        context: { ip: String(invalidIp) },
+      }),
+    )
+    // Shares the unknown bucket with unparseable strings rather than minting
+    // its own.
+    await expect(limiter.check({ ip: 'not-an-ip' })).rejects.toBeInstanceOf(RateLimitExceededError)
+  })
+
+  it.each([42, {}])(
+    'funnels the non-string IP %o from a JavaScript caller into the unknown bucket',
+    async invalidIp => {
+      const requestLogger = createLoggerStub()
+      const limiter = createGlobalRateLimiter({
+        logger: defaultLogger,
+        overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      })
+
+      // @ts-expect-error simulates a JavaScript caller with no type checking.
+      await limiter.check({ ip: invalidIp, logger: requestLogger })
+      expect(requestLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Client IP extraction did not return a string, using the shared unknown bucket',
+          context: { ip: String(invalidIp) },
+        }),
+      )
+      await expect(limiter.check({ ip: 'not-an-ip' })).rejects.toBeInstanceOf(RateLimitExceededError)
+    },
+  )
+
+  it('funnels non-string IPs into the unknown bucket even when key normalization is skipped', async () => {
+    const requestLogger = createLoggerStub()
+    const limiter = createGlobalRateLimiter({
+      logger: defaultLogger,
+      skipKeyNormalization: true,
+      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+    })
+
+    await limiter.check({ ip: undefined, logger: requestLogger })
+    expect(requestLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Client IP extraction did not return a string, using the shared unknown bucket',
+      }),
+    )
+    await expect(limiter.check({ ip: null })).rejects.toBeInstanceOf(RateLimitExceededError)
+  })
+
   it('uses IP strings verbatim when key normalization is skipped', async () => {
     const requestLogger = createLoggerStub()
     const limiter = createGlobalRateLimiter({

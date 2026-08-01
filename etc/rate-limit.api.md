@@ -39,7 +39,7 @@ export interface CreateRateLimiterOptions {
 // @public
 export interface GlobalRateLimiter {
     check(args: {
-        ip: string;
+        ip: string | null | undefined;
         logger?: Logger;
     }): Promise<RateLimitInfo>;
 }
