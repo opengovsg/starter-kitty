@@ -142,10 +142,7 @@ const buildLimiter = (
   logger: Logger,
 ): RateLimiterAbstract | BurstyRateLimiter => {
   const { points, duration, burst, fallback } = config
-  // The fallback allowance (ADR 0010) stands in for the primary window
-  // whenever enforcement runs off memory, as insurance during a Redis outage
-  // or as the sole limiter with no `client` configured, so it must never
-  // reflect the (possibly much larger) primary points/duration.
+
   const memory = new RateLimiterMemory({
     points: fallback.points,
     duration: fallback.duration,
@@ -175,11 +172,7 @@ const buildLimiter = (
   if (!burst) {
     return steady
   }
-  // Burst grants nothing extra while degraded (ADR 0010): a dedicated,
-  // zero-capacity memory limiter rejects immediately and cleanly whenever
-  // Redis is unreachable, without touching the fallback allowance above. It
-  // sits inert whenever Redis is healthy, since insurance is only ever
-  // consulted on an infrastructure failure, never a legitimate rejection.
+
   return new BurstyRateLimiter(
     steady,
     new RateLimiterRedis({
@@ -188,6 +181,10 @@ const buildLimiter = (
       points: burst.points,
       duration: burst.duration,
       keyPrefix: `${BURST_NAMESPACE}${config.prefix}:`,
+      /**
+       * No burst during Redis outage, but we put a fallback to continue
+       * throwing `{@link RateLimitExceededError}` instead.
+       */
       insuranceLimiter: new RateLimiterMemory({
         points: 0,
         duration: burst.duration,
