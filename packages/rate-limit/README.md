@@ -43,24 +43,8 @@ export const globalRateLimiter = createGlobalRateLimiter({ client: redis, logger
 export const localRateLimiter = createLocalRateLimiter({ client: redis, logger })
 ```
 
-The global limiter validates and normalizes IP addresses by default. If the
-application already supplies a trusted, canonical key, pass
-`skipKeyNormalization: true` to use the string verbatim. This also disables
-IPv6 /64 bucketing and IPv4-mapped normalization, so do not use it with
-attacker-controlled or unnormalized values.
-
-The factory `logger`'s `error` fires when no Redis client is configured, since
-enforcement is then degraded (per-instance, not shared across replicas), not
-just misconfigured. `warn` fires whenever a rate-limit value is clamped to a
-safe integer (out of range, or a fractional value truncated toward zero),
-reporting the field's original and clamped values. Both fire once when the
-limiter is created, so a base/system logger fits. A Redis error that escapes
-the in-memory insurance limiter is a separate, per-request `error` (see
-[Checking limits](#checking-limits)).
-
-Without a `client`, limits are enforced in memory — functional, but
-per-instance and not shared across replicas. The factory `logger`'s `error`
-surfaces that trade-off.
+When `client` is omitted, the limiter runs on in-memory counters. This is suitable for tests and local development. However, as limits are
+per-instance and not shared across replicas, this is not suitable for a production use case.
 
 ## Checking limits
 
@@ -75,7 +59,7 @@ await localRateLimiter.check({
   // the raw URL: raw URLs give every parameter value its own bucket.
   resource: 'bookings.create',
   // Optional request-scoped logger: request diagnostics (an unexpected store
-  // error, reported to `error`) then carry this request's identity.
+  // error) then carry this request's identity.
   logger: req.log,
 })
 ```
@@ -115,13 +99,13 @@ and `toHttpHeaders` instead.
 
 Every limiter accepts `overrides` of shape:
 
-| Field      | Default                                         | Meaning                                                                    |
-| ---------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
-| `points`   | `50`                                            | Consumption points per steady window                                       |
-| `duration` | `10`                                            | Steady window in seconds                                                   |
-| `burst`    | `{ points: 20, duration: 30 }`                  | Extra short-lived allowance; omit to inherit, `null` to disable            |
-| `fallback` | `{ points: 10, duration: 1 }` (`5/1` for local) | Independent in-memory allowance; burst grants nothing extra while degraded |
-| `prefix`   | `'api'` / `'global'` / `'local'`                | Namespace segment isolating this limiter's counters in the shared store    |
+| Field      | Default                                         | Meaning                                                                           |
+| ---------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| `points`   | `50`                                            | Consumption points per steady window                                              |
+| `duration` | `10`                                            | Steady window in seconds                                                          |
+| `burst`    | `{ points: 20, duration: 30 }`                  | Extra short-lived allowance; omit to inherit, `null` to disable                   |
+| `fallback` | `{ points: 10, duration: 1 }` (`5/1` for local) | Independent in-memory allowance, with burst granting nothing extra while degraded |
+| `prefix`   | `'api'` / `'global'` / `'local'`                | Namespace segment isolating this limiter's counters in the shared store           |
 
 Configuration is fixed at creation. A route that needs different limits
 creates its own limiter with its own `overrides`.
@@ -133,6 +117,7 @@ const reportRateLimiter = createLocalRateLimiter({
   overrides: {
     points: 5,
     duration: 60,
+    burst: { points: 10, duration: 15 },
     fallback: { points: 5, duration: 60 },
     prefix: 'reports',
   },
