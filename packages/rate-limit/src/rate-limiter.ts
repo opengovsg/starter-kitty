@@ -56,6 +56,7 @@ const validateConfig = (config: RequiredRateLimitConfig, logger: Logger): Requir
       context: {
         value: config.fallback.points,
         clamped: validated.fallback.points,
+        prefix: config.prefix,
       },
     })
   }
@@ -65,6 +66,7 @@ const validateConfig = (config: RequiredRateLimitConfig, logger: Logger): Requir
       context: {
         value: config.fallback.duration,
         clamped: validated.fallback.duration,
+        prefix: config.prefix,
       },
     })
   }
