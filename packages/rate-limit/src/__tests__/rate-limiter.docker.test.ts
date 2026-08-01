@@ -3,12 +3,20 @@ import { randomUUID } from 'node:crypto'
 import { getMappedPort, redis } from '@opengovsg/testcontainers'
 import { createGlobalSetup, type ProvidedContainers } from '@opengovsg/testcontainers/vitest'
 import { Redis } from 'ioredis'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { TestProject } from 'vitest/node'
 
-import { createGlobalRateLimiter, createLocalRateLimiter, RateLimitExceededError } from '../index.js'
+import { createGlobalRateLimiter, createLocalRateLimiter, type Logger, RateLimitExceededError } from '../index.js'
 
 const uniquePrefix = () => `test-${randomUUID()}`
+
+const createLoggerStub = () => {
+  const warn = vi.fn<Logger['warn']>()
+  const error = vi.fn<Logger['error']>()
+  return { warn, error } satisfies Logger
+}
+
+const defaultLogger = createLoggerStub()
 
 // Real Docker required: boots a single Redis container for this file via the
 // testcontainers globalSetup factory, torn down after all tests run. Exists
@@ -42,14 +50,18 @@ describe('rate limiters against a real, healthy Redis', () => {
   it("enforces the global limiter's built-in default of 100 points per second when Redis is healthy", async () => {
     const limiter = createGlobalRateLimiter({
       client,
-      defaults: { prefix: uniquePrefix() },
+      logger: defaultLogger,
+      overrides: { prefix: uniquePrefix() },
     })
     const ip = `10.0.0.${Math.floor(Math.random() * 255)}`
 
     const first = await limiter.check({ ip })
     expect(first.points.remaining).toBe(99)
 
-    const rest = await limiter.check({ ip, points: 99 })
+    let rest = first
+    for (let i = 0; i < 99; i++) {
+      rest = await limiter.check({ ip })
+    }
     expect(rest.points.remaining).toBe(0)
     await expect(limiter.check({ ip })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
@@ -57,7 +69,8 @@ describe('rate limiters against a real, healthy Redis', () => {
   it("enforces the local limiter's creation-time defaults when Redis is healthy", async () => {
     const limiter = createLocalRateLimiter({
       client,
-      defaults: {
+      logger: defaultLogger,
+      overrides: {
         points: 1,
         duration: 10,
         burst: null,
@@ -73,7 +86,8 @@ describe('rate limiters against a real, healthy Redis', () => {
   it('grants extra requests from the burst allowance when Redis is healthy', async () => {
     const limiter = createLocalRateLimiter({
       client,
-      defaults: {
+      logger: defaultLogger,
+      overrides: {
         points: 1,
         duration: 10,
         burst: { points: 2, duration: 30 },
