@@ -16,9 +16,10 @@ export interface BurstConfig {
 /**
  * Fallback allowance for the in-memory limiter used as insurance during a
  * Redis outage, and as the sole limiter when no `client` is configured. Both
- * fields are required when overriding the factory's built-in fallback. There
- * is no `burst` field: burst grants nothing extra while enforcement runs off
- * memory, regardless of the primary configuration — see ADR 0010.
+ * fields are required when overriding the factory's built-in fallback.
+ *
+ * There is no `burst` field: burst grants nothing extra while enforcement
+ * runs off memory, regardless of the primary configuration.
  *
  * @public
  */
@@ -52,11 +53,6 @@ export interface RateLimitConfig {
   /**
    * Fallback allowance for the in-memory limiter used as insurance during a
    * Redis outage, and as the sole limiter when no client is configured.
-   * Omit this property to use the factory's fallback default: 10 points per
-   * second, or 5 points per second for `createLocalRateLimiter`. When
-   * overriding it, both `points` and `duration` are required. This allowance
-   * is independent of the steady window, and burst grants nothing extra while
-   * enforcement runs off memory. See ADR 0010.
    */
   fallback?: FallbackConfig
   /**
