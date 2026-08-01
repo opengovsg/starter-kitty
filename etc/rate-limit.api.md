@@ -37,6 +37,12 @@ export interface CreateRateLimiterOptions {
 }
 
 // @public
+export interface FallbackConfig {
+    duration: number;
+    points: number;
+}
+
+// @public
 export interface GlobalRateLimiter {
     check(args: {
         ip: string | null | undefined;
@@ -76,6 +82,7 @@ export const normalizeIp: (ip: string) => string | null;
 export interface RateLimitConfig {
     burst?: BurstConfig | null;
     duration?: number;
+    fallback?: FallbackConfig;
     points?: number;
     prefix?: string;
 }

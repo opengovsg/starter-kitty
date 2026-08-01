@@ -7,8 +7,8 @@ import { createRateLimiter, type Logger, RateLimitExceededError, type RedisClien
 
 const uniquePrefix = () => `test-${randomUUID()}`
 
-// A Logger stub whose `warn` and `error` methods are vitest mocks, for
-// asserting which log reached which logger.
+// A Logger stub whose `warn`/`error` methods are vitest mocks, for asserting
+// which diagnostics reached which logger.
 const createLoggerStub = () => {
   const warn = vi.fn<Logger['warn']>()
   const error = vi.fn<Logger['error']>()
@@ -26,6 +26,7 @@ describe('createRateLimiter', () => {
           points: 5,
           duration: 10,
           burst: null,
+          fallback: { points: 5, duration: 10 },
           prefix: uniquePrefix(),
         },
       })
@@ -47,6 +48,7 @@ describe('createRateLimiter', () => {
           points: 2,
           duration: 10,
           burst: null,
+          fallback: { points: 2, duration: 10 },
           prefix: uniquePrefix(),
         },
       })
@@ -63,52 +65,27 @@ describe('createRateLimiter', () => {
       expect(rateLimitError.message).toMatch(/Rate limit exceeded/)
     })
 
-    it('grants extra requests from the burst allowance after the steady window is exhausted', async () => {
+    it('never grants extra requests from burst while running off memory, even when burst is configured', async () => {
       const limiter = createRateLimiter({
         logger: defaultLogger,
         overrides: {
           points: 1,
           duration: 10,
-          burst: { points: 2, duration: 30 },
+          burst: { points: 5, duration: 30 },
+          fallback: { points: 1, duration: 10 },
           prefix: uniquePrefix(),
         },
       })
       const key = randomUUID()
 
       await limiter.check({ key })
-      await limiter.check({ key })
-      await limiter.check({ key })
+      // Burst never engages while enforcement runs off memory (ADR 0010): the
+      // fallback allowance above is the only capacity available, regardless of
+      // the primary burst configuration.
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
 
-    it('inherits the built-in burst when overrides omit it and disables it when null', async () => {
-      // Burst omitted: the built-in { points: 20, duration: 30 } applies, so
-      // 1 steady + 20 burst checks pass before the 22nd is rejected.
-      const inheriting = createRateLimiter({
-        logger: defaultLogger,
-        overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
-      })
-      const inheritingKey = randomUUID()
-      for (let i = 0; i < 21; i++) {
-        await inheriting.check({ key: inheritingKey })
-      }
-      await expect(inheriting.check({ key: inheritingKey })).rejects.toBeInstanceOf(RateLimitExceededError)
-
-      const burstless = createRateLimiter({
-        logger: defaultLogger,
-        overrides: {
-          points: 1,
-          duration: 10,
-          burst: null,
-          prefix: uniquePrefix(),
-        },
-      })
-      const burstlessKey = randomUUID()
-      await burstless.check({ key: burstlessKey })
-      await expect(burstless.check({ key: burstlessKey })).rejects.toBeInstanceOf(RateLimitExceededError)
-    })
-
-    it('warns that limits are per-instance when no client is configured', async () => {
+    it('reports to error that limits are per-instance when no client is configured', async () => {
       const logger = createLoggerStub()
       const limiter = createRateLimiter({
         logger,
@@ -122,7 +99,7 @@ describe('createRateLimiter', () => {
 
       await limiter.check({ key: randomUUID() })
 
-      expect(logger.warn.mock.calls.some(([input]) => input.message.includes('in-memory'))).toBe(true)
+      expect(logger.error.mock.calls.some(([input]) => input.message.includes('in-memory'))).toBe(true)
     })
 
     it('clamps invalid configuration values', async () => {
@@ -132,21 +109,100 @@ describe('createRateLimiter', () => {
           points: 0,
           duration: 10,
           burst: null,
+          fallback: { points: 1, duration: 10 },
           prefix: uniquePrefix(),
         },
       })
       const key = randomUUID()
 
-      // points clamped to 1: the first check consumes it, the second is rejected.
+      // Primary points clamped to 1 (still warned below, even though the
+      // fallback above — not this clamped primary value — is what's actually
+      // enforced in the no-client path per ADR 0010).
       await limiter.check({ key })
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+    })
+
+    it('enforces the default fallback allowance (10 points per second) regardless of a larger primary window', async () => {
+      const limiter = createRateLimiter({
+        logger: defaultLogger,
+        overrides: {
+          points: 1000,
+          duration: 10,
+          burst: null,
+          prefix: uniquePrefix(),
+        },
+      })
+      const key = randomUUID()
+
+      for (let i = 0; i < 9; i++) {
+        await limiter.check({ key })
+      }
+      const info = await limiter.check({ key })
+      expect(info.points.remaining).toBe(0)
+      await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+    })
+
+    it('overrides the default fallback allowance via overrides.fallback', async () => {
+      const limiter = createRateLimiter({
+        logger: defaultLogger,
+        overrides: {
+          points: 1000,
+          duration: 10,
+          burst: null,
+          fallback: { points: 2, duration: 30 },
+          prefix: uniquePrefix(),
+        },
+      })
+      const key = randomUUID()
+
+      await limiter.check({ key })
+      await limiter.check({ key })
+      await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+    })
+
+    it('clamps a non-positive fallback.points to 1 and warns', async () => {
+      const logger = createLoggerStub()
+      const limiter = createRateLimiter({
+        logger,
+        overrides: {
+          points: 1000,
+          duration: 10,
+          burst: null,
+          fallback: { points: 0, duration: 10 },
+          prefix: uniquePrefix(),
+        },
+      })
+      const key = randomUUID()
+
+      await limiter.check({ key })
+      await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+      const clampCall = logger.warn.mock.calls.find(([input]) => input.message.includes('fallback points'))
+      expect(clampCall?.[0].context?.value).toBe(0)
+    })
+
+    it('clamps a non-positive fallback.duration to 1 and warns', () => {
+      const logger = createLoggerStub()
+      createRateLimiter({
+        logger,
+        overrides: {
+          points: 1000,
+          duration: 10,
+          burst: null,
+          fallback: { points: 5, duration: 0 },
+          prefix: uniquePrefix(),
+        },
+      })
+
+      const clampCall = logger.warn.mock.calls.find(([input]) => input.message.includes('fallback duration'))
+      expect(clampCall?.[0].context?.value).toBe(0)
     })
 
     it('reports an unexpected limiter error to the logger with a top-level error and rethrows it', async () => {
       const logger = createLoggerStub()
       const storeError = new Error('boom')
       // A non-RateLimiterRes rejection is neither a limit nor absorbed by the
-      // insurance limiter, so it reaches the error path and is rethrown.
+      // insurance limiter, so it reaches the error-reporting path and is
+      // rethrown.
       const spy = vi.spyOn(RateLimiterMemory.prototype, 'consume').mockRejectedValue(storeError)
       try {
         const limiter = createRateLimiter({
@@ -167,7 +223,7 @@ describe('createRateLimiter', () => {
       }
     })
 
-    it('routes a per-check logger the request warnings, overriding the factory logger', async () => {
+    it('routes a per-check logger the request diagnostics, overriding the factory logger', async () => {
       const factoryLogger = createLoggerStub()
       const requestLogger = createLoggerStub()
       const storeError = new Error('boom')
@@ -193,7 +249,7 @@ describe('createRateLimiter', () => {
       }
     })
 
-    it('routes configuration warnings to the factory logger even when a per-check logger is given', async () => {
+    it('routes configuration diagnostics to the factory logger even when a per-check logger is given', async () => {
       const factoryLogger = createLoggerStub()
       const requestLogger = createLoggerStub()
       const limiter = createRateLimiter({
@@ -209,26 +265,27 @@ describe('createRateLimiter', () => {
       await limiter.check({ key: randomUUID(), logger: requestLogger })
 
       const inMemory = (input: { message: string }) => input.message.includes('in-memory')
-      expect(factoryLogger.warn.mock.calls.some(([input]) => inMemory(input))).toBe(true)
-      expect(requestLogger.warn.mock.calls.some(([input]) => inMemory(input))).toBe(false)
+      expect(factoryLogger.error.mock.calls.some(([input]) => inMemory(input))).toBe(true)
+      expect(requestLogger.error.mock.calls.some(([input]) => inMemory(input))).toBe(false)
     })
 
     describe('clamp warnings', () => {
-      it('truncates non-integer points, duration, and burst configuration values toward zero', async () => {
+      it('truncates non-integer points and duration configuration values toward zero', async () => {
         const limiter = createRateLimiter({
           logger: defaultLogger,
           overrides: {
             points: 2.9,
             duration: 10.5,
             burst: { points: 1.9, duration: 30.9 },
+            fallback: { points: 2, duration: 10 },
             prefix: uniquePrefix(),
           },
         })
         const key = randomUUID()
 
-        // points truncates to 2, burst.points truncates to 1: 3 checks succeed
-        // (2 steady + 1 burst) before the 4th is rejected.
-        await limiter.check({ key })
+        // The primary points truncate to 2, but burst never applies while
+        // running off memory (ADR 0010), so only 2 checks succeed before the
+        // 3rd is rejected.
         await limiter.check({ key })
         await limiter.check({ key })
         await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
@@ -333,6 +390,28 @@ describe('createRateLimiter', () => {
           points: 1,
           duration: 10,
           burst: null,
+          fallback: { points: 1, duration: 10 },
+          prefix: uniquePrefix(),
+        },
+      })
+      const key = randomUUID()
+
+      await expect(limiter.check({ key })).resolves.toMatchObject({
+        points: { remaining: 0 },
+      })
+      await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+    })
+
+    it('grants nothing extra from burst when Redis is not ready, even though burst is configured', async () => {
+      const client = { status: 'end' } as unknown as RedisClient
+      const limiter = createRateLimiter({
+        logger: defaultLogger,
+        client,
+        overrides: {
+          points: 1,
+          duration: 10,
+          burst: { points: 5, duration: 30 },
+          fallback: { points: 1, duration: 10 },
           prefix: uniquePrefix(),
         },
       })

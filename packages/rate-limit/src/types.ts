@@ -14,6 +14,23 @@ export interface BurstConfig {
 }
 
 /**
+ * Fallback allowance for the in-memory limiter used as insurance during a
+ * Redis outage, and as the sole limiter when no `client` is configured. Both
+ * fields are required when overriding the factory's built-in fallback.
+ *
+ * There is no `burst` field: burst grants nothing extra while enforcement
+ * runs off memory, regardless of the primary configuration.
+ *
+ * @public
+ */
+export interface FallbackConfig {
+  /** Consumption points available per fallback window. */
+  points: number
+  /** Fallback window in seconds. */
+  duration: number
+}
+
+/**
  * Configuration for a rate-limit window. Omitted fields inherit the
  * limiter's defaults.
  *
@@ -34,6 +51,11 @@ export interface RateLimitConfig {
    */
   burst?: BurstConfig | null
   /**
+   * Fallback allowance for the in-memory limiter used as insurance during a
+   * Redis outage, and as the sole limiter when no client is configured.
+   */
+  fallback?: FallbackConfig
+  /**
    * Namespace segment isolating this limiter's counters from other limiters
    * sharing the same store. Steady counters are stored under
    * `rate-limit:<prefix>:` and burst counters under `rate-limit-burst:<prefix>:`.
@@ -41,7 +63,9 @@ export interface RateLimitConfig {
   prefix?: string
 }
 
-export type RequiredRateLimitConfig = Required<RateLimitConfig>
+export type RequiredRateLimitConfig = Required<RateLimitConfig> & {
+  fallback: Required<FallbackConfig>
+}
 
 /**
  * A snapshot of a key's rate-limit state after a check.

@@ -11,7 +11,7 @@
       "dependsOn": ["^build:report", "^build:docs"]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^build", "^lint"]
     },
     "lint:fix": {
       "dependsOn": ["^lint:fix"]
@@ -23,7 +23,7 @@
       "dependsOn": ["^format:check"]
     },
     "test": {
-      "dependsOn": ["^test"]
+      "dependsOn": ["^build"]
     },
     "ci:report": {
       "dependsOn": ["build"]
