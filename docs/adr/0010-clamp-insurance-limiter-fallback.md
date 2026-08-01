@@ -71,8 +71,6 @@ overrides?: {
 Omitting `fallback` uses the factory's fallback constant. An override must
 provide both `points` and `duration`.
 
-The configuration is factory-level only. There is no per-check override.
-
 ## Consequences
 
 - During a Redis outage, an N-replica deployment's effective limit per
