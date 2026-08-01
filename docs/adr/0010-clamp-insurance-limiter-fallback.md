@@ -36,7 +36,7 @@ A fixed constant is simpler to reason about than a fallback derived from the
 primary window. The trade-off is that a caller with a primary window tighter
 than the constant, such as a per-route override of
 `{ points: 5, duration: 60 }`, gets a fallback more lenient than that
-route's normal enforcement. Such callers should set `defaults.fallback`
+route's normal enforcement. Such callers should set `overrides.fallback`
 explicitly (see below).
 
 ### Burst is disabled while running in fallback
@@ -57,10 +57,10 @@ then still gets `RateLimitExceededError` rather than a Redis error.
 
 ### Configuration using a nested fallback option
 
-`RateLimitConfig`, passed through `CreateRateLimiterOptions.defaults`, gains:
+`RateLimitConfig`, passed through `CreateRateLimiterOptions.overrides`, gains:
 
 ```ts
-defaults?: {
+overrides?: {
   fallback?: {
     points: number
     duration: number
@@ -79,13 +79,13 @@ The configuration is factory-level only. There is no per-check override.
   window is bounded by roughly N × 10/s (N × 5/s for the local limiter)
   instead of N × the primary points.
 - A caller whose primary window is tighter than the fallback constant gets a
-  more lenient fallback while degraded, and must set `defaults.fallback`
+  more lenient fallback while degraded, and must set `overrides.fallback`
   explicitly to track it.
 - The memory-only mode (no `client`) stops reflecting the configured
   `points` and `duration`. Tests that rely on a small `points` value must
-  pass `defaults.fallback` explicitly. This is a correction, since 0009 already
+  pass `overrides.fallback` explicitly. This is a correction, since 0009 already
   documents this mode as unfit for replica-safe production use.
 - Bursty configurations lose their burst allowance while degraded, so
   callers see 429s sooner during an outage.
 - Callers who know their replica count can set an exact figure via
-  `defaults.fallback`.
+  `overrides.fallback`.
