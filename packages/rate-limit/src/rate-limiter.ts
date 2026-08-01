@@ -1,8 +1,9 @@
-import type { RateLimiterAbstract, RateLimiterRes } from 'rate-limiter-flexible'
+import type { RateLimiterAbstract } from 'rate-limiter-flexible'
 import { BurstyRateLimiter, RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible'
 
 import { BASE_RATE_LIMIT_DEFAULTS } from './constants.js'
 import { RateLimitExceededError } from './errors.js'
+import { isRateLimiterRes, toRateLimitInfo } from './internal.js'
 import type { CreateRateLimiterOptions, Logger, RateLimitInfo, RedisClient, RequiredRateLimitConfig } from './types.js'
 import { clamp, mergeConfig } from './utilities.js'
 
@@ -94,25 +95,6 @@ const validateConfig = (config: RequiredRateLimitConfig, logger: Logger): Requir
   return {
     ...validated,
   }
-}
-
-const toRateLimitInfo = (res: RateLimiterRes): RateLimitInfo => ({
-  points: {
-    remaining: res.remainingPoints,
-    consumed: res.consumedPoints,
-  },
-  msToNextWindow: res.msBeforeNext,
-  isFirstInWindow: res.isFirstInDuration,
-})
-
-/**
- * Match a limit rejection by shape, since `instanceof RateLimiterRes` is
- * unreliable when a dual CJS/ESM dependency is loaded twice.
- */
-const isRateLimiterRes = (value: unknown): value is RateLimiterRes => {
-  if (typeof value !== 'object' || value === null) return false
-  const res = value as Partial<RateLimiterRes>
-  return typeof res.remainingPoints === 'number' && typeof res.msBeforeNext === 'number'
 }
 
 /**

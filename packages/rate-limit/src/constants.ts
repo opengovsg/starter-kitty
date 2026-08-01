@@ -23,6 +23,13 @@ export const GLOBAL_RATE_LIMIT_DEFAULTS = {
   prefix: 'global',
 }
 
+export const AUTHN_RATE_LIMIT_DEFAULTS = {
+  points: 100,
+  duration: 3600,
+  block: { duration: 3600 },
+  prefix: 'authn',
+}
+
 export const LOCAL_RATE_LIMIT_DEFAULTS = {
   ...BASE_RATE_LIMIT_DEFAULTS,
   // Tighter than the package-wide 10 points/second fallback because 5
