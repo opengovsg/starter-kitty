@@ -271,24 +271,34 @@ describe('createRateLimiter', () => {
 
     describe('clamp warnings', () => {
       it('truncates non-integer points and duration configuration values toward zero', async () => {
+        const logger = createLoggerStub()
         const limiter = createRateLimiter({
-          logger: defaultLogger,
+          logger,
           overrides: {
             points: 2.9,
             duration: 10.5,
             burst: { points: 1.9, duration: 30.9 },
-            fallback: { points: 2, duration: 10 },
+            fallback: { points: 2.9, duration: 10.5 },
             prefix: uniquePrefix(),
           },
         })
         const key = randomUUID()
 
-        // The primary points truncate to 2, but burst never applies while
-        // running off memory (ADR 0010), so only 2 checks succeed before the
-        // 3rd is rejected.
+        // With no Redis client, the truncated fallback allowance (2.9 to 2)
+        // is enforced and burst capacity is unavailable (ADR 0010).
         await limiter.check({ key })
         await limiter.check({ key })
         await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+
+        const clampedValues = logger.warn.mock.calls.map(([input]) => [input.message, input.context?.clamped])
+        expect(clampedValues).toEqual([
+          ['Rate limit points was clamped', 2],
+          ['Rate limit duration was clamped', 10],
+          ['Rate limit fallback points was clamped', 2],
+          ['Rate limit fallback duration was clamped', 10],
+          ['Rate limit burst points was clamped', 1],
+          ['Rate limit burst duration was clamped', 30],
+        ])
       })
 
       it('warns about a clamped configuration once at creation, not on every check', async () => {

@@ -148,7 +148,12 @@ describe('createGlobalRateLimiter', () => {
     const requestLogger = createLoggerStub()
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: invalidIp, logger: requestLogger })
@@ -169,7 +174,12 @@ describe('createGlobalRateLimiter', () => {
       const requestLogger = createLoggerStub()
       const limiter = createGlobalRateLimiter({
         logger: defaultLogger,
-        overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+        overrides: {
+          points: 1,
+          duration: 10,
+          fallback: { points: 1, duration: 10 },
+          prefix: uniquePrefix(),
+        },
       })
 
       // @ts-expect-error simulates a JavaScript caller with no type checking.
@@ -189,7 +199,12 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       skipKeyNormalization: true,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: undefined, logger: requestLogger })
