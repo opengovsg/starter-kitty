@@ -2,6 +2,8 @@
 '@opengovsg/rate-limit': minor
 ---
 
+feat(rate-limit): allow custom rate limiter fallback values
+
 The in-memory limiter used as insurance during a Redis outage, and as the sole limiter when no `client` is configured, now enforces a fixed fallback allowance (5 points/second, 10 for `createGlobalRateLimiter`) instead of the primary `points`/`duration`, and grants nothing extra from burst while running off memory.
 
 A new `overrides.fallback` setting overrides the default. See [ADR 0010](https://github.com/opengovsg/starter-kitty/blob/develop/docs/adr/0010-clamp-insurance-limiter-fallback.md) for the rationale.

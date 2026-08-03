@@ -104,7 +104,8 @@ app.post('/api/submission', authenticate, rateLimited(localRateLimiter), createS
 ```
 
 Configuration is fixed at creation, so a route that needs different limits
-gets its own limiter:
+gets its own limiter. Naming limiters after their use case keeps every policy
+reviewable in one module:
 
 ```javascript
 // src/rate-limiters.ts
@@ -131,14 +132,20 @@ request logging. Do not accept forwarding headers from untrusted clients.
 Drive per-procedure limits from procedure `meta`, referencing a limiter
 instance:
 
-```javascript
+```typescript
+import type { LocalRateLimiter } from '@opengovsg/rate-limit'
 import { createLocalRateLimiter, RateLimitExceededError } from '@opengovsg/rate-limit'
 import { initTRPC, TRPCError } from '@trpc/server'
 
 import { localRateLimiter } from '~/rate-limiters'
 import { redis } from '~/redis'
 
-const t = initTRPC.context().meta().create()
+interface Meta {
+  // Defaults to `localRateLimiter`. Set to `null` to opt out of rate limiting.
+  rateLimiter?: LocalRateLimiter | null
+}
+
+const t = initTRPC.context().meta<Meta>().create()
 
 const rateLimitMiddleware = t.middleware(async ({ ctx, meta, path, next }) => {
   if (meta?.rateLimiter === null) return next() // opt-out per procedure
@@ -163,7 +170,7 @@ export const publicProcedure = t.procedure.use(rateLimitMiddleware)
 // Stricter limits where it matters: a dedicated limiter, referenced from meta.
 const otpRateLimiter = createLocalRateLimiter({
   client: redis,
-  overrides: { points: 5, duration: 60, burst: { points: 3, duration: 120 }, prefix: 'otp' },
+  overrides: { points: 5, duration: 60, burst: { points: 3, duration: 120 } },
 })
 
 const requestOtp = publicProcedure.meta({ rateLimiter: otpRateLimiter }).mutation(/* ... */)
@@ -173,8 +180,12 @@ const requestOtp = publicProcedure.meta({ rateLimiter: otpRateLimiter }).mutatio
 
 In the local rate limiter, `actor` is caller-defined. Use a stable identifier for the authenticated principal such as a user ID or an API-key ID.
 
-For bearer tokens, hash before keying
-so raw secrets never become store keys:
+When a request can carry more than one kind of identity, prefix the actor
+with its type, such as `userId:123` or `apiKey:123`, so different identity
+classes cannot share a bucket.
+
+Hash actors that are secrets or may contain PII, such as bearer tokens or
+email-based auth subjects, so raw values never become store keys:
 
 ```javascript
 import { createHash } from 'node:crypto'
@@ -182,3 +193,36 @@ import { createHash } from 'node:crypto'
 const actor = createHash('sha256').update(bearerToken).digest('hex')
 await localRateLimiter.check({ actor, resource: 'mcp.callTool' })
 ```
+
+## Custom keys
+
+`createRateLimiter` exposes the core limiter with a caller-supplied `key`,
+for work the global and local shapes do not fit, such as throttling a write
+to a hot database row:
+
+```javascript
+// src/rate-limiters.ts
+import { createRateLimiter } from '@opengovsg/rate-limit'
+
+/** At most one `lastUsedAt` write per API key every ten minutes. */
+export const apiKeyTouchRateLimiter = createRateLimiter({
+  client: redis,
+  logger,
+  overrides: { prefix: 'api-key-touch', points: 1, duration: 600, burst: null },
+})
+```
+
+```javascript
+async function touchLastUsed(keyId) {
+  // Best-effort: a throttled window or a limiter error skips the write.
+  try {
+    await apiKeyTouchRateLimiter.check({ key: keyId })
+  } catch {
+    return
+  }
+  await db.apiKey.update({ where: { id: keyId }, data: { lastUsedAt: new Date() } })
+}
+```
+
+Keys are used verbatim, so normalize or hash caller-controlled values before
+keying.
