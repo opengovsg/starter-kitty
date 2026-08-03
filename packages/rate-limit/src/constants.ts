@@ -30,3 +30,7 @@ export const LOCAL_RATE_LIMIT_DEFAULTS = {
  * Key for a shared bucket for requests whose client IP is unparseable.
  */
 export const UNKNOWN_BUCKET = 'unknown'
+
+export const COLON_REPLACEMENT = '|-|'
+
+export const VERTICAL_BAR = '||'

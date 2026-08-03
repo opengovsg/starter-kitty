@@ -86,7 +86,7 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions)
         })
       }
       return limiter.check({
-        key: key?.replaceAll(':', '-') ?? UNKNOWN_BUCKET,
+        key: key ?? UNKNOWN_BUCKET,
         logger,
       })
     },

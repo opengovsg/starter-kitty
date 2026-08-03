@@ -1,4 +1,4 @@
-import { LOCAL_RATE_LIMIT_DEFAULTS } from './constants.js'
+import { COLON_REPLACEMENT, LOCAL_RATE_LIMIT_DEFAULTS, VERTICAL_BAR } from './constants.js'
 import { createRateLimiter } from './rate-limiter.js'
 import { CreateRateLimiterOptions, Logger, RateLimitInfo } from './types.js'
 import { mergeConfig } from './utilities.js'
@@ -13,14 +13,15 @@ export interface LocalRateLimiter {
   /**
    * Consume from the allowance of `actor` on `resource`.
    *
-   * `actor` is caller-defined: a user ID, an API-key ID, or a client IP for
-   * anonymous traffic. Colons in either value are replaced with `-` so they cannot shift
-   * the `actor:resource` key boundary.
+   * `resource` must be a controlled, safe, normalized route identity. Raw
+   * URLs are not suitable, as they make every parameter value its own
+   * bucket, which fragments the actor's quota and grows store key
+   * cardinality without bound. `:` is replaced with `|-|` to avoid
+   * colliding with the common `namespace:subkey` scheme, and `|` is
+   * replaced with `||` to avoid colliding with that replacement.
    *
-   * `resource` must be a normalized route identity, such as an Express route
-   * template (`/users/:id`), never the raw request URL. Raw URLs make every
-   * parameter value its own bucket, which fragments the actor's quota and
-   * grows store key cardinality without bound.
+   * `actor` is caller-defined: a user ID, an API-key ID, or a client IP for
+   * anonymous traffic.
    *
    * Pass a request-scoped `logger` to attach request identity to anything
    * this call logs. Omit it to fall back to the factory logger.
@@ -54,7 +55,7 @@ export const createLocalRateLimiter = (options: CreateLocalRateLimiterOptions): 
   return {
     check: ({ actor, resource, logger }) =>
       limiter.check({
-        key: `${actor.replaceAll(':', '-')}:${resource.replaceAll(':', '-')}`,
+        key: `resource:${resource.replaceAll('|', VERTICAL_BAR).replaceAll(':', COLON_REPLACEMENT)}:actor:${actor}`,
         logger,
       }),
   }

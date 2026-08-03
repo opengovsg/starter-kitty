@@ -1,5 +1,6 @@
 import ipaddr from 'ipaddr.js'
 
+import { COLON_REPLACEMENT } from './constants.js'
 import { RateLimitConfig, RequiredRateLimitConfig } from './types.js'
 
 /**
@@ -11,6 +12,9 @@ import { RateLimitConfig, RequiredRateLimitConfig } from './types.js'
  * typically holds an entire /64 and could otherwise mint a fresh bucket per
  * request by rotating within it.
  *
+ * Output keys have their colons replaced with `|-|` to avoid colliding with
+ * the common `namespace:subkey` Redis convention.
+ *
  * @public
  */
 export const normalizeIp = (ip: string): string | null => {
@@ -19,7 +23,9 @@ export const normalizeIp = (ip: string): string | null => {
   // `process` normalizes every spelling of an IPv4-mapped IPv6 address to
   // IPv4 so all representations of the client share one bucket.
   const address = ipaddr.process(ip)
-  if (address instanceof ipaddr.IPv4) return address.toString()
+  if (address instanceof ipaddr.IPv4) {
+    return address.toString().replaceAll(':', COLON_REPLACEMENT)
+  }
 
   // The first four 16-bit groups form the /64 key. Parsed groups make
   // compressed, expanded, and zone-bearing spellings equivalent. Dashes keep
@@ -27,7 +33,7 @@ export const normalizeIp = (ip: string): string | null => {
   return address.parts
     .slice(0, 4)
     .map(group => group.toString(16))
-    .join('-')
+    .join(COLON_REPLACEMENT)
 }
 
 /**
