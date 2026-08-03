@@ -16,13 +16,14 @@ export interface GlobalRateLimiter {
    * By default, IPv4 addresses are keyed per address and IPv6 addresses by
    * their /64 prefix, since a subscriber typically holds an entire /64 and
    * could otherwise mint a fresh bucket per request. IPv4-mapped IPv6
-   * addresses are keyed by the embedded IPv4 address. Pass
-   * `skipKeyNormalization: true` to use every string verbatim instead.
+   * addresses are keyed by the embedded IPv4 address.
    *
    * An unparseable IP falls into a shared `'unknown'` bucket rather than
    * being exempted, and logs an error so a broken extractor shows up in
    * logs, not just as 429s. `null`, `undefined`, and non-string values from
    * JavaScript callers are treated the same way.
+   *
+   * Pass `skipKeyNormalization: true` to use every string verbatim instead.
    *
    * Pass a request-scoped `logger` to attach request identity to anything
    * this call logs. Omit it to fall back to the factory logger.
