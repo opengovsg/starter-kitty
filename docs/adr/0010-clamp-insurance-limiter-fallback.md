@@ -25,12 +25,13 @@ The insurance limiter behind each Redis-backed window, and the sole limiter
 when no `client` is configured, use a fixed fallback allowance instead of
 the primary `points` and `duration`:
 
-- **`createRateLimiter` and `createGlobalRateLimiter`: 10 points per
-  second.** The global limiter's primary default is 100/s, so an outage
-  tightens it 10x.
-- **`createLocalRateLimiter`: 5 points per second.** This matches its own
-  roughly 5 rps steady default. The base 10/s would be looser than normal
-  operation.
+- **`createGlobalRateLimiter`: 10 points per second.** The global limiter's
+  primary default is 100/s, so an outage tightens it 10x. The global rate
+  limit was permissive by default, and so it is tightened significantly when
+  the system is degraded.
+- **`createRateLimiter` and `createLocalRateLimiter`: 5 points per second.**
+  This matches their shared roughly 5 rps steady default. A looser fallback
+  would be more permissive than normal operation.
 
 A fixed constant is simpler to reason about than a fallback derived from the
 primary window. The trade-off is that a caller with a primary window tighter
@@ -74,7 +75,7 @@ provide both `points` and `duration`.
 ## Consequences
 
 - During a Redis outage, an N-replica deployment's effective limit per
-  window is bounded by roughly N × 10/s (N × 5/s for the local limiter)
+  window is bounded by roughly N × 5/s (N × 10/s for the global limiter)
   instead of N × the primary points.
 - A caller whose primary window is tighter than the fallback constant gets a
   more lenient fallback while degraded, and must set `overrides.fallback`

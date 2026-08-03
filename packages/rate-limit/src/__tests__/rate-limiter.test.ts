@@ -122,7 +122,7 @@ describe('createRateLimiter', () => {
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
     })
 
-    it('enforces the default fallback allowance (10 points per second) regardless of a larger primary window', async () => {
+    it('enforces the default fallback allowance (5 points per second) regardless of a larger primary window', async () => {
       const limiter = createRateLimiter({
         logger: defaultLogger,
         overrides: {
@@ -134,7 +134,7 @@ describe('createRateLimiter', () => {
       })
       const key = randomUUID()
 
-      for (let i = 0; i < 9; i++) {
+      for (let i = 0; i < 4; i++) {
         await limiter.check({ key })
       }
       const info = await limiter.check({ key })
