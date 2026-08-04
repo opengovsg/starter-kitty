@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "vitepress dev",
-    "build:docs": "vitepress build",
+    "build:docs": "api-documenter markdown --input-folder ../../temp/ --output-folder ./api/ && vitepress build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "preview": "vitepress preview"
@@ -16,6 +16,9 @@
   "devDependencies": {
     "vitepress": "^1.6.4",
     "vue": "~3.4.31",
+    "@opengovsg/logging": "workspace:*",
+    "@opengovsg/rate-limit": "workspace:*",
+    "@opengovsg/testcontainers": "workspace:*",
     "@opengovsg/validators": "workspace:*"
   },
   "prettier": "@opengovsg/prettier-config-starter-kitty"

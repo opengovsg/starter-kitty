@@ -54,6 +54,15 @@ importers:
 
   apps/docs:
     devDependencies:
+      '@opengovsg/logging':
+        specifier: workspace:*
+        version: link:../../packages/logging
+      '@opengovsg/rate-limit':
+        specifier: workspace:*
+        version: link:../../packages/rate-limit
+      '@opengovsg/testcontainers':
+        specifier: workspace:*
+        version: link:../../packages/testcontainers
       '@opengovsg/validators':
         specifier: workspace:*
         version: link:../../packages/validators
