@@ -3,9 +3,9 @@
 A framework-agnostic rate-limiting core built on
 [rate-limiter-flexible](https://github.com/animir/node-rate-limiter-flexible).
 Counters live in an injected Redis ([ioredis](https://github.com/redis/ioredis))
-client so limits are shared across replicas, with an in-memory insurance
-limiter keeping enforcement alive through Redis outages — and a memory-only
-fallback when no client is configured at all.
+client so limits are shared across replicas. An in-memory insurance limiter
+keeps enforcement alive through Redis outages, and the limiter runs
+memory-only when no client is configured at all.
 
 The package reads **no environment variables** of its own and depends on no
 HTTP framework. `ioredis` is an optional peer dependency. Install it only if
@@ -43,8 +43,10 @@ export const globalRateLimiter = createGlobalRateLimiter({ client: redis, logger
 export const localRateLimiter = createLocalRateLimiter({ client: redis, logger })
 ```
 
-When `client` is omitted, the limiter runs on in-memory counters. This is suitable for tests and local development. However, as limits are
-per-instance and not shared across replicas, this is not suitable for a production use case.
+When `client` is omitted, the limiter runs on in-memory counters at the
+`fallback` allowance, not the steady limits. This is suitable for tests and
+local development. However, as limits are per-instance and not shared across
+replicas, it is not suitable for production.
 
 ## Checking limits
 
@@ -58,8 +60,8 @@ await localRateLimiter.check({
   // A normalized route identity (route template or procedure name), never
   // the raw URL: raw URLs give every parameter value its own bucket.
   resource: 'bookings.create',
-  // Optional request-scoped logger: request errors (an unexpected store
-  // error) then carry this request's identity.
+  // Optional request-scoped logger so request diagnostics (an unexpected
+  // store error) carry this request's identity.
   logger: req.log,
 })
 ```
@@ -69,7 +71,7 @@ on the deployment's trusted-proxy configuration. Pass the same trusted value
 your app uses for request logging. Do not accept forwarding headers from
 untrusted clients.
 
-`actor` is caller-defined: a user ID, an API-key ID. `check` throws
+`actor` is caller-defined: a user ID or an API-key ID. `check` throws
 `RateLimitExceededError` when the allowance is exhausted. Any other error is
 reported via the per-call `logger`'s `error` method (falling back to the
 factory `logger`) and rethrown, so failing open or closed stays your decision.
@@ -97,17 +99,51 @@ and `toHttpHeaders` instead.
 
 ## Configuration
 
-Every limiter accepts `overrides` of shape:
+Every limiter accepts `overrides` of the shape below. Defaults shown are for
+`createRateLimiter`:
 
-| Field      | Default                          | Meaning                                                                 |
-| ---------- | -------------------------------- | ----------------------------------------------------------------------- |
-| `points`   | `50`                             | Consumption points per steady window                                    |
-| `duration` | `10`                             | Steady window in seconds                                                |
-| `burst`    | `{ points: 20, duration: 30 }`   | Extra short-lived allowance (omit to inherit, `null` to disable)        |
-| `prefix`   | `'api'` / `'global'` / `'local'` | Namespace segment isolating this limiter's counters in the shared store |
+| Field      | Default                        | Meaning                                                                 |
+| ---------- | ------------------------------ | ----------------------------------------------------------------------- |
+| `points`   | `50`                           | Consumption points per steady window                                    |
+| `duration` | `10`                           | Steady window in seconds                                                |
+| `burst`    | `{ points: 20, duration: 30 }` | Extra short-lived allowance, `null` to disable                          |
+| `fallback` | `{ points: 5, duration: 1 }`   | Independent in-memory allowance while degraded                          |
+| `prefix`   | `'api'`                        | Namespace segment isolating this limiter's counters in the shared store |
+
+`createGlobalRateLimiter` changes every default:
+
+| Field      | Default                       |
+| ---------- | ----------------------------- |
+| `points`   | `100`                         |
+| `duration` | `1`                           |
+| `burst`    | `null`                        |
+| `fallback` | `{ points: 10, duration: 1 }` |
+| `prefix`   | `'global'`                    |
+
+`createLocalRateLimiter` changes only the prefix:
+
+| Field    | Default   |
+| -------- | --------- |
+| `prefix` | `'local'` |
 
 Configuration is fixed at creation. A route that needs different limits
 creates its own limiter with its own `overrides`.
+
+```ts
+const reportRateLimiter = createLocalRateLimiter({
+  client: redis,
+  logger,
+  overrides: {
+    points: 5,
+    duration: 60,
+    burst: { points: 10, duration: 15 },
+    fallback: { points: 5, duration: 60 },
+  },
+})
+```
+
+Fallback is independent of the primary window. Omit `fallback` to keep the
+factory default. An override must provide both `points` and `duration`.
 
 Store keys live under `rate-limit:<prefix>:` (steady) and
 `rate-limit-burst:<prefix>:` (burst).

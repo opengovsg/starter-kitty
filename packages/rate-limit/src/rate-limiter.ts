@@ -23,6 +23,10 @@ const validateConfig = (config: RequiredRateLimitConfig, logger: Logger): Requir
           duration: clamp(config.burst.duration),
         }
       : null,
+    fallback: {
+      points: clamp(config.fallback.points),
+      duration: clamp(config.fallback.duration),
+    },
     prefix: config.prefix,
   }
 
@@ -42,6 +46,26 @@ const validateConfig = (config: RequiredRateLimitConfig, logger: Logger): Requir
       context: {
         value: config.duration,
         clamped: validated.duration,
+        prefix: config.prefix,
+      },
+    })
+  }
+  if (validated.fallback.points !== config.fallback.points) {
+    logger.warn({
+      message: 'Rate limit fallback points was clamped',
+      context: {
+        value: config.fallback.points,
+        clamped: validated.fallback.points,
+        prefix: config.prefix,
+      },
+    })
+  }
+  if (validated.fallback.duration !== config.fallback.duration) {
+    logger.warn({
+      message: 'Rate limit fallback duration was clamped',
+      context: {
+        value: config.fallback.duration,
+        clamped: validated.fallback.duration,
         prefix: config.prefix,
       },
     })
@@ -119,22 +143,24 @@ const buildLimiter = (
   client: RedisClient | null,
   logger: Logger,
 ): RateLimiterAbstract | BurstyRateLimiter => {
-  const { points, duration, burst } = config
-  const steadyMemoryLimiter = new RateLimiterMemory({ points, duration })
-  const burstMemoryLimiter = burst
-    ? new RateLimiterMemory({
-        points: burst.points,
-        duration: burst.duration,
-      })
-    : null
+  const { points, duration, burst, fallback } = config
+
+  const memory = new RateLimiterMemory({
+    points: fallback.points,
+    duration: fallback.duration,
+  })
 
   if (!client) {
-    logger.warn({
+    logger.error({
       message:
-        'No Redis client configured, using in-memory rate limiting. Limits are per-instance and not shared across replicas.',
-      context: { prefix: config.prefix },
+        'No Redis client configured, using in-memory rate limiting at the fallback allowance. Limits are per-instance and not shared across replicas.',
+      context: {
+        prefix: config.prefix,
+        fallbackPoints: fallback.points,
+        fallbackDuration: fallback.duration,
+      },
     })
-    return burstMemoryLimiter ? new BurstyRateLimiter(steadyMemoryLimiter, burstMemoryLimiter) : steadyMemoryLimiter
+    return memory
   }
 
   const steady = new RateLimiterRedis({
@@ -143,11 +169,12 @@ const buildLimiter = (
     points,
     duration,
     keyPrefix: `${STEADY_NAMESPACE}${config.prefix}:`,
-    insuranceLimiter: steadyMemoryLimiter,
+    insuranceLimiter: memory,
   })
-  if (!burst || !burstMemoryLimiter) {
+  if (!burst) {
     return steady
   }
+
   return new BurstyRateLimiter(
     steady,
     new RateLimiterRedis({
@@ -156,7 +183,14 @@ const buildLimiter = (
       points: burst.points,
       duration: burst.duration,
       keyPrefix: `${BURST_NAMESPACE}${config.prefix}:`,
-      insuranceLimiter: burstMemoryLimiter,
+      /**
+       * No burst during Redis outage, but we put a fallback to continue
+       * throwing `{@link RateLimitExceededError}` instead.
+       */
+      insuranceLimiter: new RateLimiterMemory({
+        points: 0,
+        duration: burst.duration,
+      }),
     }),
   )
 }

@@ -7,6 +7,7 @@ export const BASE_RATE_LIMIT_DEFAULTS = {
   points: 50,
   duration: 10,
   burst: { points: 20, duration: 30 },
+  fallback: { points: 5, duration: 1 },
   prefix: 'api',
 }
 
@@ -18,6 +19,7 @@ export const GLOBAL_RATE_LIMIT_DEFAULTS = {
   points: 100,
   duration: 1,
   burst: null,
+  fallback: { points: 10, duration: 1 },
   prefix: 'global',
 }
 

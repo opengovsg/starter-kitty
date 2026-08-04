@@ -7,8 +7,8 @@ import { createGlobalRateLimiter, createLocalRateLimiter, type Logger, RateLimit
 
 const uniquePrefix = () => `test-${randomUUID()}`
 
-// A Logger stub whose `warn` and `error` methods are vitest mocks, for
-// asserting which log reached which logger.
+// A Logger stub whose `warn`/`error` methods are vitest mocks, for asserting
+// which diagnostics reached which logger.
 const createLoggerStub = () => {
   const warn = vi.fn<Logger['warn']>()
   const error = vi.fn<Logger['error']>()
@@ -21,7 +21,12 @@ describe('createGlobalRateLimiter', () => {
   it('keys purely by IP, isolating distinct clients', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: '1.2.3.4' })
@@ -34,7 +39,12 @@ describe('createGlobalRateLimiter', () => {
   it('buckets IPv6 addresses by /64 prefix', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: '2001:db8:85a3:1::1' })
@@ -49,7 +59,12 @@ describe('createGlobalRateLimiter', () => {
   it('normalizes equivalent IPv6 spellings into one bucket', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: '2001:db8::1' })
@@ -60,7 +75,12 @@ describe('createGlobalRateLimiter', () => {
   it('keys a compressed spelling whose tail reaches into the /64 prefix identically to its expanded form', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     // `::` here compresses a single zero group inside the first four groups,
@@ -72,7 +92,12 @@ describe('createGlobalRateLimiter', () => {
   it('ignores IPv6 zone IDs, which never occupy the /64 prefix', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: 'fe80::1%eth0' })
@@ -82,7 +107,12 @@ describe('createGlobalRateLimiter', () => {
   it('normalizes IPv4-mapped IPv6 spellings to their embedded IPv4 address', async () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 2, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 2,
+        duration: 10,
+        fallback: { points: 2, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: '1.2.3.4' })
@@ -94,7 +124,12 @@ describe('createGlobalRateLimiter', () => {
     const requestLogger = createLoggerStub()
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: 'not-an-ip', logger: requestLogger })
@@ -113,7 +148,12 @@ describe('createGlobalRateLimiter', () => {
     const requestLogger = createLoggerStub()
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: invalidIp, logger: requestLogger })
@@ -134,7 +174,12 @@ describe('createGlobalRateLimiter', () => {
       const requestLogger = createLoggerStub()
       const limiter = createGlobalRateLimiter({
         logger: defaultLogger,
-        overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+        overrides: {
+          points: 1,
+          duration: 10,
+          fallback: { points: 1, duration: 10 },
+          prefix: uniquePrefix(),
+        },
       })
 
       // @ts-expect-error simulates a JavaScript caller with no type checking.
@@ -154,7 +199,12 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       skipKeyNormalization: true,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: undefined, logger: requestLogger })
@@ -171,7 +221,12 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       skipKeyNormalization: true,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: 'not-an-ip', logger: requestLogger })
@@ -184,29 +239,18 @@ describe('createGlobalRateLimiter', () => {
     const limiter = createGlobalRateLimiter({
       logger: defaultLogger,
       skipKeyNormalization: true,
-      overrides: { points: 1, duration: 10, prefix: uniquePrefix() },
+      overrides: {
+        points: 1,
+        duration: 10,
+        fallback: { points: 1, duration: 10 },
+        prefix: uniquePrefix(),
+      },
     })
 
     await limiter.check({ ip: '2001:db8::1' })
     await expect(limiter.check({ ip: '2001:db8::2' })).resolves.toMatchObject({
       points: { remaining: 0 },
     })
-  })
-
-  it('defaults to 100 points per second with no burst', async () => {
-    const limiter = createGlobalRateLimiter({
-      logger: defaultLogger,
-      overrides: { prefix: uniquePrefix() },
-    })
-    const ip = `10.0.0.${Math.floor(Math.random() * 255)}`
-
-    const first = await limiter.check({ ip })
-    expect(first.points.remaining).toBe(99)
-
-    for (let i = 0; i < 99; i++) {
-      await limiter.check({ ip })
-    }
-    await expect(limiter.check({ ip })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
 
   it('forwards a per-check logger through to the underlying limiter', async () => {
@@ -243,6 +287,7 @@ describe('createLocalRateLimiter', () => {
         points: 1,
         duration: 10,
         burst: null,
+        fallback: { points: 1, duration: 10 },
         prefix: uniquePrefix(),
       },
     })
@@ -262,6 +307,7 @@ describe('createLocalRateLimiter', () => {
         points: 1,
         duration: 10,
         burst: null,
+        fallback: { points: 1, duration: 10 },
         prefix: uniquePrefix(),
       },
     })

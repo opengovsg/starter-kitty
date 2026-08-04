@@ -8,7 +8,9 @@
  * be composed with a short burst allowance to absorb legitimate spikes.
  *
  * {@link createGlobalRateLimiter} guards pre-authentication traffic by client
- * IP. {@link createLocalRateLimiter} enforces per-actor, per-resource quotas
+ * IP.
+ *
+ * {@link createLocalRateLimiter} enforces per-actor, per-resource quotas
  * for identified traffic.
  *
  * {@link createRateLimiter} exposes the underlying core for anything else.
@@ -26,6 +28,7 @@ export { createRateLimiter } from './rate-limiter.js'
 export type {
   BurstConfig,
   CreateRateLimiterOptions,
+  FallbackConfig,
   Logger,
   RateLimitConfig,
   RateLimitInfo,

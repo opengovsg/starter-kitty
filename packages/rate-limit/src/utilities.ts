@@ -47,12 +47,16 @@ export const clamp = (value: number): number => {
 }
 
 /**
- * Merge a partial config over a resolved base. Omitted `burst`
+ * Merge a partial config over a base config. Omitted `burst` and `fallback`
  * values inherit the base's. An explicit `null` disables bursting.
  */
 export const mergeConfig = (base: RequiredRateLimitConfig, override?: RateLimitConfig): RequiredRateLimitConfig => ({
   points: override?.points ?? base.points,
   duration: override?.duration ?? base.duration,
   burst: override?.burst !== undefined ? override.burst : base.burst,
+  fallback: {
+    points: override?.fallback?.points ?? base.fallback.points,
+    duration: override?.fallback?.duration ?? base.fallback.duration,
+  },
   prefix: override?.prefix ?? base.prefix,
 })

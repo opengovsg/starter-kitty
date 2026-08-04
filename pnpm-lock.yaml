@@ -164,6 +164,9 @@ importers:
       '@opengovsg/prettier-config-starter-kitty':
         specifier: workspace:*
         version: link:../prettier-config
+      '@opengovsg/testcontainers':
+        specifier: workspace:*
+        version: link:../testcontainers
       '@swc/core':
         specifier: ^1.6.13
         version: 1.6.13
@@ -173,12 +176,18 @@ importers:
       ioredis:
         specifier: ^5.8.2
         version: 5.11.1
+      testcontainers:
+        specifier: ^12.0.4
+        version: 12.0.4
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
         version: 4.1.0(@types/node@20.19.24)(vite@7.3.6(@types/node@20.19.24)(yaml@2.4.5))
+      zod:
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.3.6
 
   packages/testcontainers:
     devDependencies:
