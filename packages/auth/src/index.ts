@@ -12,6 +12,6 @@
  */
 
 export { OTP_DEFAULTS } from './otp/constants.js'
-export type { OtpVerificationErrorCode } from './otp/errors.js'
+export type { OtpResult, OtpVerificationErrorCode } from './otp/errors.js'
 export { OtpVerificationError } from './otp/errors.js'
 export { createPkceChallenge, createPkceVerifier, isValidCodeChallenge } from './pkce/index.js'

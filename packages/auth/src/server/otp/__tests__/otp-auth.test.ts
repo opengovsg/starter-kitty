@@ -2,9 +2,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { OtpVerificationError } from '../../../otp/errors.js'
 import { createPkceChallenge, createPkceVerifier } from '../../../pkce/index.js'
+import type { OtpResult, SendOtp, VerificationTokenStore } from '../index.js'
 import { createOtpAuth } from '../index.js'
-import type { SendOtp, VerificationTokenStore } from '../types.js'
 import { createInMemoryStore } from './in-memory-store.js'
+
+function expectFailure<T>(result: OtpResult<T>): OtpVerificationError {
+  if (result.success) {
+    throw new Error('expected a failed OtpResult, got a successful one')
+  }
+  return result.error
+}
+
+function expectSuccess<T>(result: OtpResult<T>): T {
+  if (!result.success) {
+    throw new Error(`expected a successful OtpResult, got error code: ${result.error.code}`)
+  }
+  return result.data
+}
 
 describe('createOtpAuth', () => {
   let sendOtp: ReturnType<typeof vi.fn> & SendOtp
@@ -34,14 +48,14 @@ describe('createOtpAuth', () => {
     const codeVerifier = createPkceVerifier()
     const codeChallenge = await createPkceChallenge(codeVerifier)
 
-    const result = await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge })
+    const data = expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
 
-    expect(Object.keys(result)).toEqual(['otpPrefix'])
+    expect(Object.keys(data)).toEqual(['otpPrefix'])
     expect(sendOtp).toHaveBeenCalledTimes(1)
     const call = lastSent()
     expect(call.email).toBe('a@example.com')
     expect(call.otp).toHaveLength(8)
-    expect(call.otpPrefix).toBe(result.otpPrefix)
+    expect(call.otpPrefix).toBe(data.otpPrefix)
   })
 
   it('rejects re-issuing for the same email + codeChallenge', async () => {
@@ -49,10 +63,9 @@ describe('createOtpAuth', () => {
     const codeVerifier = createPkceVerifier()
     const codeChallenge = await createPkceChallenge(codeVerifier)
 
-    await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge })
-    await expect(otpAuth.issueOtp({ email: 'a@example.com', codeChallenge })).rejects.toMatchObject({
-      code: 'invalid',
-    })
+    expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
+    const error = expectFailure(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
+    expect(error.code).toBe('invalid')
   })
 
   it('allows distinct challenges for the same email', async () => {
@@ -60,63 +73,61 @@ describe('createOtpAuth', () => {
     const c1 = await createPkceChallenge(createPkceVerifier())
     const c2 = await createPkceChallenge(createPkceVerifier())
 
-    await expect(otpAuth.issueOtp({ email: 'a@example.com', codeChallenge: c1 })).resolves.toBeDefined()
-    await expect(otpAuth.issueOtp({ email: 'a@example.com', codeChallenge: c2 })).resolves.toBeDefined()
+    expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge: c1 }))
+    expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge: c2 }))
   })
 
   it('verifies a correct token and consumes the record', async () => {
     const otpAuth = build()
     const codeVerifier = createPkceVerifier()
     const codeChallenge = await createPkceChallenge(codeVerifier)
-    await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge })
+    expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
     const { otp } = lastSent()
 
-    const result = await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier })
-    expect(result).toEqual({ email: 'a@example.com' })
+    const data = expectSuccess(await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier }))
+    expect(data).toEqual({ email: 'a@example.com' })
 
     // Consumed: a second verify with the same (now-deleted) record fails.
-    await expect(otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier })).rejects.toMatchObject({
-      code: 'not_found',
-    })
+    const error = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier }))
+    expect(error.code).toBe('not_found')
   })
 
   it('rejects a wrong token', async () => {
     const otpAuth = build()
     const codeVerifier = createPkceVerifier()
     const codeChallenge = await createPkceChallenge(codeVerifier)
-    await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge })
+    expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
 
-    await expect(otpAuth.verifyOtp({ email: 'a@example.com', token: 'WRONGWR', codeVerifier })).rejects.toMatchObject({
-      code: 'invalid',
-    })
+    const error = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: 'WRONGWRO', codeVerifier }))
+    expect(error.code).toBe('invalid')
   })
 
   it('rejects a mismatched verifier (wrong session)', async () => {
     const otpAuth = build()
     const codeVerifier = createPkceVerifier()
     const codeChallenge = await createPkceChallenge(codeVerifier)
-    await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge })
+    expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
     const { otp } = lastSent()
 
-    await expect(
-      otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier: createPkceVerifier() }),
-    ).rejects.toMatchObject({ code: 'not_found' })
+    const error = expectFailure(
+      await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier: createPkceVerifier() }),
+    )
+    expect(error.code).toBe('not_found')
   })
 
-  it('rejects an expired OTP and clamps expiry to the minimum', async () => {
+  it('rejects an expired OTP (otpExpirySeconds is unclamped)', async () => {
     vi.useFakeTimers()
     try {
-      const otpAuth = build({ otpExpirySeconds: 1 }) // clamped up to the 60s minimum
+      const otpAuth = build({ otpExpirySeconds: 1 })
       const codeVerifier = createPkceVerifier()
       const codeChallenge = await createPkceChallenge(codeVerifier)
-      await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge })
+      expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
       const { otp } = lastSent()
 
-      vi.advanceTimersByTime(61_000)
+      vi.advanceTimersByTime(1_001)
 
-      await expect(otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier })).rejects.toMatchObject({
-        code: 'expired',
-      })
+      const error = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier }))
+      expect(error.code).toBe('expired')
     } finally {
       vi.useRealTimers()
     }
@@ -126,18 +137,16 @@ describe('createOtpAuth', () => {
     const otpAuth = build({ maxAttempts: 0 }) // clamped up to 1
     const codeVerifier = createPkceVerifier()
     const codeChallenge = await createPkceChallenge(codeVerifier)
-    await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge })
+    expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
     const { otp } = lastSent()
 
     // First attempt (attempts becomes 1, within the clamped cap of 1) — wrong token.
-    await expect(otpAuth.verifyOtp({ email: 'a@example.com', token: 'WRONGWR', codeVerifier })).rejects.toMatchObject({
-      code: 'invalid',
-    })
+    const first = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: 'WRONGWRO', codeVerifier }))
+    expect(first.code).toBe('invalid')
 
     // Second attempt (attempts becomes 2, exceeds the cap) — even the correct token is locked out.
-    await expect(otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier })).rejects.toMatchObject({
-      code: 'too_many_attempts',
-    })
+    const second = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier }))
+    expect(second.code).toBe('too_many_attempts')
   })
 
   it('maps a losing race on consume to token_reused', async () => {
@@ -160,22 +169,53 @@ describe('createOtpAuth', () => {
     const otpAuth = build({ store: raceLostStore })
     const codeVerifier = createPkceVerifier()
     const codeChallenge = await createPkceChallenge(codeVerifier)
-    await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge })
+    expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
     const { otp } = lastSent()
 
-    await expect(otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier })).rejects.toMatchObject({
-      code: 'token_reused',
-    })
+    const error = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier }))
+    expect(error.code).toBe('token_reused')
+  })
+
+  it('catches an unexpected store failure instead of throwing', async () => {
+    const brokenStore: VerificationTokenStore = {
+      create() {
+        return Promise.reject(new Error('connection refused'))
+      },
+      incrementAttempts() {
+        return Promise.reject(new Error('connection refused'))
+      },
+      consume() {
+        return Promise.reject(new Error('connection refused'))
+      },
+    }
+    const otpAuth = build({ store: brokenStore })
+    const codeChallenge = await createPkceChallenge(createPkceVerifier())
+
+    const result = await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge })
+
+    expect(result.success).toBe(false)
+    const error = expectFailure(result)
+    expect(error.code).toBe('unexpected')
+    expect(error.message).toBe('Invalid or expired authentication session')
+    expect(error.cause).toBeInstanceOf(Error)
+    expect((error.cause as Error).message).toBe('connection refused')
+  })
+
+  it('catches an unexpected sendOtp failure instead of throwing', async () => {
+    const failingSendOtp: SendOtp = () => Promise.reject(new Error('SMTP down'))
+    const otpAuth = createOtpAuth({ store: createInMemoryStore(), sendOtp: failingSendOtp })
+    const codeChallenge = await createPkceChallenge(createPkceVerifier())
+
+    const error = expectFailure(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
+    expect(error.code).toBe('unexpected')
   })
 
   it('every error carries the same generic message', async () => {
     const otpAuth = build()
-    try {
-      await otpAuth.verifyOtp({ email: 'nobody@example.com', token: 'XXXXXXXX', codeVerifier: createPkceVerifier() })
-      expect.fail('expected verifyOtp to throw')
-    } catch (error) {
-      expect(error).toBeInstanceOf(OtpVerificationError)
-      expect((error as OtpVerificationError).message).toBe('Invalid or expired authentication session')
-    }
+    const error = expectFailure(
+      await otpAuth.verifyOtp({ email: 'nobody@example.com', token: 'XXXXXXXX', codeVerifier: createPkceVerifier() }),
+    )
+    expect(error).toBeInstanceOf(OtpVerificationError)
+    expect(error.message).toBe('Invalid or expired authentication session')
   })
 })

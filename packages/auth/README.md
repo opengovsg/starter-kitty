@@ -38,13 +38,21 @@ does not resolve in a browser bundle.
    and sends `{ email, codeChallenge }` to the server.
 2. **Server** calls `issueOtp({ email, codeChallenge })`, which mints an OTP,
    hands it to your `sendOtp` callback (email, SMS, whatever you use), and
-   returns `{ otpPrefix }` — a confirmation value, **never the OTP itself**.
+   resolves to `{ success: true, data: { otpPrefix } }` — `otpPrefix` is a
+   confirmation value, **never the OTP itself**.
 3. **Client** submits `{ email, token, codeVerifier }` (the plain verifier
    from step 1, plus the OTP the user typed in).
 4. **Server** calls `verifyOtp({ email, token, codeVerifier })`, which
    re-derives the challenge, checks expiry, attempt count, and the hash, and
-   returns `{ email }` on success. Session creation and user
-   upsert/account-linking are your app's job, not this package's.
+   resolves to `{ success: true, data: { email } }` on success. Session
+   creation and user upsert/account-linking are your app's job, not this
+   package's.
+
+Neither `issueOtp` nor `verifyOtp` ever throws — both resolve to an
+`OtpResult<T>`, in the shape of [Zod's `safeParse`](https://zod.dev/?id=safeparse):
+`{ success: true, data: T } | { success: false, error: OtpVerificationError }`.
+Check `result.success` (it narrows the type) instead of wrapping calls in
+`try`/`catch`.
 
 ```ts
 // server: src/otp-auth.ts
@@ -61,9 +69,20 @@ export const otpAuth = createOtpAuth({
 
 ```ts
 // server: a login and a verify handler
-const { otpPrefix } = await otpAuth.issueOtp({ email, codeChallenge })
+const issued = await otpAuth.issueOtp({ email, codeChallenge })
+if (!issued.success) {
+  return res.status(400).json({ message: issued.error.message })
+}
+const { otpPrefix } = issued.data
+
 // ...
-const { email } = await otpAuth.verifyOtp({ email, token, codeVerifier })
+
+const verified = await otpAuth.verifyOtp({ email, token, codeVerifier })
+if (!verified.success) {
+  const status = verified.error.code === 'too_many_attempts' ? 429 : 401
+  return res.status(status).json({ message: verified.error.message })
+}
+const { email } = verified.data
 // create your session / upsert the user here
 ```
 
@@ -92,19 +111,12 @@ async function submitOtp(email: string, token: string, codeChallenge: string) {
 ## Handling verification failures
 
 ```ts
-import { OtpVerificationError } from '@opengovsg/auth/otp'
-
-try {
-  await otpAuth.verifyOtp({ email, token, codeVerifier })
-} catch (error) {
-  if (error instanceof OtpVerificationError) {
-    if (error.code === 'too_many_attempts') {
-      return res.status(429).json({ message: error.message })
-    }
-    return res.status(401).json({ message: error.message })
-  }
-  throw error
+const result = await otpAuth.verifyOtp({ email, token, codeVerifier })
+if (!result.success) {
+  const status = result.error.code === 'too_many_attempts' ? 429 : 401
+  return res.status(status).json({ message: result.error.message })
 }
+const { email } = result.data
 ```
 
 Every `OtpVerificationError` carries the same generic `message` regardless of
@@ -113,17 +125,33 @@ choosing an HTTP status), but never show the user a distinct message per
 `code`. Doing so lets an attacker enumerate emails or learn which
 verification step they passed.
 
-`code` is one of `not_found | expired | too_many_attempts | invalid |
-token_reused`. `token_reused` means a concurrent verification already
-consumed the record — treat it as a failure like any other; it is not a
-race your app needs to retry.
+`code` is one of:
+
+| Code                | Meaning                                                        |
+| ------------------- | -------------------------------------------------------------- |
+| `not_found`         | No matching record (wrong email/verifier, or already consumed) |
+| `expired`           | The OTP's `otpExpirySeconds` window has passed                 |
+| `too_many_attempts` | `maxAttempts` exceeded for this record                         |
+| `invalid`           | Wrong OTP, or `issueOtp` hit a `'conflict'` from the store     |
+| `token_reused`      | A concurrent `verifyOtp` already consumed this record          |
+| `unexpected`        | Your injected `store` or `sendOtp` threw — see `error.cause`   |
+
+`token_reused` means a concurrent verification already consumed the record —
+treat it as a failure like any other; it is not a race your app needs to
+retry. `unexpected` is the one code that isn't an OTP outcome: it means your
+own storage or mail-sending code threw, and the original error is attached
+as `error.cause` for logging (never surfaced in `error.message`).
 
 ## Writing a `VerificationTokenStore`
 
 There is no shipped store — persistence is your app's job. The interface is
 three methods, all of which must be atomic operations at the database level
 (not read-then-write), since that atomicity is what makes the attempt cap and
-one-time-use guarantees hold under concurrent requests:
+one-time-use guarantees hold under concurrent requests. Feel free to let a
+genuine infrastructure failure (a dropped connection, for instance) throw —
+`issueOtp`/`verifyOtp` catch it and surface it as
+`{ success: false, error }` with `error.code === 'unexpected'` rather than
+letting it propagate:
 
 ```ts
 import type { VerificationTokenStore } from '@opengovsg/auth/server/otp'
@@ -201,14 +229,14 @@ export const verificationTokenStore: VerificationTokenStore = {
 
 ## Configuration
 
-`createOtpAuth` accepts, all clamped to the ranges below:
+`createOtpAuth` accepts:
 
-| Option             | Default        | Clamped range |
-| ------------------ | -------------- | ------------- |
-| `otpLength`        | `8`            | 6-12          |
-| `otpExpirySeconds` | `600` (10 min) | 60-1800       |
-| `maxAttempts`      | `5`            | 1-10          |
-| `otpPrefixLength`  | `3`            | 2-6           |
+| Option             | Default | Clamped range                                            |
+| ------------------ | ------- | -------------------------------------------------------- |
+| `otpLength`        | `8`     | Minimum 8, no maximum — longer is only ever more secure  |
+| `otpExpirySeconds` | `60`    | Not clamped — no direction is unconditionally safer here |
+| `maxAttempts`      | `5`     | 1-10                                                     |
+| `otpPrefixLength`  | `3`     | 2-6                                                      |
 
 The PKCE verifier length is fixed at 128 (the RFC 7636 maximum) and is not
 configurable — shorter is strictly worse, and there's no scenario where

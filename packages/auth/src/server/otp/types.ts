@@ -1,3 +1,5 @@
+import type { OtpResult } from '../../otp/errors.js'
+
 /**
  * Storage for OTP verification records, injected into {@link createOtpAuth}.
  *
@@ -63,12 +65,14 @@ export interface CreateOtpAuthOptions {
   sendOtp: SendOtp
   /**
    * OTP length in characters, from a 32-character unambiguous alphabet.
-   * Clamped to 6-12. Defaults to 8.
+   * Clamped to a minimum of 8 (no maximum — longer is only ever more
+   * secure). Defaults to 8.
    */
   otpLength?: number
   /**
-   * How long an issued OTP remains valid, in seconds. Clamped to 60-1800
-   * (1-30 minutes). Defaults to 600 (10 minutes).
+   * How long an issued OTP remains valid, in seconds. Not clamped — unlike
+   * OTP length, no direction is unconditionally safer, so this is left
+   * entirely to your risk profile. Defaults to 60 (1 minute).
    */
   otpExpirySeconds?: number
   /**
@@ -87,7 +91,10 @@ export interface CreateOtpAuthOptions {
 }
 
 /**
- * The OTP issue/verify pair returned by {@link createOtpAuth}.
+ * The OTP issue/verify pair returned by {@link createOtpAuth}. Neither
+ * function ever throws — both resolve to an {@link OtpResult}, in the shape
+ * of Zod's `safeParse`. Check `result.success` (or use it as a type guard)
+ * rather than wrapping calls in `try`/`catch`.
  *
  * @public
  */
@@ -96,25 +103,28 @@ export interface OtpAuth {
    * Issue a new OTP for `email`, bound to `codeChallenge` (see
    * `@opengovsg/auth/pkce`), and hand it to `sendOtp` for delivery.
    *
-   * Returns only `otpPrefix` — a confirmation value, not the OTP itself. The
-   * plain OTP is never in this function's return value; it exists only as
-   * an argument to `sendOtp`.
+   * On success, `data` is only `{ otpPrefix }` — a confirmation value, not
+   * the OTP itself. The plain OTP is never in this function's return value;
+   * it exists only as an argument to `sendOtp`.
    *
-   * Throws whatever `store.create` or `sendOtp` throw. A `'conflict'` from
-   * the store (this `codeChallenge` was already used for this `email`) is
-   * surfaced as an `OtpVerificationError` with code `'invalid'`.
+   * A `'conflict'` from the store (this `codeChallenge` was already used
+   * for this `email`) surfaces as `error.code === 'invalid'`. If `store`
+   * or `sendOtp` throws, that is caught and surfaced as
+   * `error.code === 'unexpected'` with `error.cause` set to what was
+   * thrown — this function itself still never throws.
    */
-  issueOtp(args: { email: string; codeChallenge: string }): Promise<{ otpPrefix: string }>
+  issueOtp(args: { email: string; codeChallenge: string }): Promise<OtpResult<{ otpPrefix: string }>>
 
   /**
    * Verify a submitted OTP against the record for `email` +
    * `codeVerifier`'s derived challenge, and consume it on success.
    *
-   * Throws {@link OtpVerificationError} for every failure mode: no matching
-   * record, expired, attempt cap exceeded, wrong code, or the record already
-   * consumed by a concurrent request. All carry the same generic message —
+   * On failure, `error.code` is one of: no matching record, expired,
+   * attempt cap exceeded, wrong code, the record already consumed by a
+   * concurrent request, or — if `store` threw — `'unexpected'` (see
+   * {@link OtpResult}). All carry the same generic `error.message` —
    * branch on `error.code`, never show `error.message` verbatim plus a
    * distinct explanation to the end user.
    */
-  verifyOtp(args: { email: string; token: string; codeVerifier: string }): Promise<{ email: string }>
+  verifyOtp(args: { email: string; token: string; codeVerifier: string }): Promise<OtpResult<{ email: string }>>
 }

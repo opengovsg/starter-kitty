@@ -60,16 +60,30 @@ access, which is worse than the bare call it's meant to guard.
   package, gets its own reviewed report rather than silently riding along
   with (or being absent from) the root one.
 
-### One error type with a code discriminant, no logger port
+### A result type, not thrown errors; one error type with a code discriminant
 
-`verifyOtp` throws `OtpVerificationError` for every failure mode
-(`not_found | expired | too_many_attempts | invalid | token_reused`), all
-carrying the identical message `"Invalid or expired authentication session"`.
-Distinct messages per failure let an attacker enumerate emails or learn which
+`issueOtp` and `verifyOtp` never throw. Both resolve to an `OtpResult<T>` —
+`{ success: true, data: T } | { success: false, error: OtpVerificationError }`,
+in the shape of Zod's `safeParse` — so a caller checks `result.success`
+(narrowing the type) instead of wrapping every call in `try`/`catch`. This
+includes failures from the caller's own injected `store` or `sendOtp`: those
+are caught internally and surfaced as `error.code === 'unexpected'` with
+`error.cause` set to whatever was thrown, rather than propagating as an
+exception. A `try`/`catch`-based design was the initial shape but was
+rejected: this package's entire value proposition is that a caller cannot
+get the verify sequence wrong, and a forgettable `try`/`catch` around every
+call site reintroduces exactly the kind of easy-to-omit safety step the
+package exists to remove.
+
+`OtpVerificationError.code` is one of `not_found | expired |
+too_many_attempts | invalid | token_reused | unexpected`, all carrying the
+identical message `"Invalid or expired authentication session"`. Distinct
+messages per failure let an attacker enumerate emails or learn which
 verification step they passed; the `code` exists only for the caller's own
-branching (e.g. `too_many_attempts` → HTTP 429). `token_reused` doubles as
-the package's only audit signal — no logger dependency was added, since the
-error code already tells the caller what to log.
+branching (e.g. `too_many_attempts` → HTTP 429, `unexpected` → log
+`error.cause` and 500). `token_reused` doubles as the package's only audit
+signal — no logger dependency was added, since the error code already tells
+the caller what to log.
 
 ### No zod schemas, no dependency on `@opengovsg/validators`
 
@@ -107,6 +121,9 @@ provider low-value.
   longer something every app must get right independently.
 - The plain OTP is structurally unable to leak through `issueOtp`'s return
   value — it only ever reaches the injected `sendOtp` callback.
+- Callers cannot forget error handling: TypeScript forces a `success` check
+  before `data`/`error` is accessible, and there is no exception path to
+  accidentally leave uncaught.
 - Two API reports (`etc/auth.api.md`, `etc/auth-server.api.md`) must both be
   regenerated (`pnpm build:report`) when either entry point's public surface
   changes.

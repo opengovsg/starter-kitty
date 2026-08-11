@@ -16,19 +16,36 @@ export function isValidCodeChallenge(codeChallenge: string): boolean;
 // @public
 export const OTP_DEFAULTS: {
     readonly otpLength: 8;
-    readonly otpExpirySeconds: 600;
+    readonly otpExpirySeconds: 60;
     readonly maxAttempts: 5;
     readonly otpPrefixLength: 3;
 };
 
 // @public
+export type OtpResult<T> = {
+    success: true;
+    data: T;
+} | {
+    success: false;
+    error: OtpVerificationError;
+};
+
+// @public
 export class OtpVerificationError extends Error {
-    constructor(code: OtpVerificationErrorCode);
+    constructor(code: OtpVerificationErrorCode, options?: {
+        cause?: unknown;
+    });
     // (undocumented)
     readonly code: OtpVerificationErrorCode;
 }
 
 // @public
-export type OtpVerificationErrorCode = 'not_found' | 'expired' | 'too_many_attempts' | 'invalid' | 'token_reused';
+export type OtpVerificationErrorCode = 'not_found' | 'expired' | 'too_many_attempts' | 'invalid' | 'token_reused'
+/**
+* Your injected `store` or `sendOtp` threw. The original error is on
+* {@link OtpVerificationError.cause}, for logging — it is never part of
+* `message`, which stays the same generic string as every other code.
+*/
+| 'unexpected';
 
 ```

@@ -15,7 +15,6 @@ import {
   MAX_ATTEMPTS_RANGE,
   OTP_ALPHABET,
   OTP_DEFAULTS,
-  OTP_EXPIRY_SECONDS_RANGE,
   OTP_LENGTH_RANGE,
   OTP_PREFIX_ALPHABET,
   OTP_PREFIX_LENGTH_RANGE,
@@ -26,13 +25,22 @@ import { createIdentifier, hashToken, isValidTokenHash } from './hashing.js'
 import type { CreateOtpAuthOptions, OtpAuth } from './types.js'
 
 export { OTP_DEFAULTS } from '../../otp/constants.js'
-export type { OtpVerificationErrorCode } from '../../otp/errors.js'
+export type { OtpResult, OtpVerificationErrorCode } from '../../otp/errors.js'
 export { OtpVerificationError } from '../../otp/errors.js'
 export type { CreateOtpAuthOptions, OtpAuth, SendOtp, VerificationTokenStore } from './types.js'
 
-function clamp(value: number, { min, max }: { min: number; max: number }): number {
-  if (!Number.isFinite(value)) return min
+function clampMin(value: number, min: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback
+  return Math.max(min, Math.trunc(value))
+}
+
+function clampRange(value: number, { min, max }: { min: number; max: number }, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback
   return Math.min(max, Math.max(min, Math.trunc(value)))
+}
+
+function toInt(value: number, fallback: number): number {
+  return Number.isFinite(value) ? Math.trunc(value) : fallback
 }
 
 /**
@@ -41,14 +49,27 @@ function clamp(value: number, { min, max }: { min: number; max: number }): numbe
  * compare, and one-time use — in that order, since reordering any one of
  * them reopens a known attack (see the storage-adapter README section).
  *
+ * Neither returned function ever throws. See {@link OtpResult}.
+ *
  * @public
  */
 export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
   const { store, sendOtp } = options
-  const otpLength = clamp(options.otpLength ?? OTP_DEFAULTS.otpLength, OTP_LENGTH_RANGE)
-  const otpExpirySeconds = clamp(options.otpExpirySeconds ?? OTP_DEFAULTS.otpExpirySeconds, OTP_EXPIRY_SECONDS_RANGE)
-  const maxAttempts = clamp(options.maxAttempts ?? OTP_DEFAULTS.maxAttempts, MAX_ATTEMPTS_RANGE)
-  const otpPrefixLength = clamp(options.otpPrefixLength ?? OTP_DEFAULTS.otpPrefixLength, OTP_PREFIX_LENGTH_RANGE)
+  const otpLength = clampMin(options.otpLength ?? OTP_DEFAULTS.otpLength, OTP_LENGTH_RANGE.min, OTP_DEFAULTS.otpLength)
+  const otpExpirySeconds = toInt(
+    options.otpExpirySeconds ?? OTP_DEFAULTS.otpExpirySeconds,
+    OTP_DEFAULTS.otpExpirySeconds,
+  )
+  const maxAttempts = clampRange(
+    options.maxAttempts ?? OTP_DEFAULTS.maxAttempts,
+    MAX_ATTEMPTS_RANGE,
+    OTP_DEFAULTS.maxAttempts,
+  )
+  const otpPrefixLength = clampRange(
+    options.otpPrefixLength ?? OTP_DEFAULTS.otpPrefixLength,
+    OTP_PREFIX_LENGTH_RANGE,
+    OTP_DEFAULTS.otpPrefixLength,
+  )
 
   const generateOtp = customAlphabet(OTP_ALPHABET, otpLength)
   const generateOtpPrefix = customAlphabet(OTP_PREFIX_ALPHABET, otpPrefixLength)
@@ -57,56 +78,68 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
     return Date.now() - issuedAt.getTime() > otpExpirySeconds * 1000
   }
 
+  function toUnexpected(cause: unknown): OtpVerificationError {
+    return cause instanceof OtpVerificationError ? cause : new OtpVerificationError('unexpected', { cause })
+  }
+
   return {
     async issueOtp({ email, codeChallenge }) {
-      const identifier = createIdentifier(email, codeChallenge)
-      const otp = generateOtp()
-      const otpPrefix = generateOtpPrefix()
-      const hashedToken = hashToken(otp, identifier)
+      try {
+        const identifier = createIdentifier(email, codeChallenge)
+        const otp = generateOtp()
+        const otpPrefix = generateOtpPrefix()
+        const hashedToken = hashToken(otp, identifier)
 
-      const result = await store.create({ identifier, hashedToken, issuedAt: new Date() })
-      if (result === 'conflict') {
-        throw new OtpVerificationError('invalid')
+        const result = await store.create({ identifier, hashedToken, issuedAt: new Date() })
+        if (result === 'conflict') {
+          return { success: false, error: new OtpVerificationError('invalid') }
+        }
+
+        await sendOtp({ email, otp, otpPrefix })
+        return { success: true, data: { otpPrefix } }
+      } catch (cause) {
+        return { success: false, error: toUnexpected(cause) }
       }
-
-      await sendOtp({ email, otp, otpPrefix })
-      return { otpPrefix }
     },
 
     async verifyOtp({ email, token, codeVerifier }) {
-      const codeChallenge = await createPkceChallenge(codeVerifier)
-      const identifier = createIdentifier(email, codeChallenge)
+      try {
+        const codeChallenge = await createPkceChallenge(codeVerifier)
+        const identifier = createIdentifier(email, codeChallenge)
 
-      // Increment before validating anything else: the count must commit
-      // regardless of outcome, or concurrent guesses can each pass the cap
-      // check before any of them is recorded.
-      const record = await store.incrementAttempts(identifier)
-      if (!record) {
-        throw new OtpVerificationError('not_found')
+        // Increment before validating anything else: the count must commit
+        // regardless of outcome, or concurrent guesses can each pass the cap
+        // check before any of them is recorded.
+        const record = await store.incrementAttempts(identifier)
+        if (!record) {
+          return { success: false, error: new OtpVerificationError('not_found') }
+        }
+
+        if (isExpired(record.issuedAt)) {
+          await store.consume(identifier)
+          return { success: false, error: new OtpVerificationError('expired') }
+        }
+
+        if (record.attempts > maxAttempts) {
+          await store.consume(identifier)
+          return { success: false, error: new OtpVerificationError('too_many_attempts') }
+        }
+
+        if (!isValidTokenHash(hashToken(token, identifier), record.hashedToken)) {
+          return { success: false, error: new OtpVerificationError('invalid') }
+        }
+
+        const consumed = await store.consume(identifier)
+        if (!consumed) {
+          // A concurrent verification already consumed this record between
+          // our hash check and our delete — someone else won the race.
+          return { success: false, error: new OtpVerificationError('token_reused') }
+        }
+
+        return { success: true, data: { email } }
+      } catch (cause) {
+        return { success: false, error: toUnexpected(cause) }
       }
-
-      if (isExpired(record.issuedAt)) {
-        await store.consume(identifier)
-        throw new OtpVerificationError('expired')
-      }
-
-      if (record.attempts > maxAttempts) {
-        await store.consume(identifier)
-        throw new OtpVerificationError('too_many_attempts')
-      }
-
-      if (!isValidTokenHash(hashToken(token, identifier), record.hashedToken)) {
-        throw new OtpVerificationError('invalid')
-      }
-
-      const consumed = await store.consume(identifier)
-      if (!consumed) {
-        // A concurrent verification already consumed this record between
-        // our hash check and our delete — someone else won the race.
-        throw new OtpVerificationError('token_reused')
-      }
-
-      return { email }
     },
   }
 }
