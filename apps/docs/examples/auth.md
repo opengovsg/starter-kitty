@@ -161,7 +161,12 @@ one-time-use guarantees hold under concurrent requests. Feel free to let a
 genuine infrastructure failure (a dropped connection, for instance) throw —
 `issueOtp`/`verifyOtp` catch it and surface it as
 `{ success: false, error }` with `error.code === 'unexpected'` rather than
-letting it propagate:
+letting it propagate.
+
+This package never deletes a record that was issued and never submitted —
+expiry is only checked the next time `verifyOtp` runs against it. Give your
+adapter its own cleanup for abandoned records (a scheduled job, or a native
+TTL if your store has one) or rows accumulate without bound:
 
 ```ts
 import type { VerificationTokenStore } from '@opengovsg/auth/server/otp'
@@ -198,12 +203,17 @@ export const verificationTokenStore: VerificationTokenStore = {
         data: { attempts: { increment: 1 } },
       })
       return { hashedToken: record.token, attempts: record.attempts, issuedAt: record.issuedAt }
-    } catch {
-      return null // P2025: no matching row
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null // no matching row
+      }
+      throw error
     }
   },
-  async consume(identifier) {
-    const { count } = await db.verificationToken.deleteMany({ where: { identifier } })
+  async consume(identifier, expectedHashedToken) {
+    const { count } = await db.verificationToken.deleteMany({
+      where: { identifier, token: expectedHashedToken },
+    })
     return count > 0
   },
 }
@@ -217,8 +227,13 @@ export const verificationTokenStore: VerificationTokenStore = {
     try {
       await db.insertInto('VerificationToken').values({ identifier, token: hashedToken, issuedAt }).execute()
       return 'created'
-    } catch {
-      return 'conflict' // unique constraint violation on `identifier`
+    } catch (error) {
+      // Postgres unique-violation SQLSTATE — check whatever your driver
+      // surfaces for a uniqueness conflict, and rethrow everything else.
+      if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+        return 'conflict'
+      }
+      throw error
     }
   },
   async incrementAttempts(identifier) {
@@ -230,8 +245,12 @@ export const verificationTokenStore: VerificationTokenStore = {
       .executeTakeFirst()
     return record ? { hashedToken: record.token, attempts: record.attempts, issuedAt: record.issuedAt } : null
   },
-  async consume(identifier) {
-    const result = await db.deleteFrom('VerificationToken').where('identifier', '=', identifier).executeTakeFirst()
+  async consume(identifier, expectedHashedToken) {
+    const result = await db
+      .deleteFrom('VerificationToken')
+      .where('identifier', '=', identifier)
+      .where('token', '=', expectedHashedToken)
+      .executeTakeFirst()
     return result.numDeletedRows > 0n
   },
 }

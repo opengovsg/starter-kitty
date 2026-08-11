@@ -62,8 +62,15 @@ function base64UrlEncode(bytes: Uint8Array): string {
 }
 
 /**
- * Check that a string is a plausible PKCE `S256` code challenge: a
- * base64url-encoded 32-byte SHA-256 digest.
+ * Check that a string is a plausible PKCE `S256` code challenge: the
+ * canonical base64url encoding of a 32-byte SHA-256 digest.
+ *
+ * Re-encodes the decoded bytes and requires an exact match against the
+ * input, not just a matching decoded length — a non-canonical base64url
+ * string (nonzero padding bits in the last symbol) can decode to a 32-byte
+ * value while never being producible by {@link createPkceChallenge} itself,
+ * which would let a malformed-but-length-passing challenge through and
+ * leave the resulting OTP permanently unverifiable.
  *
  * This validates shape only, not that any particular verifier produced it —
  * pair with {@link createPkceChallenge} server-side to check that.
@@ -81,7 +88,12 @@ export function isValidCodeChallenge(codeChallenge: string): boolean {
     if (padding) {
       base64 += '='.repeat(4 - padding)
     }
-    return atob(base64).length === 32
+    const binary = atob(base64)
+    if (binary.length !== 32) {
+      return false
+    }
+    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0))
+    return base64UrlEncode(bytes) === codeChallenge
   } catch {
     return false
   }

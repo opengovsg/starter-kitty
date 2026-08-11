@@ -20,7 +20,7 @@ import {
   OTP_PREFIX_LENGTH_RANGE,
 } from '../../otp/constants.js'
 import { OtpVerificationError } from '../../otp/errors.js'
-import { createPkceChallenge } from '../../pkce/index.js'
+import { createPkceChallenge, isValidCodeChallenge } from '../../pkce/index.js'
 import { createIdentifier, hashToken, isValidTokenHash } from './hashing.js'
 import type { CreateOtpAuthOptions, OtpAuth } from './types.js'
 
@@ -78,17 +78,20 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
     return Date.now() - issuedAt.getTime() > otpExpirySeconds * 1000
   }
 
-  function toUnexpected(cause: unknown): OtpVerificationError {
-    return cause instanceof OtpVerificationError ? cause : new OtpVerificationError('unexpected', { cause })
-  }
-
   return {
     async issueOtp({ email, codeChallenge }) {
       const identifier = createIdentifier(email, codeChallenge)
       try {
+        // Reject a malformed challenge before hashing/storing/sending —
+        // verifyOtp can only ever derive a canonical 43-char S256 challenge,
+        // so an OTP stored under anything else could never be verified.
+        if (!isValidCodeChallenge(codeChallenge)) {
+          return { success: false, error: new OtpVerificationError('invalid') }
+        }
+
         const otp = generateOtp()
         const otpPrefix = generateOtpPrefix()
-        const hashedToken = hashToken(otp, identifier)
+        const hashedToken = await hashToken(otp, identifier)
 
         const result = await store.create({ identifier, hashedToken, issuedAt: new Date() })
         if (result === 'conflict') {
@@ -102,13 +105,18 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
           // best effort, a secondary failure here must not mask the
           // original one — so a retry with the same codeChallenge re-issues
           // instead of hitting 'conflict' for an OTP the user never got.
-          await store.consume(identifier).catch(() => {})
+          await store.consume(identifier, hashedToken).catch(() => {})
           throw cause
         }
 
         return { success: true, data: { otpPrefix } }
       } catch (cause) {
-        return { success: false, error: toUnexpected(cause) }
+        // Every failure from the injected store or sendOtp lands here as
+        // 'unexpected', including one that happens to be an
+        // OtpVerificationError instance thrown by a caller's own store —
+        // this function's contract is that ANY dependency failure becomes
+        // 'unexpected', with no exceptions.
+        return { success: false, error: new OtpVerificationError('unexpected', { cause }) }
       }
     },
 
@@ -126,20 +134,27 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
         }
 
         if (isExpired(record.issuedAt)) {
-          await store.consume(identifier)
+          await store.consume(identifier, record.hashedToken)
           return { success: false, error: new OtpVerificationError('expired') }
         }
 
         if (record.attempts > maxAttempts) {
-          await store.consume(identifier)
+          await store.consume(identifier, record.hashedToken)
           return { success: false, error: new OtpVerificationError('too_many_attempts') }
         }
 
-        if (!isValidTokenHash(hashToken(token, identifier), record.hashedToken)) {
+        if (!isValidTokenHash(await hashToken(token, identifier), record.hashedToken)) {
           return { success: false, error: new OtpVerificationError('invalid') }
         }
 
-        const consumed = await store.consume(identifier)
+        // Pass the hash this specific check validated, not just the
+        // identifier: if this exact record was already deleted (by a
+        // concurrent expiry/attempt-cap cleanup) and a new OTP issued under
+        // the same identifier before this call runs, an unconditional
+        // delete-by-identifier would destroy that unrelated new record.
+        // Matching on the hash too means this call can only ever claim the
+        // record it validated.
+        const consumed = await store.consume(identifier, record.hashedToken)
         if (!consumed) {
           // A concurrent verification already consumed this record between
           // our hash check and our delete — someone else won the race.
@@ -148,7 +163,7 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
 
         return { success: true, data: { email } }
       } catch (cause) {
-        return { success: false, error: toUnexpected(cause) }
+        return { success: false, error: new OtpVerificationError('unexpected', { cause }) }
       }
     },
   }

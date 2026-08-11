@@ -78,7 +78,7 @@ export type SendOtp = (args: {
 
 // @public
 export interface VerificationTokenStore {
-    consume(identifier: string): Promise<boolean>;
+    consume(identifier: string, expectedHashedToken: string): Promise<boolean>;
     create(record: {
         identifier: string;
         hashedToken: string;

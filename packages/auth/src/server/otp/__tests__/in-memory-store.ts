@@ -26,8 +26,13 @@ export function createInMemoryStore(): VerificationTokenStore {
       return Promise.resolve({ ...record })
     },
 
-    consume(identifier) {
-      return Promise.resolve(records.delete(identifier))
+    consume(identifier, expectedHashedToken) {
+      const record = records.get(identifier)
+      if (!record || record.hashedToken !== expectedHashedToken) {
+        return Promise.resolve(false)
+      }
+      records.delete(identifier)
+      return Promise.resolve(true)
     },
   }
 }

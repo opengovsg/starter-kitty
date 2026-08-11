@@ -65,4 +65,24 @@ describe('isValidCodeChallenge', () => {
   it('rejects a value with base64 padding characters', () => {
     expect(isValidCodeChallenge(`${'A'.repeat(42)}=`)).toBe(false)
   })
+
+  it('rejects a non-canonical encoding that decodes to the right byte length', async () => {
+    // A 43-char base64url string encodes 258 bits for a 256-bit (32-byte)
+    // value — the last symbol's low 2 bits are unused and must be zero in
+    // a canonical encoding. Find a sibling of a real challenge that differs
+    // only in those unused bits: it decodes to the exact same 32 bytes, but
+    // createPkceChallenge itself could never produce it.
+    const challenge = await createPkceChallenge(createPkceVerifier())
+    const targetBytes = Buffer.from(challenge, 'base64url')
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+
+    const nonCanonical = alphabet
+      .split('')
+      .filter(char => char !== challenge.at(-1))
+      .map(char => challenge.slice(0, -1) + char)
+      .find(candidate => Buffer.from(candidate, 'base64url').equals(targetBytes))
+
+    expect(nonCanonical).toBeDefined()
+    expect(isValidCodeChallenge(nonCanonical!)).toBe(false)
+  })
 })

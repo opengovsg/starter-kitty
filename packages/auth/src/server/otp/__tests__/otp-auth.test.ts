@@ -176,6 +176,37 @@ describe('createOtpAuth', () => {
     expect(error.code).toBe('token_reused')
   })
 
+  it('does not let a stale consume delete a record recreated under the same identifier', async () => {
+    // Regression test for the store contract: consume() must be a
+    // conditional delete keyed on the hash it validated, not just the
+    // identifier — otherwise a consume() call holding a stale hash (from a
+    // record that was already cleaned up) can delete an unrelated, newer
+    // record created under the same identifier in the meantime.
+    const store = createInMemoryStore()
+    const identifier = 'a-shared-identifier'
+    await store.create({ identifier, hashedToken: 'hash-1', issuedAt: new Date() })
+
+    // The hash-1 record is cleaned up (e.g. expiry), and a new OTP is
+    // issued and stored under the exact same identifier.
+    expect(await store.consume(identifier, 'hash-1')).toBe(true)
+    await store.create({ identifier, hashedToken: 'hash-2', issuedAt: new Date() })
+
+    // A stale caller still holding hash-1 tries to consume — it must not
+    // touch hash-2's record.
+    expect(await store.consume(identifier, 'hash-1')).toBe(false)
+    const record = await store.incrementAttempts(identifier)
+    expect(record?.hashedToken).toBe('hash-2')
+  })
+
+  it('rejects issuing an OTP for a malformed codeChallenge', async () => {
+    const otpAuth = build()
+
+    const error = expectFailure(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge: 'too-short' }))
+
+    expect(error.code).toBe('invalid')
+    expect(sendOtp).not.toHaveBeenCalled()
+  })
+
   it('catches an unexpected store failure instead of throwing', async () => {
     const brokenStore: VerificationTokenStore = {
       create() {
@@ -199,6 +230,28 @@ describe('createOtpAuth', () => {
     expect(error.message).toBe('Invalid or expired authentication session')
     expect(error.cause).toBeInstanceOf(Error)
     expect((error.cause as Error).message).toBe('connection refused')
+  })
+
+  it('wraps even an OtpVerificationError thrown by the store as unexpected', async () => {
+    // The contract is that ANY store/sendOtp failure becomes 'unexpected' —
+    // including the edge case of a store throwing an OtpVerificationError
+    // itself, which must not be passed through with its original code.
+    const throwingStore: VerificationTokenStore = {
+      create() {
+        return Promise.reject(new OtpVerificationError('invalid'))
+      },
+      incrementAttempts() {
+        return Promise.reject(new OtpVerificationError('invalid'))
+      },
+      consume() {
+        return Promise.resolve(false)
+      },
+    }
+    const otpAuth = build({ store: throwingStore })
+    const codeChallenge = await createPkceChallenge(createPkceVerifier())
+
+    const error = expectFailure(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
+    expect(error.code).toBe('unexpected')
   })
 
   it('catches an unexpected sendOtp failure instead of throwing', async () => {

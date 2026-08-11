@@ -12,6 +12,13 @@ import type { OtpResult } from '../../otp/errors.js'
  * which is why both are shaped as atomic read-and-delete operations rather
  * than a separate `delete` a caller could get the ordering of wrong.
  *
+ * A record whose OTP is never submitted is never deleted by this package —
+ * expiry is only checked when `verifyOtp` is next called against it. Give
+ * your adapter its own cleanup for abandoned records (a scheduled job that
+ * deletes rows past their expiry, or a native TTL if your store has one —
+ * e.g. a Postgres partial index plus a cron, or Redis `EXPIRE`), or rows
+ * accumulate without bound.
+ *
  * @public
  */
 export interface VerificationTokenStore {
@@ -34,15 +41,28 @@ export interface VerificationTokenStore {
   incrementAttempts(identifier: string): Promise<{ hashedToken: string; attempts: number; issuedAt: Date } | null>
 
   /**
-   * Delete the record for `identifier` as a claim on it, returning whether
-   * this call was the one that deleted it.
+   * Delete the record for `identifier` as a claim on it, but only if its
+   * current `hashedToken` still matches `expectedHashedToken` — the value
+   * from the {@link VerificationTokenStore.incrementAttempts} call this
+   * claim is based on. Returns whether this call was the one that deleted
+   * it.
    *
-   * Must be atomic (e.g. a database `DELETE ... RETURNING`) so that if two
-   * concurrent verifications both pass validation, exactly one gets `true`
-   * and the other gets `false` — the loser must be treated as a failure,
-   * not a race it happened to lose harmlessly.
+   * The `expectedHashedToken` check exists to close a narrower race than
+   * the one `incrementAttempts` guards against: if the record this call is
+   * claiming was deleted (by a concurrent expiry or attempt-cap cleanup)
+   * and a *new* OTP was issued and stored under the same `identifier`
+   * before this call runs, an unconditional `DELETE WHERE identifier = ?`
+   * would delete that unrelated new record instead — silently invalidating
+   * someone else's freshly issued, unverified OTP. Matching on the hash too
+   * ensures this call only ever deletes the exact record it validated.
+   *
+   * Must be atomic (e.g. a database
+   * `DELETE ... WHERE identifier = ? AND token = ? RETURNING`) so that if
+   * two concurrent verifications both pass validation, exactly one gets
+   * `true` and the other gets `false` — the loser must be treated as a
+   * failure, not a race it happened to lose harmlessly.
    */
-  consume(identifier: string): Promise<boolean>
+  consume(identifier: string, expectedHashedToken: string): Promise<boolean>
 }
 
 /**

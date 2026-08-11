@@ -117,7 +117,7 @@ provider low-value.
 ## Consequences
 
 - Apps get a safe-by-default OTP verify sequence by implementing a 3-method
-  storage adapter and an `sendOtp` callback; the dangerous ordering is no
+  storage adapter and a `sendOtp` callback; the dangerous ordering is no
   longer something every app must get right independently.
 - The plain OTP is structurally unable to leak through `issueOtp`'s return
   value — it only ever reaches the injected `sendOtp` callback.
