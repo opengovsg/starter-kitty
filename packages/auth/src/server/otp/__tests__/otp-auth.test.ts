@@ -210,6 +210,20 @@ describe('createOtpAuth', () => {
     expect(error.code).toBe('unexpected')
   })
 
+  it('rolls back the record when sendOtp fails, so a retry re-issues instead of conflicting', async () => {
+    const store = createInMemoryStore()
+    let shouldFail = true
+    const flakySendOtp: SendOtp = () => (shouldFail ? Promise.reject(new Error('SMTP down')) : Promise.resolve())
+    const otpAuth = createOtpAuth({ store, sendOtp: flakySendOtp })
+    const codeChallenge = await createPkceChallenge(createPkceVerifier())
+
+    const failed = expectFailure(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
+    expect(failed.code).toBe('unexpected')
+
+    shouldFail = false
+    expectSuccess(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge }))
+  })
+
   it('every error carries the same generic message', async () => {
     const otpAuth = build()
     const error = expectFailure(

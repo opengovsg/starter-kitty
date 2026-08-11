@@ -25,7 +25,7 @@ export const OTP_LENGTH_RANGE = { min: 8 } as const
 export const MAX_ATTEMPTS_RANGE = { min: 1, max: 10 } as const
 export const OTP_PREFIX_LENGTH_RANGE = { min: 2, max: 6 } as const
 
-// Ambiguous characters (0/O, 1/I/L) removed so a user reading the code off an
+// Ambiguous characters (0/O, 1/I) removed so a user reading the code off an
 // email doesn't mistype it.
 export const OTP_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
 export const OTP_PREFIX_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ'

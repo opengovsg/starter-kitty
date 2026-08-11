@@ -146,7 +146,11 @@ verification step they passed.
 treat it as a failure like any other; it is not a race your app needs to
 retry. `unexpected` is the one code that isn't an OTP outcome: it means your
 own storage or mail-sending code threw, and the original error is attached
-as `error.cause` for logging (never surfaced in `error.message`).
+as `error.cause` for logging (never surfaced in `error.message`). If
+`sendOtp` throws after the record was already created, `issueOtp` rolls the
+record back (best effort) before returning `unexpected`, so retrying with
+the same `codeChallenge` re-issues a fresh OTP instead of hitting a
+`'conflict'` for one the user never received.
 
 ## Writing a `VerificationTokenStore`
 

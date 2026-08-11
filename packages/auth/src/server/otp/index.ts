@@ -84,8 +84,8 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
 
   return {
     async issueOtp({ email, codeChallenge }) {
+      const identifier = createIdentifier(email, codeChallenge)
       try {
-        const identifier = createIdentifier(email, codeChallenge)
         const otp = generateOtp()
         const otpPrefix = generateOtpPrefix()
         const hashedToken = hashToken(otp, identifier)
@@ -95,7 +95,17 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
           return { success: false, error: new OtpVerificationError('invalid') }
         }
 
-        await sendOtp({ email, otp, otpPrefix })
+        try {
+          await sendOtp({ email, otp, otpPrefix })
+        } catch (cause) {
+          // Delivery failed after the record was created. Roll it back —
+          // best effort, a secondary failure here must not mask the
+          // original one — so a retry with the same codeChallenge re-issues
+          // instead of hitting 'conflict' for an OTP the user never got.
+          await store.consume(identifier).catch(() => {})
+          throw cause
+        }
+
         return { success: true, data: { otpPrefix } }
       } catch (cause) {
         return { success: false, error: toUnexpected(cause) }
