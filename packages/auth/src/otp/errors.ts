@@ -36,10 +36,22 @@ export type OtpVerificationErrorCode =
 export class OtpVerificationError extends Error {
   readonly code: OtpVerificationErrorCode
 
-  constructor(code: OtpVerificationErrorCode, options?: { cause?: unknown }) {
+  /**
+   * The record's attempt count at the point this error occurred, for
+   * `expired | too_many_attempts | invalid | token_reused` — the codes
+   * `verifyOtp` reaches only after a record was found and its attempts
+   * incremented. `undefined` for `not_found` (no record ever existed to
+   * count attempts on) and `unexpected` (the failure may have happened
+   * before an attempt count was known). Not part of `message` — this is
+   * for your own logging/metrics, never for display to the end user.
+   */
+  readonly attemptCount?: number
+
+  constructor(code: OtpVerificationErrorCode, options?: { cause?: unknown; attemptCount?: number }) {
     super(GENERIC_AUTH_ERROR_MESSAGE, options)
     this.name = 'OtpVerificationError'
     this.code = code
+    this.attemptCount = options?.attemptCount
   }
 }
 

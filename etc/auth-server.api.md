@@ -55,7 +55,9 @@ export type OtpResult<T> = {
 export class OtpVerificationError extends Error {
     constructor(code: OtpVerificationErrorCode, options?: {
         cause?: unknown;
+        attemptCount?: number;
     });
+    readonly attemptCount?: number;
     // (undocumented)
     readonly code: OtpVerificationErrorCode;
 }

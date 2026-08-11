@@ -138,14 +138,24 @@ implies regardless of what the message says.
 
 `code` is one of:
 
-| Code                | Meaning                                                        |
-| ------------------- | -------------------------------------------------------------- |
-| `not_found`         | No matching record (wrong email/verifier, or already consumed) |
-| `expired`           | The OTP's `otpExpirySeconds` window has passed                 |
-| `too_many_attempts` | `maxAttempts` exceeded for this record                         |
-| `invalid`           | Wrong OTP, or `issueOtp` hit a `'conflict'` from the store     |
-| `token_reused`      | A concurrent `verifyOtp` already consumed this record          |
-| `unexpected`        | Your injected `store` or `sendOtp` threw — see `error.cause`   |
+| Code                | Meaning                                                        | `attemptCount` |
+| ------------------- | -------------------------------------------------------------- | -------------- |
+| `not_found`         | No matching record (wrong email/verifier, or already consumed) | never set      |
+| `expired`           | The OTP's `otpExpirySeconds` window has passed                 | set            |
+| `too_many_attempts` | `maxAttempts` exceeded for this record                         | set            |
+| `invalid`           | Wrong OTP, or `issueOtp` hit a `'conflict'` from the store     | set¹           |
+| `token_reused`      | A concurrent `verifyOtp` already consumed this record          | set            |
+| `unexpected`        | Your injected `store` or `sendOtp` threw — see `error.cause`   | never set      |
+
+¹ `invalid` from `verifyOtp` (wrong OTP) carries `attemptCount`. `invalid`
+from `issueOtp` (a malformed `codeChallenge`, or a `'conflict'` from the
+store) does not — there is no record to count attempts against yet.
+
+`error.attemptCount` is the record's attempt count — including this one —
+at the point of failure, for your own logging/metrics; it is never part of
+`error.message`. It is only ever set for a code reached _after_ a record
+was found and `incrementAttempts` ran, which is why `not_found` and
+`unexpected` never carry it.
 
 `token_reused` means a concurrent verification already consumed the record —
 treat it as a failure like any other; it is not a race your app needs to

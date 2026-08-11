@@ -144,7 +144,8 @@ export interface OtpAuth {
    * concurrent request, or — if `store` threw — `'unexpected'` (see
    * {@link OtpResult}). All carry the same generic `error.message` —
    * branch on `error.code`, never show `error.message` verbatim plus a
-   * distinct explanation to the end user.
+   * distinct explanation to the end user. `error.attemptCount` is set for
+   * every code except `not_found`/`unexpected`, for your own logging.
    */
   verifyOtp(args: { email: string; token: string; codeVerifier: string }): Promise<OtpResult<{ email: string }>>
 }

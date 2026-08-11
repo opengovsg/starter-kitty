@@ -91,6 +91,16 @@ passed. `token_reused` doubles as the package's only audit signal — no
 logger dependency was added, since the error code already tells the caller
 what to log.
 
+`OtpVerificationError` also carries an optional `attemptCount`: the
+record's attempt count at the point of failure, set for every code reached
+after a record was found and `incrementAttempts` ran
+(`expired`/`too_many_attempts`/`invalid` from `verifyOtp`/`token_reused`),
+`undefined` for `not_found` (no record ever existed) and `unexpected` (no
+attempt count may exist yet). This is for the caller's own logging/metrics
+— never part of `message` — and is a lower-cost alternative to adding a
+logger dependency for this one piece of data the package already has in
+hand at the point of failure.
+
 ### No zod schemas, no dependency on `@opengovsg/validators`
 
 The OTP/PKCE-shaped validation left in starter-kit's `validators/auth.ts`

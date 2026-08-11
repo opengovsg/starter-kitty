@@ -100,9 +100,10 @@ describe('createOtpAuth', () => {
 
     const error = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: 'WRONGWRO', codeVerifier }))
     expect(error.code).toBe('invalid')
+    expect(error.attemptCount).toBe(1)
   })
 
-  it('rejects a mismatched verifier (wrong session)', async () => {
+  it('rejects a mismatched verifier (wrong session), with no attemptCount', async () => {
     const otpAuth = build()
     const codeVerifier = createPkceVerifier()
     const codeChallenge = await createPkceChallenge(codeVerifier)
@@ -113,6 +114,7 @@ describe('createOtpAuth', () => {
       await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier: createPkceVerifier() }),
     )
     expect(error.code).toBe('not_found')
+    expect(error.attemptCount).toBeUndefined()
   })
 
   it('rejects an expired OTP (otpExpirySeconds is unclamped)', async () => {
@@ -128,6 +130,7 @@ describe('createOtpAuth', () => {
 
       const error = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier }))
       expect(error.code).toBe('expired')
+      expect(error.attemptCount).toBe(1)
     } finally {
       vi.useRealTimers()
     }
@@ -143,10 +146,12 @@ describe('createOtpAuth', () => {
     // First attempt (attempts becomes 1, within the clamped cap of 1) — wrong token.
     const first = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: 'WRONGWRO', codeVerifier }))
     expect(first.code).toBe('invalid')
+    expect(first.attemptCount).toBe(1)
 
     // Second attempt (attempts becomes 2, exceeds the cap) — even the correct token is locked out.
     const second = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier }))
     expect(second.code).toBe('too_many_attempts')
+    expect(second.attemptCount).toBe(2)
   })
 
   it('maps a losing race on consume to token_reused', async () => {
@@ -174,6 +179,7 @@ describe('createOtpAuth', () => {
 
     const error = expectFailure(await otpAuth.verifyOtp({ email: 'a@example.com', token: otp, codeVerifier }))
     expect(error.code).toBe('token_reused')
+    expect(error.attemptCount).toBe(1)
   })
 
   it('does not let a stale consume delete a record recreated under the same identifier', async () => {
@@ -198,12 +204,13 @@ describe('createOtpAuth', () => {
     expect(record?.hashedToken).toBe('hash-2')
   })
 
-  it('rejects issuing an OTP for a malformed codeChallenge', async () => {
+  it('rejects issuing an OTP for a malformed codeChallenge, with no attemptCount', async () => {
     const otpAuth = build()
 
     const error = expectFailure(await otpAuth.issueOtp({ email: 'a@example.com', codeChallenge: 'too-short' }))
 
     expect(error.code).toBe('invalid')
+    expect(error.attemptCount).toBeUndefined()
     expect(sendOtp).not.toHaveBeenCalled()
   })
 

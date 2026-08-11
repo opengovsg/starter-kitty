@@ -135,16 +135,19 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
 
         if (isExpired(record.issuedAt)) {
           await store.consume(identifier, record.hashedToken)
-          return { success: false, error: new OtpVerificationError('expired') }
+          return { success: false, error: new OtpVerificationError('expired', { attemptCount: record.attempts }) }
         }
 
         if (record.attempts > maxAttempts) {
           await store.consume(identifier, record.hashedToken)
-          return { success: false, error: new OtpVerificationError('too_many_attempts') }
+          return {
+            success: false,
+            error: new OtpVerificationError('too_many_attempts', { attemptCount: record.attempts }),
+          }
         }
 
         if (!isValidTokenHash(await hashToken(token, identifier), record.hashedToken)) {
-          return { success: false, error: new OtpVerificationError('invalid') }
+          return { success: false, error: new OtpVerificationError('invalid', { attemptCount: record.attempts }) }
         }
 
         // Pass the hash this specific check validated, not just the
@@ -158,7 +161,10 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
         if (!consumed) {
           // A concurrent verification already consumed this record between
           // our hash check and our delete — someone else won the race.
-          return { success: false, error: new OtpVerificationError('token_reused') }
+          return {
+            success: false,
+            error: new OtpVerificationError('token_reused', { attemptCount: record.attempts }),
+          }
         }
 
         return { success: true, data: { email } }
