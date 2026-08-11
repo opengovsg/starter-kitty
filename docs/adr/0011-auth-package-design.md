@@ -77,13 +77,19 @@ package exists to remove.
 
 `OtpVerificationError.code` is one of `not_found | expired |
 too_many_attempts | invalid | token_reused | unexpected`, all carrying the
-identical message `"Invalid or expired authentication session"`. Distinct
-messages per failure let an attacker enumerate emails or learn which
-verification step they passed; the `code` exists only for the caller's own
-branching (e.g. `too_many_attempts` → HTTP 429, `unexpected` → log
-`error.cause` and 500). `token_reused` doubles as the package's only audit
-signal — no logger dependency was added, since the error code already tells
-the caller what to log.
+identical message `"Invalid or expired authentication session"` — a safe
+default, not a restriction on the caller. `code` is deliberately granular so
+the app *can* branch (e.g. `too_many_attempts` → HTTP 429, `unexpected` →
+log `error.cause` and 500, and its own user-facing copy per bucket); only
+the package's own bundled `message` stays fixed. The line the README draws
+for app-level copy: `too_many_attempts` is safe to give its own message,
+since it says nothing about whether the code was ever valid. The rest
+(`not_found`/`expired`/`invalid`/`token_reused`/`unexpected`) should stay
+merged in the app's own copy too — splitting those further is exactly what
+lets an attacker enumerate emails or learn which verification step they
+passed. `token_reused` doubles as the package's only audit signal — no
+logger dependency was added, since the error code already tells the caller
+what to log.
 
 ### No zod schemas, no dependency on `@opengovsg/validators`
 

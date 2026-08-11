@@ -110,20 +110,31 @@ async function submitOtp(email: string, token: string, codeChallenge: string) {
 
 ## Handling verification failures
 
+`OtpVerificationError.message` is one fixed generic string across every
+`code` — a safe default for apps that don't want to think about copy. But
+your app is free to write its own message per `code`; branch on `code`, not
+on `message`:
+
 ```ts
 const result = await otpAuth.verifyOtp({ email, token, codeVerifier })
 if (!result.success) {
-  const status = result.error.code === 'too_many_attempts' ? 429 : 401
-  return res.status(status).json({ message: result.error.message })
+  if (result.error.code === 'too_many_attempts') {
+    return res.status(429).json({ message: 'Wrong OTP was entered too many times. Please request a new OTP.' })
+  }
+  return res.status(401).json({ message: 'Token is invalid or has expired. Please request a new OTP.' })
 }
 const { email } = result.data
 ```
 
-Every `OtpVerificationError` carries the same generic `message` regardless of
-`code` — branch on `code` for your own logic (metrics, rate limiting,
-choosing an HTTP status), but never show the user a distinct message per
-`code`. Doing so lets an attacker enumerate emails or learn which
-verification step they passed.
+The one rule: keep `not_found` / `expired` / `invalid` / `token_reused` (and
+usually `unexpected`) merged into a single bucket in your own copy too, the
+way the example above does. Splitting those further — a distinct message
+for "no such session" vs. "wrong code" vs. "already used" — lets an
+attacker enumerate emails or learn exactly which verification step they
+passed. `too_many_attempts` is safe to split out on its own: it says
+nothing about whether the code was ever valid, only that this session's
+guesses are exhausted, which your chosen HTTP status (429 vs. 401) already
+implies regardless of what the message says.
 
 `code` is one of:
 
