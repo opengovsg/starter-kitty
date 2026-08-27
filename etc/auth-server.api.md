@@ -14,32 +14,68 @@ export interface CreateOtpAuthOptions {
     otpLength?: number;
     otpPrefixLength?: number;
     sendOtp: SendOtp;
-    store: VerificationTokenStore;
+    store: OtpVerificationStore;
 }
+
+// @public
+export type CreateOtpRecordResult = {
+    status: 'created';
+} | {
+    status: 'conflict';
+    existing: OtpVerificationRecord;
+};
+
+// @public
+export const MAX_ATTEMPTS_RANGE: {
+    readonly min: 1;
+    readonly max: 10;
+};
 
 // @public
 export const OTP_DEFAULTS: {
     readonly otpLength: 8;
-    readonly otpExpirySeconds: 60;
+    readonly otpExpirySeconds: 600;
     readonly maxAttempts: 5;
     readonly otpPrefixLength: 3;
 };
 
 // @public
+export const OTP_EXPIRY_SECONDS_RANGE: {
+    readonly min: 1;
+    readonly max: 600;
+};
+
+// @public
+export const OTP_LENGTH_RANGE: {
+    readonly min: 8;
+};
+
+// @public
+export const OTP_PREFIX_LENGTH_RANGE: {
+    readonly min: 2;
+    readonly max: 6;
+};
+
+// @public
 export interface OtpAuth {
     issueOtp(args: {
-        email: string;
+        normalizedEmail: string;
         codeChallenge: string;
     }): Promise<OtpResult<{
         otpPrefix: string;
     }>>;
     verifyOtp(args: {
-        email: string;
-        token: string;
+        normalizedEmail: string;
+        otp: string;
         codeVerifier: string;
     }): Promise<OtpResult<{
-        email: string;
+        normalizedEmail: string;
     }>>;
+}
+
+// @public
+export class OtpOptionsError extends Error {
+    constructor(message: string);
 }
 
 // @public
@@ -63,7 +99,29 @@ export class OtpVerificationError extends Error {
 }
 
 // @public
-export type OtpVerificationErrorCode = 'not_found' | 'expired' | 'too_many_attempts' | 'invalid' | 'token_reused'
+export type OtpVerificationErrorCode =
+/** No record matched: wrong email, wrong verifier, or already consumed. */
+'not_found'
+/** The record's `otpExpirySeconds` window has elapsed. */
+| 'expired'
+/** `maxAttempts` exceeded for this record. */
+| 'too_many_attempts'
+/** The submitted OTP did not match. */
+| 'invalid'
+/** A concurrent `verifyOtp` consumed this record first. */
+| 'otp_reused'
+/**
+* `issueOtp` was given a `codeChallenge` that is not a canonical
+* base64url-encoded SHA-256 digest, so no OTP issued under it could ever
+* be verified. Mint the challenge with `createPkceChallenge`.
+*/
+| 'challenge_invalid'
+/**
+* `issueOtp` found a live, unexpired OTP already issued for this
+* `(normalizedEmail, codeChallenge)` pair. Mint a fresh verifier and
+* challenge rather than reusing this one.
+*/
+| 'challenge_conflict'
 /**
 * Your injected `store` or `sendOtp` threw. The original error is on
 * {@link OtpVerificationError.cause}, for logging — it is never part of
@@ -72,25 +130,28 @@ export type OtpVerificationErrorCode = 'not_found' | 'expired' | 'too_many_attem
 | 'unexpected';
 
 // @public
+export interface OtpVerificationRecord {
+    attempts: number;
+    hashedOtp: string;
+    issuedAt: Date;
+}
+
+// @public
+export interface OtpVerificationStore {
+    consume(identifier: string, expectedHashedOtp: string): Promise<boolean>;
+    create(record: {
+        identifier: string;
+        hashedOtp: string;
+        issuedAt: Date;
+    }): Promise<CreateOtpRecordResult>;
+    incrementAttempts(identifier: string): Promise<OtpVerificationRecord | null>;
+}
+
+// @public
 export type SendOtp = (args: {
-    email: string;
+    normalizedEmail: string;
     otp: string;
     otpPrefix: string;
 }) => Promise<void>;
-
-// @public
-export interface VerificationTokenStore {
-    consume(identifier: string, expectedHashedToken: string): Promise<boolean>;
-    create(record: {
-        identifier: string;
-        hashedToken: string;
-        issuedAt: Date;
-    }): Promise<'created' | 'conflict'>;
-    incrementAttempts(identifier: string): Promise<{
-        hashedToken: string;
-        attempts: number;
-        issuedAt: Date;
-    } | null>;
-}
 
 ```

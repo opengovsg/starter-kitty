@@ -26,8 +26,8 @@ primary key and hash salt.
 ### Orchestration, not bare primitives
 
 `createOtpAuth` ships the full `issueOtp`/`verifyOtp` sequence behind an
-injected `VerificationTokenStore`, rather than exporting only
-`hashToken`/`isValidToken`-style primitives. The vulnerabilities in this flow
+injected `OtpVerificationStore`, rather than exporting only
+`hashOtp`/`isValidOtpHash`-style primitives. The vulnerabilities in this flow
 live in the *ordering* of the verify steps, not in any single primitive — a
 caller who gets that ordering wrong is exposed even with correct primitives.
 Since the storage port has real independent implementations across OGP apps
@@ -47,6 +47,12 @@ on `globalThis` since Node.js 19; this repo's `engines.node` floor of
 fallback was considered and rejected — under Next.js Edge, a Node builtin
 import (static or dynamic) is replaced with a proxy that throws on property
 access, which is worse than the bare call it's meant to guard.
+
+The package ships **ESM-only**, matching the rest of this monorepo and its
+one runtime dependency (`nanoid` v5). The same `>=20.19.0` floor makes this
+cost-free for CommonJS consumers: `require(esm)` is supported from 20.19,
+so a CJS codebase can `require('@opengovsg/auth')` without a dual build or
+a dynamic `import()`.
 
 ### Split entry points, isomorphic root
 
@@ -75,31 +81,84 @@ get the verify sequence wrong, and a forgettable `try`/`catch` around every
 call site reintroduces exactly the kind of easy-to-omit safety step the
 package exists to remove.
 
-`OtpVerificationError.code` is one of `not_found | expired |
-too_many_attempts | invalid | token_reused | unexpected`, all carrying the
-identical message `"Invalid or expired authentication session"` — a safe
-default, not a restriction on the caller. `code` is deliberately granular so
-the app *can* branch (e.g. `too_many_attempts` → HTTP 429, `unexpected` →
-log `error.cause` and 500, and its own user-facing copy per bucket); only
-the package's own bundled `message` stays fixed. The line the README draws
-for app-level copy: `too_many_attempts` is safe to give its own message,
-since it says nothing about whether the code was ever valid. The rest
-(`not_found`/`expired`/`invalid`/`token_reused`/`unexpected`) should stay
-merged in the app's own copy too — splitting those further is exactly what
-lets an attacker enumerate emails or learn which verification step they
-passed. `token_reused` doubles as the package's only audit signal — no
-logger dependency was added, since the error code already tells the caller
-what to log.
+Every `OtpVerificationError` carries the identical message `"Invalid or
+expired authentication session"` — a safe default, not a restriction on the
+caller. `code` is deliberately granular so the app *can* branch (e.g.
+`too_many_attempts` → HTTP 429, `unexpected` → log `error.cause` and 500,
+and its own user-facing copy per bucket); only the package's own bundled
+`message` stays fixed. This applies to user-facing copy only: status codes,
+logs, metrics, and audit events should distinguish every code, which is
+what `code` and `attemptCount` exist for.
+
+The verify-path codes (`not_found`, `expired`, `invalid`, `otp_reused`)
+should stay merged into one bucket in the app's own copy too — splitting
+those further is exactly what lets an attacker enumerate emails or learn
+which verification step they passed. `too_many_attempts` is safe to split
+out, since it says nothing about whether the code was ever valid.
+
+The **issue-path** codes are deliberately *not* merged: `challenge_invalid`
+(the challenge was not minted by `createPkceChallenge`) and
+`challenge_conflict` (a live OTP already exists for this pair) are safe to
+disambiguate, because the client generated the challenge itself and learns
+nothing about any other user from the distinction. Collapsing both into a
+generic `invalid` — the original shape — left the client unable to tell "my
+code is buggy" from "mint a fresh verifier and retry".
+
+`otp_reused` doubles as the package's only audit signal — no logger
+dependency was added, since the error code already tells the caller what to
+log.
 
 `OtpVerificationError` also carries an optional `attemptCount`: the
 record's attempt count at the point of failure, set for every code reached
 after a record was found and `incrementAttempts` ran
-(`expired`/`too_many_attempts`/`invalid` from `verifyOtp`/`token_reused`),
-`undefined` for `not_found` (no record ever existed) and `unexpected` (no
-attempt count may exist yet). This is for the caller's own logging/metrics
-— never part of `message` — and is a lower-cost alternative to adding a
-logger dependency for this one piece of data the package already has in
-hand at the point of failure.
+(`expired`/`too_many_attempts`/`invalid`/`otp_reused`), `undefined` for
+everything else. This is for the caller's own logging/metrics — never part
+of `message` — and is a lower-cost alternative to adding a logger
+dependency for this one piece of data the package already has in hand at
+the point of failure.
+
+### Options are range-checked, not clamped
+
+Every numeric option is validated at construction and throws
+`OtpOptionsError` if out of range, rather than being silently corrected to
+the nearest legal value. Clamping was the initial shape and was wrong for a
+security package: a typo'd `maxAttempts: 100` silently becoming `10`, or a
+`otpExpirySeconds: 86400` silently becoming the ceiling, weakens (or
+appears to weaken) every OTP the service issues with nothing in the logs to
+say so. A throw surfaces the mistake at startup, on the first call.
+
+`otpExpirySeconds` is capped at 600 rather than left unbounded, per NIST SP
+800-63B: "the authentication SHALL be considered invalid if not completed
+within 10 minutes". 600 is also the default — the ceiling is the sensible
+value here, not a limit to design against. An earlier revision defaulted to
+60 seconds, which is well inside the standard but punishing for email
+delivery, where a minute can elapse before the message even lands.
+
+### `issueOtp` self-heals an expired leftover
+
+`store.create` returns the existing record on conflict rather than a bare
+`'conflict'`, which lets `issueOtp` distinguish a live OTP (a real
+conflict — re-issuing would invalidate a code the user is about to type)
+from an expired leftover (which it consumes, then retries). Without this,
+an abandoned record blocks re-issue for its `(normalizedEmail,
+codeChallenge)` pair until adapter-side cleanup happens to run, which for a
+client that reuses a challenge on resend means a login that cannot proceed.
+
+This does not remove the need for adapter-side cleanup: a record that is
+issued, never submitted, and never re-issued against is never revisited.
+Self-healing covers availability, TTL cleanup covers storage growth.
+
+### `normalizedEmail`, not `email`
+
+The public argument is `normalizedEmail` because the package uses it
+verbatim as half the record's primary key and scrypt salt, and never
+canonicalizes it — so `Alice@example.com` at issue and `alice@example.com`
+at verify are two different records. Normalizing inside the package was
+rejected: it would bake in an opinion about plus-addressing and Unicode, and
+would silently diverge from whatever form the app stored on its own user
+rows. Naming the parameter for its precondition makes the requirement
+visible at every call site instead of only in prose that a caller may not
+read.
 
 ### No zod schemas, no dependency on `@opengovsg/validators`
 
@@ -112,7 +171,7 @@ shipping as code.
 
 ### Test-only in-memory store, not exported
 
-`createOtpAuth`'s test suite runs against a `VerificationTokenStore` built
+`createOtpAuth`'s test suite runs against an `OtpVerificationStore` built
 for that purpose, deliberately not part of the package's public exports.
 Shipping a working in-memory store invites production use of something with
 no persistence and no cross-instance sharing; Prisma/Kysely adapters are
@@ -149,3 +208,11 @@ provider low-value.
 - starter-kit is expected to adopt this package in a follow-up PR, replacing
   `auth.utils.ts`, `lib/pkce/`, and the storage-facing half of
   `auth.service.ts`.
+- The public API says **otp**, never **token**: `verifyOtp({ otp })`,
+  `hashedOtp`/`expectedHashedOtp`, `hashOtp`/`isValidOtpHash`, `otp_reused`,
+  `OtpVerificationStore`. The source this was extracted from used `token`
+  for both the plain OTP and its hash in the same file; naming every part of
+  the flow for the material it actually handles is what
+  [CONTEXT.md](../../packages/auth/CONTEXT.md) exists to enforce, and the
+  code has to comply with its own glossary for that to mean anything. Done
+  pre-1.0, while the package had only ever been published as a snapshot.

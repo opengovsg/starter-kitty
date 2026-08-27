@@ -1,22 +1,23 @@
-import type { VerificationTokenStore } from '../types.js'
+import type { OtpVerificationRecord, OtpVerificationStore } from '../types.js'
 
 /**
- * A minimal in-memory {@link VerificationTokenStore}, used only by this
+ * A minimal in-memory {@link OtpVerificationStore}, used only by this
  * package's own tests. Deliberately not exported from the package: shipping
  * a "just use this" store invites production use of something with no
  * persistence and no cross-instance sharing. Write a real adapter — see the
  * README for Prisma/Kysely sketches.
  */
-export function createInMemoryStore(): VerificationTokenStore {
-  const records = new Map<string, { hashedToken: string; attempts: number; issuedAt: Date }>()
+export function createInMemoryStore(): OtpVerificationStore {
+  const records = new Map<string, OtpVerificationRecord>()
 
   return {
-    create({ identifier, hashedToken, issuedAt }) {
-      if (records.has(identifier)) {
-        return Promise.resolve('conflict')
+    create({ identifier, hashedOtp, issuedAt }) {
+      const existing = records.get(identifier)
+      if (existing) {
+        return Promise.resolve({ status: 'conflict' as const, existing: { ...existing } })
       }
-      records.set(identifier, { hashedToken, attempts: 0, issuedAt })
-      return Promise.resolve('created')
+      records.set(identifier, { hashedOtp, attempts: 0, issuedAt })
+      return Promise.resolve({ status: 'created' as const })
     },
 
     incrementAttempts(identifier) {
@@ -26,9 +27,9 @@ export function createInMemoryStore(): VerificationTokenStore {
       return Promise.resolve({ ...record })
     },
 
-    consume(identifier, expectedHashedToken) {
+    consume(identifier, expectedHashedOtp) {
       const record = records.get(identifier)
-      if (!record || record.hashedToken !== expectedHashedToken) {
+      if (!record || record.hashedOtp !== expectedHashedOtp) {
         return Promise.resolve(false)
       }
       records.delete(identifier)

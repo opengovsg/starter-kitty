@@ -45,7 +45,9 @@ export async function createPkceChallenge(codeVerifier: string): Promise<string>
   if (!globalThis.crypto?.subtle) {
     throw new Error(
       'Web Crypto API (globalThis.crypto.subtle) is unavailable in this environment. ' +
-        '@opengovsg/auth requires Node.js >=20.19.0 or a browser with Web Crypto support.',
+        'In browsers, crypto.subtle requires a secure context — serve the page over HTTPS ' +
+        '(or use http://localhost for development); it is undefined on a plain-HTTP origin ' +
+        'such as a staging server or a LAN IP. In Node.js, @opengovsg/auth requires >=20.19.0.',
     )
   }
   const data = new TextEncoder().encode(codeVerifier)

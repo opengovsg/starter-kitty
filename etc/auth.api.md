@@ -14,12 +14,40 @@ export function createPkceVerifier(): string;
 export function isValidCodeChallenge(codeChallenge: string): boolean;
 
 // @public
+export const MAX_ATTEMPTS_RANGE: {
+    readonly min: 1;
+    readonly max: 10;
+};
+
+// @public
 export const OTP_DEFAULTS: {
     readonly otpLength: 8;
-    readonly otpExpirySeconds: 60;
+    readonly otpExpirySeconds: 600;
     readonly maxAttempts: 5;
     readonly otpPrefixLength: 3;
 };
+
+// @public
+export const OTP_EXPIRY_SECONDS_RANGE: {
+    readonly min: 1;
+    readonly max: 600;
+};
+
+// @public
+export const OTP_LENGTH_RANGE: {
+    readonly min: 8;
+};
+
+// @public
+export const OTP_PREFIX_LENGTH_RANGE: {
+    readonly min: 2;
+    readonly max: 6;
+};
+
+// @public
+export class OtpOptionsError extends Error {
+    constructor(message: string);
+}
 
 // @public
 export type OtpResult<T> = {
@@ -42,7 +70,29 @@ export class OtpVerificationError extends Error {
 }
 
 // @public
-export type OtpVerificationErrorCode = 'not_found' | 'expired' | 'too_many_attempts' | 'invalid' | 'token_reused'
+export type OtpVerificationErrorCode =
+/** No record matched: wrong email, wrong verifier, or already consumed. */
+'not_found'
+/** The record's `otpExpirySeconds` window has elapsed. */
+| 'expired'
+/** `maxAttempts` exceeded for this record. */
+| 'too_many_attempts'
+/** The submitted OTP did not match. */
+| 'invalid'
+/** A concurrent `verifyOtp` consumed this record first. */
+| 'otp_reused'
+/**
+* `issueOtp` was given a `codeChallenge` that is not a canonical
+* base64url-encoded SHA-256 digest, so no OTP issued under it could ever
+* be verified. Mint the challenge with `createPkceChallenge`.
+*/
+| 'challenge_invalid'
+/**
+* `issueOtp` found a live, unexpired OTP already issued for this
+* `(normalizedEmail, codeChallenge)` pair. Mint a fresh verifier and
+* challenge rather than reusing this one.
+*/
+| 'challenge_conflict'
 /**
 * Your injected `store` or `sendOtp` threw. The original error is on
 * {@link OtpVerificationError.cause}, for logging — it is never part of

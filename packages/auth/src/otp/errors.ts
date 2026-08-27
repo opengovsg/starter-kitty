@@ -1,22 +1,45 @@
 import { GENERIC_AUTH_ERROR_MESSAGE } from './constants.js'
 
 /**
- * The reason an OTP verification attempt failed.
+ * The reason an OTP issue or verification attempt failed.
  *
- * Every value maps to the same user-facing `OtpVerificationError.message` —
- * the distinction exists for the caller's own branching (e.g. mapping
- * `too_many_attempts` to an HTTP 429 and everything else to a 401), not for
- * disclosure to the end user. Showing a distinct message per code lets an
- * attacker enumerate emails or learn which step of verification they passed.
+ * The verify-path codes (`not_found`, `expired`, `too_many_attempts`,
+ * `invalid`, `otp_reused`) all map to the same user-facing
+ * `OtpVerificationError.message` — the distinction exists for the caller's
+ * own branching (e.g. mapping `too_many_attempts` to an HTTP 429 and the
+ * rest to a 401), not for disclosure to the end user. Showing a distinct
+ * message per verify code lets an attacker enumerate emails or learn which
+ * step of verification they passed.
+ *
+ * The issue-path codes (`challenge_invalid`, `challenge_conflict`) are safe
+ * to disambiguate for the client, since the client generated the challenge
+ * itself and learns nothing about any other user from the distinction.
  *
  * @public
  */
 export type OtpVerificationErrorCode =
+  /** No record matched: wrong email, wrong verifier, or already consumed. */
   | 'not_found'
+  /** The record's `otpExpirySeconds` window has elapsed. */
   | 'expired'
+  /** `maxAttempts` exceeded for this record. */
   | 'too_many_attempts'
+  /** The submitted OTP did not match. */
   | 'invalid'
-  | 'token_reused'
+  /** A concurrent `verifyOtp` consumed this record first. */
+  | 'otp_reused'
+  /**
+   * `issueOtp` was given a `codeChallenge` that is not a canonical
+   * base64url-encoded SHA-256 digest, so no OTP issued under it could ever
+   * be verified. Mint the challenge with `createPkceChallenge`.
+   */
+  | 'challenge_invalid'
+  /**
+   * `issueOtp` found a live, unexpired OTP already issued for this
+   * `(normalizedEmail, codeChallenge)` pair. Mint a fresh verifier and
+   * challenge rather than reusing this one.
+   */
+  | 'challenge_conflict'
   /**
    * Your injected `store` or `sendOtp` threw. The original error is on
    * {@link OtpVerificationError.cause}, for logging — it is never part of
@@ -38,12 +61,13 @@ export class OtpVerificationError extends Error {
 
   /**
    * The record's attempt count at the point this error occurred, for
-   * `expired | too_many_attempts | invalid | token_reused` — the codes
+   * `expired | too_many_attempts | invalid | otp_reused` — the codes
    * `verifyOtp` reaches only after a record was found and its attempts
-   * incremented. `undefined` for `not_found` (no record ever existed to
-   * count attempts on) and `unexpected` (the failure may have happened
-   * before an attempt count was known). Not part of `message` — this is
-   * for your own logging/metrics, never for display to the end user.
+   * incremented. `undefined` for every other code: `not_found` (no record
+   * existed to count attempts on), the issue-path codes (no attempt has
+   * been made yet), and `unexpected` (the failure may have happened before
+   * an attempt count was known). Not part of `message` — this is for your
+   * own logging/metrics, never for display to the end user.
    */
   readonly attemptCount?: number
 
@@ -52,6 +76,24 @@ export class OtpVerificationError extends Error {
     this.name = 'OtpVerificationError'
     this.code = code
     this.attemptCount = options?.attemptCount
+  }
+}
+
+/**
+ * Thrown by `createOtpAuth` when an option is outside its accepted range —
+ * at construction time, not per request, so a misconfiguration fails on the
+ * first call rather than silently weakening every OTP.
+ *
+ * This is the one thing in this package that throws: it signals a
+ * programming error in your own wiring, not a runtime authentication
+ * outcome, so it deliberately does not travel as an {@link OtpResult}.
+ *
+ * @public
+ */
+export class OtpOptionsError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'OtpOptionsError'
   }
 }
 

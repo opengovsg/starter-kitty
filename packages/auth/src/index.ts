@@ -11,7 +11,13 @@
  * @packageDocumentation
  */
 
-export { OTP_DEFAULTS } from './otp/constants.js'
+export {
+  MAX_ATTEMPTS_RANGE,
+  OTP_DEFAULTS,
+  OTP_EXPIRY_SECONDS_RANGE,
+  OTP_LENGTH_RANGE,
+  OTP_PREFIX_LENGTH_RANGE,
+} from './otp/constants.js'
 export type { OtpResult, OtpVerificationErrorCode } from './otp/errors.js'
-export { OtpVerificationError } from './otp/errors.js'
+export { OtpOptionsError, OtpVerificationError } from './otp/errors.js'
 export { createPkceChallenge, createPkceVerifier, isValidCodeChallenge } from './pkce/index.js'
