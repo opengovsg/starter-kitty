@@ -251,19 +251,19 @@ describe('createOtpAuth', () => {
     expectSuccess(await otpAuth.issueOtp({ normalizedEmail: 'a@example.com', codeChallenge }))
     const { otp } = lastSent()
 
-    // First attempt (attempts becomes 1, within the cap of 1) — wrong OTP.
+    // First attempt (attempts becomes 1, within the cap of 1), wrong OTP.
     const first = expectFailure(
       await otpAuth.verifyOtp({ normalizedEmail: 'a@example.com', otp: 'WRONGWRO', codeVerifier }),
     )
     expect(first.code).toBe('invalid')
     expect(first.attemptCount).toBe(1)
 
-    // Second attempt (attempts becomes 2, exceeds the cap) — even the correct OTP is locked out.
+    // Second attempt (attempts becomes 2, exceeds the cap): even the correct OTP is locked out.
     const second = expectFailure(await otpAuth.verifyOtp({ normalizedEmail: 'a@example.com', otp, codeVerifier }))
     expect(second.code).toBe('too_many_attempts')
     expect(second.attemptCount).toBe(2)
 
-    // The cap consumes the record, so it fires exactly once — a third
+    // The cap consumes the record, so it fires exactly once. A third
     // attempt finds nothing rather than reporting the lockout again.
     const third = expectFailure(await otpAuth.verifyOtp({ normalizedEmail: 'a@example.com', otp, codeVerifier }))
     expect(third.code).toBe('not_found')
@@ -304,7 +304,7 @@ describe('createOtpAuth', () => {
   it('does not let a stale consume delete a record recreated under the same identifier', async () => {
     // Regression test for the store contract: consume() must be a
     // conditional delete keyed on the hash it validated, not just the
-    // identifier — otherwise a consume() call holding a stale hash (from a
+    // identifier. Otherwise a consume() call holding a stale hash (from a
     // record that was already cleaned up) can delete an unrelated, newer
     // record created under the same identifier in the meantime.
     const store = createInMemoryStore()
@@ -316,7 +316,7 @@ describe('createOtpAuth', () => {
     expect(await store.consume(identifier, 'hash-1')).toBe(true)
     await store.create({ identifier, hashedOtp: 'hash-2', issuedAt: new Date() })
 
-    // A stale caller still holding hash-1 tries to consume — it must not
+    // A stale caller still holding hash-1 tries to consume. It must not
     // touch hash-2's record.
     expect(await store.consume(identifier, 'hash-1')).toBe(false)
     const record = await store.incrementAttempts(identifier)
@@ -389,7 +389,7 @@ describe('createOtpAuth', () => {
   })
 
   it('wraps even an OtpVerificationError thrown by the store as unexpected', async () => {
-    // The contract is that ANY store/sendOtp failure becomes 'unexpected' —
+    // The contract is that ANY store/sendOtp failure becomes 'unexpected',
     // including the edge case of a store throwing an OtpVerificationError
     // itself, which must not be passed through with its original code.
     const throwingStore: OtpVerificationStore = {

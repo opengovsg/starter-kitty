@@ -11,10 +11,10 @@ Requires Node.js `>=20.19.0`, or any modern browser, for the isomorphic parts
 ## This is not an OAuth/OIDC library
 
 The PKCE (RFC 7636) functions here mint a verifier/challenge pair and nothing
-else — no `state`, no `nonce`, no authorization-code exchange. They exist to
+else: no `state`, no `nonce`, no authorization-code exchange. They exist to
 bind a one-time password to the browser session that requested it, so an
 attacker who intercepts the OTP in transit still cannot redeem it. **Do not
-use this for an actual OAuth/OIDC authorization-code flow** — use a
+use this for an actual OAuth/OIDC authorization-code flow.** Use a
 maintained library such as [`openid-client`](https://github.com/panva/node-openid-client)
 or [`jose`](https://github.com/panva/jose) for that.
 
@@ -27,15 +27,15 @@ or [`jose`](https://github.com/panva/jose) for that.
 | `@opengovsg/auth/otp`        | `OTP_DEFAULTS`, `OtpVerificationError`                              | Isomorphic  |
 | `@opengovsg/auth/server/otp` | `createOtpAuth` and its types                                       | Node only   |
 
-Import `./server/otp` only in server code — it pulls in `node:crypto`, which
+Import `./server/otp` only in server code. It pulls in `node:crypto`, which
 does not resolve in a browser bundle.
 
 ## Normalize the email before you call
 
 Both `issueOtp` and `verifyOtp` take `normalizedEmail`, not `email`. This
 package uses that value **verbatim** as half of the record's primary key and
-scrypt salt, and never normalizes it — so `Alice@example.com` at issue time
-and `alice@example.com` at verify time resolve to two different records and
+scrypt salt, and never normalizes it. `Alice@example.com` at issue time and
+`alice@example.com` at verify time resolve to two different records, and
 verification fails.
 
 Normalize on the way in, the same way at both call sites. At minimum,
@@ -47,7 +47,7 @@ import { createEmailSchema } from '@opengovsg/validators/email'
 
 const emailSchema = createEmailSchema({ domains: [{ domain: 'gov.sg', includeSubdomains: true }] })
 
-// Parse, then lowercase — this is the value to hand to issueOtp/verifyOtp.
+// Parse, then lowercase. This is the value to hand to issueOtp/verifyOtp.
 const normalizedEmail = emailSchema.parse(input).toLowerCase()
 ```
 
@@ -58,12 +58,12 @@ normalized form on your user records.
 ## The flow
 
 1. **Client** calls `createPkceVerifier()`, keeps the result **in memory only**
-   (a `Map`/`useRef`/closure — never `sessionStorage` or `localStorage`; it
+   (a `Map`/`useRef`/closure, never `sessionStorage` or `localStorage`; it
    should not survive a page reload), derives `createPkceChallenge(verifier)`,
    and sends `{ normalizedEmail, codeChallenge }` to the server.
 2. **Server** calls `issueOtp({ normalizedEmail, codeChallenge })`, which mints
    an OTP, hands it to your `sendOtp` callback (email, SMS, whatever you use),
-   and resolves to `{ success: true, data: { otpPrefix } }` — `otpPrefix` is a
+   and resolves to `{ success: true, data: { otpPrefix } }`. `otpPrefix` is a
    confirmation value, **never the OTP itself**.
 3. **Client** submits `{ normalizedEmail, otp, codeVerifier }` (the plain
    verifier from step 1, plus the OTP the user typed in).
@@ -73,15 +73,15 @@ normalized form on your user records.
    Session creation and user upsert/account-linking are your app's job, not
    this package's.
 
-Neither `issueOtp` nor `verifyOtp` ever throws — both resolve to an
+Neither `issueOtp` nor `verifyOtp` ever throws. Both resolve to an
 `OtpResult<T>`, in the shape of [Zod's `safeParse`](https://zod.dev/?id=safeparse):
 `{ success: true, data: T } | { success: false, error: OtpVerificationError }`.
 Check `result.success` (it narrows the type) instead of wrapping calls in
 `try`/`catch`.
 
 (`createOtpAuth` itself does throw `OtpOptionsError` if you pass an
-out-of-range option — a wiring mistake, caught once at startup rather than
-silently weakening every OTP the service issues.)
+out-of-range option. That is a wiring mistake, caught once at startup
+rather than silently weakening every OTP the service issues.)
 
 ```ts
 // server: src/otp-auth.ts
@@ -136,15 +136,15 @@ async function submitOtp(normalizedEmail: string, otp: string, codeChallenge: st
 ## Handling verification failures
 
 `OtpVerificationError.message` is one fixed generic string across every
-`code` — a safe default for apps that don't want to think about copy. But
-your app is free to write its own message per `code`; branch on `code`, not
+`code`, a safe default for apps that don't want to think about copy. But
+your app is free to write its own message per `code`. Branch on `code`, not
 on `message`:
 
 ```ts
 const result = await otpAuth.verifyOtp({ normalizedEmail, otp, codeVerifier })
 if (!result.success) {
   if (result.error.code === 'unexpected') {
-    // Your store or mailer failed — this is not the user's fault. Log the
+    // Your store or mailer failed. This is not the user's fault. Log the
     // cause and return a server error; do not tell them their code is wrong.
     logger.error({ err: result.error.cause }, 'OTP verification failed')
     return res.status(500).json({ message: 'Something went wrong. Please try again.' })
@@ -157,25 +157,25 @@ if (!result.success) {
 const { normalizedEmail: verifiedEmail } = result.data
 ```
 
-Note the `unexpected` branch: without it, a database outage or SMTP failure
+Note the `unexpected` branch. Without it, a database outage or SMTP failure
 returns a 401 telling the user their perfectly good code is invalid, and
-`error.cause` — the only record of what actually broke — is silently
+`error.cause`, the only record of what actually broke, is silently
 discarded.
 
 The rule for the remaining verify-path codes: keep `not_found` / `expired` /
 `invalid` / `otp_reused` merged into a single bucket in your own copy, the
-way the example above does. Splitting those further — a distinct message for
-"no such session" vs. "wrong code" vs. "already used" — lets an attacker
+way the example above does. Splitting those further, with a distinct message
+for "no such session" vs. "wrong code" vs. "already used", lets an attacker
 enumerate emails or learn exactly which verification step they passed.
 `too_many_attempts` is safe to split out on its own: it says nothing about
 whether the code was ever valid, only that this session's guesses are
 exhausted.
 
 This applies to **user-facing copy only**. HTTP status codes, structured
-logs, metrics, and audit events should absolutely distinguish every code —
-that is what `error.code` and `error.attemptCount` are for. The concern is
-what an unauthenticated caller can read off the response body, not what your
-own observability records.
+logs, metrics, and audit events should distinguish every code, which is what
+`error.code` and `error.attemptCount` are for. The concern is what an
+unauthenticated caller can read off the response body, not what your own
+observability records.
 
 `code` is one of:
 
@@ -188,10 +188,10 @@ own observability records.
 | `otp_reused`         | A concurrent `verifyOtp` already consumed this record                | set            |
 | `challenge_invalid`  | `issueOtp` got a challenge that isn't a canonical S256 digest        | never set      |
 | `challenge_conflict` | `issueOtp` found a live OTP already issued for this pair             | never set      |
-| `unexpected`         | Your injected `store` or `sendOtp` threw — see `error.cause`         | never set      |
+| `unexpected`         | Your injected `store` or `sendOtp` threw; see `error.cause`          | never set      |
 
-`error.attemptCount` is the record's attempt count — including this one — at
-the point of failure, for your own logging/metrics; it is never part of
+`error.attemptCount` is the record's attempt count, including this one, at
+the point of failure, for your own logging/metrics. It is never part of
 `error.message`. It is only ever set for a code reached _after_ a record was
 found and `incrementAttempts` ran.
 
@@ -202,8 +202,8 @@ user: `challenge_invalid` means it wasn't minted by `createPkceChallenge`,
 `(normalizedEmail, codeChallenge)` pair and the client should mint a fresh
 verifier rather than reusing one.
 
-`otp_reused` means a concurrent verification already consumed the record —
-treat it as a failure like any other; it is not a race your app needs to
+`otp_reused` means a concurrent verification already consumed the record.
+Treat it as a failure like any other; it is not a race your app needs to
 retry.
 
 ### Behaviour worth knowing
@@ -217,8 +217,8 @@ retry.
 - **Expired leftovers self-heal on re-issue.** If a record expires without
   ever being submitted, the next `issueOtp` for that same identifier clears
   it and issues fresh, rather than returning `challenge_conflict` forever.
-  Records that are never re-issued against still need adapter-side cleanup —
-  see below.
+  Records that are never re-issued against still need adapter-side cleanup.
+  See below.
 - **Malformed input doesn't burn attempts.** A wrong-length OTP or malformed
   verifier is rejected before `incrementAttempts` runs, so a garbage request
   can't drain a legitimate session's budget (and can't make the server spend
@@ -227,25 +227,25 @@ retry.
 ### On issue-time enumeration
 
 This package makes `issueOtp` behave identically whether or not the address
-belongs to a known user — it never looks users up. If your app gates OTP
+belongs to a known user, since it never looks users up. If your app gates OTP
 issuance behind an allowlist, an eligibility check, or "only send to
 existing accounts", **you** reintroduce an enumeration oracle: the response
 body, the status code, or just the latency of an awaited `sendOtp` tells an
 attacker which addresses are registered.
 
 If that matters for your product (it usually does for anything
-health-related or otherwise sensitive), return a uniform response — "If this
-address is eligible, we've sent a code" — for both cases, and make sure the
-ineligible path takes similar time to the eligible one rather than returning
-immediately without any mail call.
+health-related or otherwise sensitive), return the same response for both
+cases, such as "If this address is eligible, we've sent a code", and make
+sure the ineligible path takes similar time to the eligible one rather than
+returning immediately without any mail call.
 
 ## Writing an `OtpVerificationStore`
 
-There is no shipped store — persistence is your app's job. The interface is
+There is no shipped store; persistence is your app's job. The interface is
 three methods, all of which must be atomic operations at the database level
 (not read-then-write), since that atomicity is what makes the attempt cap and
 one-time-use guarantees hold under concurrent requests. Feel free to let a
-genuine infrastructure failure (a dropped connection, for instance) throw —
+genuine infrastructure failure (a dropped connection, for instance) throw.
 `issueOtp`/`verifyOtp` catch it and surface it as
 `{ success: false, error }` with `error.code === 'unexpected'` rather than
 letting it propagate.
@@ -357,19 +357,19 @@ as unexpired.
 ## Configuration
 
 `createOtpAuth` accepts the options below. Every one is range-checked at
-construction — an out-of-range or non-integer value throws `OtpOptionsError`
+construction. An out-of-range or non-integer value throws `OtpOptionsError`
 rather than being silently clamped, so a misconfiguration surfaces at
 startup instead of quietly weakening every OTP:
 
-| Option             | Default | Accepted range                                     |
-| ------------------ | ------- | -------------------------------------------------- |
-| `otpLength`        | `8`     | Minimum 8, no maximum — longer is only more secure |
-| `otpExpirySeconds` | `600`   | 1–600 (the NIST SP 800-63B 10-minute ceiling)      |
-| `maxAttempts`      | `5`     | 1–10                                               |
-| `otpPrefixLength`  | `3`     | 2–6                                                |
+| Option             | Default | Accepted range                                    |
+| ------------------ | ------- | ------------------------------------------------- |
+| `otpLength`        | `8`     | Minimum 8, no maximum; longer is only more secure |
+| `otpExpirySeconds` | `600`   | 1–600 (the NIST SP 800-63B 10-minute ceiling)     |
+| `maxAttempts`      | `5`     | 1–10                                              |
+| `otpPrefixLength`  | `3`     | 2–6                                               |
 
 The PKCE verifier length is fixed at 128 (the RFC 7636 maximum) and is not
-configurable — shorter is strictly worse, and there's no scenario where
+configurable. Shorter is strictly worse, and there's no scenario where
 tuning it down helps.
 
 ### On the scrypt work factor
@@ -390,7 +390,7 @@ parameters do.
 
 This package enforces per-OTP attempt limits, not request-rate limits. Pair
 it with [`@opengovsg/rate-limit`](../rate-limit/), mounted **per-IP, not
-per-email** — a per-email cooldown lets an attacker lock out the real user by
+per-email**. A per-email cooldown lets an attacker lock out the real user by
 spamming login requests for their address.
 
 See the [documentation website](https://kit.open.gov.sg/) for full API docs.

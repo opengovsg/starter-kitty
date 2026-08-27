@@ -5,11 +5,11 @@ import { PKCE_VERIFIER_ALPHABET, PKCE_VERIFIER_LENGTH } from './constants.js'
 /**
  * PKCE (Proof Key for Code Exchange, RFC 7636) verifier/challenge
  * construction, for binding a secret to the specific session that requested
- * it — for example, an OTP that must only be redeemable by the browser tab
+ * it. For example, an OTP that must only be redeemable by the browser tab
  * that requested it, not by whoever intercepts it in transit.
  *
  * This is **not an OAuth/OIDC client**. There is no `state`, no `nonce`, and
- * no authorization-code exchange here — only the verifier/challenge pair. Do
+ * no authorization-code exchange here, only the verifier/challenge pair. Do
  * not use this for an actual OAuth authorization-code flow; use a maintained
  * OAuth/OIDC library for that instead.
  */
@@ -20,8 +20,8 @@ const generateVerifier = customAlphabet(PKCE_VERIFIER_ALPHABET, PKCE_VERIFIER_LE
  * Generate a random PKCE code verifier: 128 characters (the RFC 7636
  * maximum) from the unreserved character set.
  *
- * Keep this value only on the requesting client (in memory — never
- * `sessionStorage` or `localStorage`; see the package README) and send only
+ * Keep this value only on the requesting client, in memory rather than
+ * `sessionStorage` or `localStorage` (see the package README), and send only
  * its {@link createPkceChallenge | challenge} with the initiating request.
  *
  * @public
@@ -36,7 +36,7 @@ export function createPkceVerifier(): string {
  *
  * Uses the Web Crypto API (`globalThis.crypto.subtle`), available unflagged
  * since Node.js 19 and in every modern browser, so the exact same code runs
- * on the client and the server — there is no separate "browser" and "server"
+ * on the client and the server. There is no separate "browser" and "server"
  * implementation to keep in sync.
  *
  * @public
@@ -45,7 +45,7 @@ export async function createPkceChallenge(codeVerifier: string): Promise<string>
   if (!globalThis.crypto?.subtle) {
     throw new Error(
       'Web Crypto API (globalThis.crypto.subtle) is unavailable in this environment. ' +
-        'In browsers, crypto.subtle requires a secure context — serve the page over HTTPS ' +
+        'In browsers, crypto.subtle requires a secure context: serve the page over HTTPS ' +
         '(or use http://localhost for development); it is undefined on a plain-HTTP origin ' +
         'such as a staging server or a LAN IP. In Node.js, @opengovsg/auth requires >=20.19.0.',
     )
@@ -68,14 +68,14 @@ function base64UrlEncode(bytes: Uint8Array): string {
  * canonical base64url encoding of a 32-byte SHA-256 digest.
  *
  * Re-encodes the decoded bytes and requires an exact match against the
- * input, not just a matching decoded length — a non-canonical base64url
+ * input, not just a matching decoded length. A non-canonical base64url
  * string (nonzero padding bits in the last symbol) can decode to a 32-byte
  * value while never being producible by {@link createPkceChallenge} itself,
  * which would let a malformed-but-length-passing challenge through and
  * leave the resulting OTP permanently unverifiable.
  *
- * This validates shape only, not that any particular verifier produced it —
- * pair with {@link createPkceChallenge} server-side to check that.
+ * This validates shape only, not that any particular verifier produced it.
+ * Pair with {@link createPkceChallenge} server-side to check that.
  *
  * @public
  */

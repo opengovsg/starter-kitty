@@ -4,7 +4,7 @@ import type { OtpVerificationRecord, OtpVerificationStore } from '../types.js'
  * A minimal in-memory {@link OtpVerificationStore}, used only by this
  * package's own tests. Deliberately not exported from the package: shipping
  * a "just use this" store invites production use of something with no
- * persistence and no cross-instance sharing. Write a real adapter — see the
+ * persistence and no cross-instance sharing. Write a real adapter; see the
  * README for Prisma/Kysely sketches.
  */
 export function createInMemoryStore(): OtpVerificationStore {

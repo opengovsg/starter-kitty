@@ -1,7 +1,7 @@
 /**
  * Default configuration for the `createOtpAuth` factory
  * (`@opengovsg/auth/server/otp`). Every option is range-checked at
- * construction — an out-of-range value throws {@link OtpOptionsError} rather
+ * construction. An out-of-range value throws {@link OtpOptionsError} rather
  * than being silently clamped. See {@link OTP_LENGTH_RANGE},
  * {@link OTP_EXPIRY_SECONDS_RANGE}, {@link MAX_ATTEMPTS_RANGE} and
  * {@link OTP_PREFIX_LENGTH_RANGE}.
@@ -18,7 +18,7 @@ export const OTP_DEFAULTS = {
 /**
  * Accepted range for `otpLength`. No upper bound: a longer OTP is only ever
  * more secure. The lower bound keeps a 5-attempt cap meaningfully hard to
- * brute-force — 8 characters from this 32-character alphabet is 40 bits.
+ * brute-force. 8 characters from this 32-character alphabet is 40 bits.
  *
  * @public
  */

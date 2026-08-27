@@ -12,8 +12,8 @@ const SCRYPT_KEYLEN = 64
  * ambiguous (`"ab" + "c" === "a" + "bc"`);
  * `JSON.stringify([normalizedEmail, codeChallenge])` is not.
  *
- * `normalizedEmail` is used verbatim. This package does not normalize it —
- * see `CreateOtpAuthOptions` and the README. If the caller passes
+ * `normalizedEmail` is used verbatim. This package does not normalize it.
+ * See `CreateOtpAuthOptions` and the README. If the caller passes
  * `Alice@example.com` at issue time and `alice@example.com` at verify time,
  * the two produce different identifiers and verification fails.
  */
@@ -22,15 +22,15 @@ export function createIdentifier(normalizedEmail: string, codeChallenge: string)
 }
 
 /**
- * Hash a plain OTP for storage. `identifier` doubles as the salt — it is
+ * Hash a plain OTP for storage. `identifier` doubles as the salt. It is
  * already unique per (normalizedEmail, codeChallenge) pair and is not a
  * secret, so reusing it avoids a second column while still avoiding a
- * shared global salt (which would let one rainbow table crack every row).
+ * shared global salt, which would let one rainbow table crack every row.
  *
- * Uses the async `scrypt` (not `scryptSync`): scrypt is deliberately
+ * Uses the async `scrypt`, not `scryptSync`. scrypt is deliberately
  * expensive, and the sync variant blocks Node's event loop for the entire
- * computation — under concurrent login traffic that serializes every other
- * request the process is handling, not just OTP ones. The async variant
+ * computation. Under concurrent login traffic that serializes every other
+ * request the process is handling, not only OTP ones. The async variant
  * runs on the libuv threadpool instead.
  *
  * **On the scrypt work factor.** This deliberately uses Node's defaults

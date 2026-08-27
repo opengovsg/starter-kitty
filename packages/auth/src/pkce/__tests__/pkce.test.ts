@@ -68,7 +68,7 @@ describe('isValidCodeChallenge', () => {
 
   it('rejects a non-canonical encoding that decodes to the right byte length', async () => {
     // A 43-char base64url string encodes 258 bits for a 256-bit (32-byte)
-    // value — the last symbol's low 2 bits are unused and must be zero in
+    // value, so the last symbol's low 2 bits are unused and must be zero in
     // a canonical encoding. Find a sibling of a real challenge that differs
     // only in those unused bits: it decodes to the exact same 32 bytes, but
     // createPkceChallenge itself could never produce it.

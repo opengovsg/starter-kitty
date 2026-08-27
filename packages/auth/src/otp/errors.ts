@@ -5,7 +5,7 @@ import { GENERIC_AUTH_ERROR_MESSAGE } from './constants.js'
  *
  * The verify-path codes (`not_found`, `expired`, `too_many_attempts`,
  * `invalid`, `otp_reused`) all map to the same user-facing
- * `OtpVerificationError.message` — the distinction exists for the caller's
+ * `OtpVerificationError.message`. The distinction exists for the caller's
  * own branching (e.g. mapping `too_many_attempts` to an HTTP 429 and the
  * rest to a 401), not for disclosure to the end user. Showing a distinct
  * message per verify code lets an attacker enumerate emails or learn which
@@ -42,7 +42,7 @@ export type OtpVerificationErrorCode =
   | 'challenge_conflict'
   /**
    * Your injected `store` or `sendOtp` threw. The original error is on
-   * {@link OtpVerificationError.cause}, for logging — it is never part of
+   * {@link OtpVerificationError.cause}, for logging. It is never part of
    * `message`, which stays the same generic string as every other code.
    */
   | 'unexpected'
@@ -50,7 +50,7 @@ export type OtpVerificationErrorCode =
 /**
  * Carried as the `error` of a failed {@link OtpResult} for every OTP failure
  * mode. Never thrown by the `createOtpAuth` factory's `issueOtp`/`verifyOtp`
- * (`@opengovsg/auth/server/otp`) — it is a plain value, not a control-flow
+ * (`@opengovsg/auth/server/otp`). It is a plain value, not a control-flow
  * exception. (It still extends `Error` for a useful stack trace and so
  * `instanceof` checks work if you choose to throw it yourself.)
  *
@@ -61,12 +61,12 @@ export class OtpVerificationError extends Error {
 
   /**
    * The record's attempt count at the point this error occurred, for
-   * `expired | too_many_attempts | invalid | otp_reused` — the codes
+   * `expired | too_many_attempts | invalid | otp_reused`, the codes
    * `verifyOtp` reaches only after a record was found and its attempts
    * incremented. `undefined` for every other code: `not_found` (no record
    * existed to count attempts on), the issue-path codes (no attempt has
    * been made yet), and `unexpected` (the failure may have happened before
-   * an attempt count was known). Not part of `message` — this is for your
+   * an attempt count was known). Not part of `message`; this is for your
    * own logging/metrics, never for display to the end user.
    */
   readonly attemptCount?: number
@@ -80,9 +80,9 @@ export class OtpVerificationError extends Error {
 }
 
 /**
- * Thrown by `createOtpAuth` when an option is outside its accepted range —
- * at construction time, not per request, so a misconfiguration fails on the
- * first call rather than silently weakening every OTP.
+ * Thrown by `createOtpAuth` when an option is outside its accepted range.
+ * Raised at construction time, not per request, so a misconfiguration fails
+ * on the first call rather than silently weakening every OTP.
  *
  * This is the one thing in this package that throws: it signals a
  * programming error in your own wiring, not a runtime authentication
@@ -100,7 +100,7 @@ export class OtpOptionsError extends Error {
 /**
  * The outcome of `issueOtp`/`verifyOtp`: either `{ success: true, data }` or
  * `{ success: false, error }`, in the shape of Zod's `safeParse` result.
- * Neither function ever throws — check `success` (or use it as a type
+ * Neither function ever throws. Check `success` (or use it as a type
  * guard) instead of wrapping calls in `try`/`catch`.
  *
  * This includes failures from your own injected `store` or `sendOtp` (a

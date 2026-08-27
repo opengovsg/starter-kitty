@@ -5,8 +5,8 @@
  * This root entry point re-exports only the parts that are safe to bundle
  * into a browser: {@link createPkceVerifier}, {@link createPkceChallenge},
  * {@link isValidCodeChallenge}, and the OTP constants/error type. The
- * Node-only verify orchestration lives at `@opengovsg/auth/server/otp` —
- * import it there so `node:crypto` never reaches a client bundle.
+ * Node-only verify orchestration lives at `@opengovsg/auth/server/otp`.
+ * Import it there so `node:crypto` never reaches a client bundle.
  *
  * @packageDocumentation
  */

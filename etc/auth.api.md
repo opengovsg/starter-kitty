@@ -95,7 +95,7 @@ export type OtpVerificationErrorCode =
 | 'challenge_conflict'
 /**
 * Your injected `store` or `sendOtp` threw. The original error is on
-* {@link OtpVerificationError.cause}, for logging — it is never part of
+* {@link OtpVerificationError.cause}, for logging. It is never part of
 * `message`, which stays the same generic string as every other code.
 */
 | 'unexpected';

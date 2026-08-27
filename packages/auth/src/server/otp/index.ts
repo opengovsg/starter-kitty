@@ -74,7 +74,7 @@ function isWellFormedVerifier(codeVerifier: string): boolean {
 /**
  * Adapters are plain user code, and an ORM that hands back a timestamp
  * string instead of a `Date` would otherwise fail deep inside the expiry
- * arithmetic as a silent `NaN` comparison — which evaluates false, so every
+ * arithmetic as a silent `NaN` comparison, which evaluates false, so every
  * OTP would read as unexpired. Fail loudly and specifically instead.
  */
 function toIssuedAtMs(issuedAt: Date, source: string): number {
@@ -92,13 +92,14 @@ function toIssuedAtMs(issuedAt: Date, source: string): number {
 /**
  * Create an OTP issue/verify pair: generation, scrypt hashing, and a verify
  * sequence that enforces expiry, an atomic attempt cap, a timing-safe
- * compare, and one-time use — in that order, since reordering any one of
- * them reopens a known attack (see the storage-adapter README section).
+ * compare, and one-time use, in that order. Reordering any one of them
+ * reopens a known attack (see the storage-adapter README section).
  *
  * Neither returned function ever throws. See {@link OtpResult}.
  *
  * Throws {@link OtpOptionsError} if any option is outside its accepted
- * range — a construction-time programming error, not a runtime outcome.
+ * range. That is a construction-time programming error, not a runtime
+ * outcome.
  *
  * @public
  */
@@ -128,7 +129,7 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
     async issueOtp({ normalizedEmail, codeChallenge }) {
       const identifier = createIdentifier(normalizedEmail, codeChallenge)
       try {
-        // Reject a malformed challenge before hashing/storing/sending —
+        // Reject a malformed challenge before hashing/storing/sending.
         // verifyOtp can only ever derive a canonical 43-char S256 challenge,
         // so an OTP stored under anything else could never be verified.
         if (!isValidCodeChallenge(codeChallenge)) {
@@ -160,10 +161,10 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
         try {
           await sendOtp({ normalizedEmail, otp, otpPrefix })
         } catch (cause) {
-          // Delivery failed after the record was created. Roll it back —
-          // best effort, a secondary failure here must not mask the
-          // original one — so a retry with the same codeChallenge re-issues
-          // instead of conflicting over an OTP the user never got.
+          // Delivery failed after the record was created. Roll it back on
+          // a best-effort basis, since a secondary failure here must not
+          // mask the original one, so a retry with the same codeChallenge
+          // re-issues instead of conflicting over an OTP the user never got.
           await store.consume(identifier, hashedOtp).catch(() => {})
           throw cause
         }
@@ -172,8 +173,8 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
       } catch (cause) {
         // Every failure from the injected store or sendOtp lands here as
         // 'unexpected', including one that happens to be an
-        // OtpVerificationError instance thrown by a caller's own store —
-        // this function's contract is that ANY dependency failure becomes
+        // OtpVerificationError instance thrown by a caller's own store.
+        // This function's contract is that ANY dependency failure becomes
         // 'unexpected', with no exceptions.
         return { success: false, error: new OtpVerificationError('unexpected', { cause }) }
       }
@@ -214,8 +215,8 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
 
         if (record.attempts > maxAttempts) {
           // Consuming here means the cap fires exactly once: the next
-          // attempt finds no record and gets 'not_found'. See the README —
-          // this is deliberate, so a locked-out record cannot be probed
+          // attempt finds no record and gets 'not_found'. See the README.
+          // This is deliberate, so a locked-out record cannot be probed
           // repeatedly to confirm that an OTP was ever issued.
           await store.consume(identifier, record.hashedOtp)
           return {
@@ -238,7 +239,7 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
         const consumed = await store.consume(identifier, record.hashedOtp)
         if (!consumed) {
           // A concurrent verification already consumed this record between
-          // our hash check and our delete — someone else won the race.
+          // our hash check and our delete, so someone else won the race.
           return {
             success: false,
             error: new OtpVerificationError('otp_reused', { attemptCount: record.attempts }),
