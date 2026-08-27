@@ -169,6 +169,51 @@ describe('createOtpAuth', () => {
     expectSuccess(await otpAuth.verifyOtp({ normalizedEmail: 'a@example.com', otp, codeVerifier }))
   })
 
+  it('verifies a verifier at the RFC 7636 minimum length of 43', async () => {
+    // createPkceVerifier mints 128, but createPkceChallenge hashes any string,
+    // so a caller bringing a compliant 43-char verifier must be able to verify
+    // the OTP it issued. A gate pinned to 128 issues an unverifiable OTP.
+    const otpAuth = build()
+    const codeVerifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'
+    expect(codeVerifier).toHaveLength(43)
+    const codeChallenge = await createPkceChallenge(codeVerifier)
+    expectSuccess(await otpAuth.issueOtp({ normalizedEmail: 'a@example.com', codeChallenge }))
+    const { otp } = lastSent()
+
+    const data = expectSuccess(await otpAuth.verifyOtp({ normalizedEmail: 'a@example.com', otp, codeVerifier }))
+    expect(data).toEqual({ normalizedEmail: 'a@example.com' })
+  })
+
+  it('rejects a verifier below the RFC 7636 minimum', async () => {
+    const otpAuth = build()
+    const codeVerifier = 'a'.repeat(42)
+    const codeChallenge = await createPkceChallenge(codeVerifier)
+    expectSuccess(await otpAuth.issueOtp({ normalizedEmail: 'a@example.com', codeChallenge }))
+    const { otp } = lastSent()
+
+    const error = expectFailure(await otpAuth.verifyOtp({ normalizedEmail: 'a@example.com', otp, codeVerifier }))
+    expect(error.code).toBe('not_found')
+  })
+
+  it('expires an OTP at exactly the expiry instant', async () => {
+    vi.useFakeTimers()
+    try {
+      const otpAuth = build({ otpExpirySeconds: 60 })
+      const codeVerifier = createPkceVerifier()
+      const codeChallenge = await createPkceChallenge(codeVerifier)
+      expectSuccess(await otpAuth.issueOtp({ normalizedEmail: 'a@example.com', codeChallenge }))
+      const { otp } = lastSent()
+
+      // Exactly at the TTL, not one tick past it.
+      vi.advanceTimersByTime(60_000)
+
+      const error = expectFailure(await otpAuth.verifyOtp({ normalizedEmail: 'a@example.com', otp, codeVerifier }))
+      expect(error.code).toBe('expired')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('rejects a malformed codeVerifier without spending an attempt', async () => {
     const otpAuth = build()
     const codeVerifier = createPkceVerifier()

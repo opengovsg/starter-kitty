@@ -368,9 +368,10 @@ startup instead of quietly weakening every OTP:
 | `maxAttempts`      | `5`     | 1–10                                              |
 | `otpPrefixLength`  | `3`     | 2–6                                               |
 
-The PKCE verifier length is fixed at 128 (the RFC 7636 maximum) and is not
-configurable. Shorter is strictly worse, and there's no scenario where
-tuning it down helps.
+`createPkceVerifier` always mints 128 characters, the RFC 7636 maximum, and
+that is not configurable. Shorter is strictly worse, and there's no scenario
+where tuning it down helps. `verifyOtp` still accepts any verifier in the
+RFC's 43-128 range, so a verifier minted elsewhere verifies normally.
 
 ### On the scrypt work factor
 

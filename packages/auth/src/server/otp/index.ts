@@ -21,7 +21,7 @@ import {
   OTP_PREFIX_LENGTH_RANGE,
 } from '../../otp/constants.js'
 import { OtpOptionsError, OtpVerificationError } from '../../otp/errors.js'
-import { PKCE_VERIFIER_ALPHABET, PKCE_VERIFIER_LENGTH } from '../../pkce/constants.js'
+import { PKCE_VERIFIER_ALPHABET, PKCE_VERIFIER_LENGTH_RANGE } from '../../pkce/constants.js'
 import { createPkceChallenge, isValidCodeChallenge } from '../../pkce/index.js'
 import { createIdentifier, hashOtp, isValidOtpHash } from './hashing.js'
 import type { CreateOtpAuthOptions, OtpAuth, OtpVerificationRecord } from './types.js'
@@ -64,7 +64,12 @@ function requireInRange(name: string, value: number, { min, max }: { min: number
 const VERIFIER_CHARSET = new Set(PKCE_VERIFIER_ALPHABET)
 
 function isWellFormedVerifier(codeVerifier: string): boolean {
-  if (codeVerifier.length !== PKCE_VERIFIER_LENGTH) return false
+  // The RFC's whole 43-128 range, not just the length createPkceVerifier
+  // mints. A caller may bring a compliant verifier from elsewhere, and
+  // createPkceChallenge hashes any string, so a narrower gate here would
+  // issue an OTP that could never be verified.
+  if (codeVerifier.length < PKCE_VERIFIER_LENGTH_RANGE.min) return false
+  if (codeVerifier.length > PKCE_VERIFIER_LENGTH_RANGE.max) return false
   for (const char of codeVerifier) {
     if (!VERIFIER_CHARSET.has(char)) return false
   }
@@ -122,7 +127,10 @@ export function createOtpAuth(options: CreateOtpAuthOptions): OtpAuth {
   const generateOtpPrefix = customAlphabet(OTP_PREFIX_ALPHABET, otpPrefixLength)
 
   function isExpired(record: OtpVerificationRecord, source: string): boolean {
-    return Date.now() - toIssuedAtMs(record.issuedAt, source) > otpExpirySeconds * 1000
+    // Inclusive: at exactly otpExpirySeconds the OTP is already expired, so
+    // the documented lifetime is the real one and the NIST ceiling is not
+    // exceeded by a millisecond.
+    return Date.now() - toIssuedAtMs(record.issuedAt, source) >= otpExpirySeconds * 1000
   }
 
   return {
