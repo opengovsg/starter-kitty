@@ -1,0 +1,29 @@
+/**
+ * Config file for API Extractor.  For more info, please visit: https://api-extractor.com
+ *
+ * Second, Node-only entry point (`@opengovsg/auth/server/otp`), reported
+ * separately from the isomorphic root entry so its API is reviewed on its
+ * own terms.
+ */
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+
+  "extends": "../../api-extractor.json",
+
+  "mainEntryPointFilePath": "<projectFolder>/dist/server/otp/index.d.ts",
+
+  "apiReport": {
+    "enabled": true,
+    "reportFileName": "auth-server.api.md"
+  },
+
+  "docModel": {
+    "enabled": true,
+    "apiJsonFilePath": "<projectFolder>/../../temp/auth-server.api.json"
+  },
+
+  "dtsRollup": {
+    "enabled": true,
+    "untrimmedFilePath": "<projectFolder>/dist/auth-server.d.ts"
+  }
+}

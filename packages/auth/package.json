@@ -1,0 +1,73 @@
+{
+  "name": "@opengovsg/auth",
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./pkce": {
+      "types": "./dist/pkce/index.d.ts",
+      "default": "./dist/pkce/index.js"
+    },
+    "./otp": {
+      "types": "./dist/otp/index.d.ts",
+      "default": "./dist/otp/index.js"
+    },
+    "./server/otp": {
+      "types": "./dist/server/otp/index.d.ts",
+      "default": "./dist/server/otp/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      ".": [
+        "./dist/index.d.ts"
+      ],
+      "pkce": [
+        "./dist/pkce/index.d.ts"
+      ],
+      "otp": [
+        "./dist/otp/index.d.ts"
+      ],
+      "server/otp": [
+        "./dist/server/otp/index.d.ts"
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opengovsg/starter-kitty.git",
+    "directory": "packages/auth"
+  },
+  "homepage": "https://github.com/opengovsg/starter-kitty/tree/develop/packages/auth#readme",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build:report": "api-extractor run --local --verbose -c api-extractor.json && api-extractor run --local --verbose -c api-extractor.server.json",
+    "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" --cache",
+    "lint:fix": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest",
+    "ci:report": "api-extractor run --verbose -c api-extractor.json && api-extractor run --verbose -c api-extractor.server.json"
+  },
+  "dependencies": {
+    "nanoid": "^5.1.6"
+  },
+  "devDependencies": {
+    "@microsoft/api-extractor": "^7.58.9",
+    "@opengovsg/eslint-config-starter-kitty": "workspace:*",
+    "@opengovsg/prettier-config-starter-kitty": "workspace:*",
+    "@swc/core": "^1.6.13",
+    "@types/node": "^20",
+    "typescript": "^5.4.5",
+    "vitest": "^4.1.0"
+  },
+  "prettier": "@opengovsg/prettier-config-starter-kitty"
+}

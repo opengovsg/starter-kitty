@@ -54,6 +54,9 @@ importers:
 
   apps/docs:
     devDependencies:
+      '@opengovsg/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@opengovsg/logging':
         specifier: workspace:*
         version: link:../../packages/logging
@@ -72,6 +75,34 @@ importers:
       vue:
         specifier: ~3.4.31
         version: 3.4.33(typescript@5.9.3)
+
+  packages/auth:
+    dependencies:
+      nanoid:
+        specifier: ^5.1.6
+        version: 5.1.16
+    devDependencies:
+      '@microsoft/api-extractor':
+        specifier: ^7.58.9
+        version: 7.58.9(@types/node@20.19.24)
+      '@opengovsg/eslint-config-starter-kitty':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@opengovsg/prettier-config-starter-kitty':
+        specifier: workspace:*
+        version: link:../prettier-config
+      '@swc/core':
+        specifier: ^1.6.13
+        version: 1.6.13
+      '@types/node':
+        specifier: ^20
+        version: 20.19.24
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.0
+        version: 4.1.0(@types/node@20.19.24)(vite@7.3.6(@types/node@20.19.24)(yaml@2.4.5))
 
   packages/eslint-config:
     devDependencies:
@@ -3020,6 +3051,11 @@ packages:
   nanoid@3.3.12:
     resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
+
+  nanoid@5.1.16:
+    resolution: {integrity: sha512-kVrnsrJqMR8+oLJnGEmSWw9BivK5mt7H3FZatVRjrc5wGqFYuBxX1yG7+A7Gi5AefkX6t/oCkizcQgpu0cY1dQ==}
+    engines: {node: ^18 || >=20}
     hasBin: true
 
   natural-compare@1.4.0:
@@ -7195,6 +7231,8 @@ snapshots:
     optional: true
 
   nanoid@3.3.12: {}
+
+  nanoid@5.1.16: {}
 
   natural-compare@1.4.0: {}
 
