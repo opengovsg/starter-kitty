@@ -167,6 +167,7 @@ const buildLimiter = (
     points: fallback.points,
     duration: fallback.duration,
     logger,
+    prefix: config.prefix,
   })
 
   const steady = new RateLimiterRedis({

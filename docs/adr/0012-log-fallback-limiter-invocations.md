@@ -32,8 +32,8 @@ constant noise instead of a signal.
 as `LoggedFallbackRateLimiter` (`packages/rate-limit/src/logged-fallback-rate-limiter.ts`)
 instead of a plain `RateLimiterMemory`. It overrides `consume`, `penalty`,
 `reward`, `get`, `set`, `block`, and `delete` to log a `warn` line, `"Fallback
-rate limiter triggered"`, with the key in context, then delegates to
-`super.<method>`.
+rate limiter triggered"`, with the limiter's `prefix` and the key in context,
+then delegates to `super.<method>`.
 
 When no `client` is configured, the fallback is the sole limiter and stays
 a plain `RateLimiterMemory`. `buildLimiter` logs once, at construction, with

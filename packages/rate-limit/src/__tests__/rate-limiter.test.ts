@@ -17,6 +17,10 @@ const createLoggerStub = () => {
 
 const defaultLogger = createLoggerStub()
 
+// Operators alert on this exact message, so it is pinned here rather than
+// imported from the implementation.
+const FALLBACK_TRIGGERED_MESSAGE = 'Fallback rate limiter triggered'
+
 describe('createRateLimiter', () => {
   describe('memory path (no client)', () => {
     it('resolves with rate-limit info while under the limit', async () => {
@@ -431,6 +435,83 @@ describe('createRateLimiter', () => {
         points: { remaining: 0 },
       })
       await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+    })
+
+    describe('fallback warnings', () => {
+      const fallbackWarnings = (logger: ReturnType<typeof createLoggerStub>) =>
+        logger.warn.mock.calls.map(([input]) => input).filter(input => input.message === FALLBACK_TRIGGERED_MESSAGE)
+
+      it('warns with the prefix and key on every check served by the insurance limiter, including rejected ones', async () => {
+        const logger = createLoggerStub()
+        const client = { status: 'end' } as unknown as RedisClient
+        const prefix = uniquePrefix()
+        const limiter = createRateLimiter({
+          logger,
+          client,
+          overrides: {
+            points: 1,
+            duration: 10,
+            burst: null,
+            fallback: { points: 1, duration: 10 },
+            prefix,
+          },
+        })
+        const key = randomUUID()
+
+        await limiter.check({ key })
+        expect(fallbackWarnings(logger)).toEqual([{ message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix, key } }])
+
+        await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+        expect(fallbackWarnings(logger)).toEqual([
+          { message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix, key } },
+          { message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix, key } },
+        ])
+      })
+
+      it('warns once per check when burst is configured, not once per window', async () => {
+        const logger = createLoggerStub()
+        const client = { status: 'end' } as unknown as RedisClient
+        const limiter = createRateLimiter({
+          logger,
+          client,
+          overrides: {
+            points: 1,
+            duration: 10,
+            burst: { points: 5, duration: 30 },
+            fallback: { points: 1, duration: 10 },
+            prefix: uniquePrefix(),
+          },
+        })
+        const key = randomUUID()
+
+        await limiter.check({ key })
+        // The rejected check also consults the burst window, whose own
+        // insurance limiter must not add a second warning.
+        await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+
+        expect(fallbackWarnings(logger)).toHaveLength(2)
+      })
+
+      it('does not warn per check when no client is configured', async () => {
+        const logger = createLoggerStub()
+        const limiter = createRateLimiter({
+          logger,
+          overrides: {
+            points: 5,
+            duration: 10,
+            burst: null,
+            fallback: { points: 1, duration: 10 },
+            prefix: uniquePrefix(),
+          },
+        })
+        const key = randomUUID()
+
+        await limiter.check({ key })
+        await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
+
+        expect(fallbackWarnings(logger)).toEqual([])
+        expect(logger.error.mock.calls.filter(([input]) => input.message.includes('in-memory'))).toHaveLength(1)
+      })
     })
   })
 })
