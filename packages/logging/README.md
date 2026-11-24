@@ -305,6 +305,11 @@ logger.scope({ action: 'verifyOtp' }).audit.authn.loginSucceeded({
   diagnostic line rather than a silently-incomplete audit record. Identity
   learned after creation (e.g. the acting user on self-signup) is bound with
   `withBindings({ userId })` so actor-scoped events attribute the actor.
+- **System loggers name an actor but no client:** a `.system(...)` logger has
+  no request, so its audit events are not asked for `client_ip` or `user_agent`.
+  A background job that writes data binds its system actor as the actor, e.g.
+  `createBaseLogger.system({ path: 'jobs/feed' }).withBindings({ userId: 'metrics-feed' })`
+  ([ADR-0011](../../docs/adr/0011-system-loggers-audit-without-a-client.md)).
 
 See [ADR-0007](../../docs/adr/0007-fixed-shape-audit-helpers.md) for the design.
 Every input additionally accepts `context?` (extra business fields, merged into

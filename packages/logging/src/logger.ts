@@ -270,6 +270,8 @@ class LoggerImpl implements Logger {
   private action: string | null
   /** Lazily-built, memoised `audit` namespace; see the `audit` getter. */
   private _audit?: AuditLogger
+  /** Built with `.system(...)`: request-less, so no client identity exists. Carried to children. */
+  private readonly system: boolean
 
   constructor(
     logger: ReturnType<typeof bindChild>,
@@ -277,18 +279,21 @@ class LoggerImpl implements Logger {
     options?: {
       action?: string | null
       context?: NonNullable<LogInput['context']> | null
+      system?: boolean
     },
   ) {
     this.logger = logger
     this.serializeError = serialize
     this.action = options?.action ?? null
     this.context = options?.context ?? null
+    this.system = options?.system ?? false
   }
 
   scope(options: { action: string; context?: LogInput['context'] }): Logger {
     return new LoggerImpl(this.logger, this.serializeError, {
       action: options.action,
       context: mergeContext(this.context, options.context),
+      system: this.system,
     })
   }
 
@@ -301,6 +306,7 @@ class LoggerImpl implements Logger {
     return new LoggerImpl(this.logger, this.serializeError, {
       action: this.action,
       context: mergeContext(this.context, options.context),
+      system: this.system,
     })
   }
 
@@ -315,6 +321,7 @@ class LoggerImpl implements Logger {
     return new LoggerImpl(bindChild(this.logger, bindings), this.serializeError, {
       action: this.action,
       context: this.context,
+      system: this.system,
     })
   }
 
@@ -350,6 +357,7 @@ class LoggerImpl implements Logger {
         this.logger[level]({ ...rest, context }, message)
       },
       action: () => this.action ?? undefined,
+      system: this.system,
     }))
   }
 
@@ -449,8 +457,9 @@ export const createLogging = (config: LoggingConfig): CreateLogger => {
   })
   // Error-shaping policy is fixed for the life of the factory, like `level`.
   const serialize = config.serializeError ?? serializeError
-  const make = (options: AnyLoggerOptions): Logger => new LoggerImpl(bindChild(instance, options), serialize)
-  const create = ((options: LoggerOptions): Logger => make(options)) as CreateLogger
-  create.system = (options: SystemLoggerOptions): Logger => make(options)
+  const make = (options: AnyLoggerOptions, system: boolean): Logger =>
+    new LoggerImpl(bindChild(instance, options), serialize, { system })
+  const create = ((options: LoggerOptions): Logger => make(options, false)) as CreateLogger
+  create.system = (options: SystemLoggerOptions): Logger => make(options, true)
   return create
 }

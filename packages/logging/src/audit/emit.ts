@@ -13,7 +13,15 @@ export interface AuditDeps {
   emit: (level: AuditLevel, fields: Record<string, unknown>, message: string) => void
   /** The logger's current leaf action, read at call time. */
   action: () => string | undefined
+  /**
+   * Whether the logger is request-less (built with `.system(...)`). A system
+   * logger has no client, so request identity is not required of it (ADR-0011).
+   */
+  system: boolean
 }
+
+/** Scope fields that only a request has; a system logger is never asked for them. */
+const REQUEST_IDENTITY = new Set(['client_ip', 'user_agent'])
 
 type AuditPayload = Record<string, unknown> & { context?: Record<string, unknown>; messageOverride?: string }
 
@@ -36,7 +44,9 @@ export const emitAudit = (deps: AuditDeps, spec: EventSpec, input: object): void
     deps.emit('warn', { audit: true, category: spec.category, event: spec.event, action, context }, message)
 
   // Scope-read assertion: required shared identity must be on the bound scope.
-  const missing = spec.requiredScope.filter(key => bindings[key] == null)
+  // A system logger still names its actor (`user_id`), but has no client.
+  const required = deps.system ? spec.requiredScope.filter(key => !REQUEST_IDENTITY.has(key)) : spec.requiredScope
+  const missing = required.filter(key => bindings[key] == null)
   if (missing.length > 0) {
     diagnostic('Audit event missing required scope field', { missing_scope: missing })
   }
