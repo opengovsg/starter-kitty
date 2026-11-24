@@ -1,5 +1,11 @@
 # @opengovsg/starter-kitty-logging
 
+## 0.6.0
+
+### Minor Changes
+
+- [#109](https://github.com/opengovsg/starter-kitty/pull/109) [`a1ebeb8`](https://github.com/opengovsg/starter-kitty/commit/a1ebeb8f7601ee5de91e72b9c3b6e7f270fb8d05) Thanks [@karrui](https://github.com/karrui)! - Audit events on a `.system(...)` logger no longer require `client_ip` or `user_agent`, which a request-less logger cannot have. They still require `user_id`: bind the system actor with `withBindings({ userId })`. Request loggers are unchanged. See ADR-0011.
+
 ## 0.5.1
 
 ### Patch Changes
