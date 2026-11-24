@@ -81,8 +81,8 @@ describe('audit.authn', () => {
   })
 
   it('emits a diagnostic when a required scope field is missing, then the event', () => {
-    // System logger has no clientIp / userAgent — both required by loginSucceeded.
-    createBaseLogger.system({ traceId: null, path: '/login' }).audit.authn.loginSucceeded({
+    // A request whose headers carried no client IP or user agent — both required by loginSucceeded.
+    createBaseLogger({ traceId: null, path: '/login', clientIp: null, userAgent: null }).audit.authn.loginSucceeded({
       userId: 'u_1',
       role: 'admin',
       privileged: false,
@@ -271,9 +271,12 @@ describe('audit.dataAccess', () => {
   })
 
   it('emits a diagnostic when the actor is missing from scope', () => {
-    createBaseLogger
-      .system({ traceId: null, path: '/job' })
-      .audit.dataAccess.dataAccessed({ resourceType: 't', resourceId: 'r', accessType: 'read', classification: 'pii' })
+    createBaseLogger({ traceId: null, path: '/data', clientIp: null, userAgent: null }).audit.dataAccess.dataAccessed({
+      resourceType: 't',
+      resourceId: 'r',
+      accessType: 'read',
+      classification: 'pii',
+    })
     const diagnostic = entries().find(l => l.message === 'Audit event missing required scope field')
     expect(diagnostic).toMatchObject({ event: 'dataAccessed', context: { missing_scope: ['user_id', 'client_ip'] } })
   })
@@ -551,5 +554,45 @@ describe('setBindings', () => {
       client_ip: '1.2.3.4', // request-fixed facet inherited untouched
       context: { resource_type: 'team', resource_id: 't_1' },
     })
+  })
+})
+
+describe('audit on a system logger', () => {
+  const missingScope = () => entries().filter(l => l.message === 'Audit event missing required scope field')
+
+  it('does not ask a system logger for request identity once its actor is bound', () => {
+    createBaseLogger
+      .system({ path: 'jobs/metrics-feed' })
+      .withBindings({ userId: 'metrics-feed' })
+      .scope({ action: 'recordFeedValues' })
+      .audit.resource.updated({ resourceType: 'metric_batch', resourceId: 'feed:1', changedFields: [] })
+
+    expect(missingScope()).toHaveLength(0)
+    expect(at(0)).toMatchObject({
+      level: 'NOTICE',
+      audit: true,
+      category: 'resource',
+      event: 'updated',
+      action: 'recordFeedValues',
+      user_id: 'metrics-feed',
+      context: { resource_type: 'metric_batch', resource_id: 'feed:1', changed_fields: [] },
+    })
+  })
+
+  it('still flags a system logger that names no actor', () => {
+    createBaseLogger
+      .system({ path: 'jobs/metrics-feed' })
+      .scope({ action: 'recordFeedValues' })
+      .audit.resource.updated({ resourceType: 'metric_batch', resourceId: 'feed:1', changedFields: [] })
+
+    expect(missingScope()).toEqual([expect.objectContaining({ context: { missing_scope: ['user_id'] } })])
+  })
+
+  it('keeps asking a request logger for its client identity', () => {
+    createBaseLogger({ traceId: null, path: '/forms', clientIp: null, userAgent: null, userId: 'u_1' })
+      .scope({ action: 'updateForm' })
+      .audit.resource.updated({ resourceType: 'form', resourceId: 'f_1', changedFields: ['title'] })
+
+    expect(missingScope()).toEqual([expect.objectContaining({ context: { missing_scope: ['client_ip'] } })])
   })
 })
