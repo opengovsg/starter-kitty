@@ -89,7 +89,8 @@ app.use(async (req, res, next) => {
 })
 
 // After authn: fair per-actor, per-route quotas. Passing the request logger
-// means anything logged for this request carries its identity (path, user, IP).
+// means what is logged for this request carries its identity (path, user, IP),
+// except the fallback warning (see "Monitoring the fallback").
 const rateLimited = limiter => async (req, res, next) => {
   try {
     await limiter.check({ actor: req.session.userId, resource: `${req.method} ${req.route.path}`, logger: req.log })
@@ -154,7 +155,9 @@ const rateLimitMiddleware = t.middleware(async ({ ctx, meta, path, next }) => {
     await limiter.check({
       actor: ctx.session?.userId ?? ctx.clientIp ?? 'unknown',
       resource: path,
-      logger: ctx.logger, // request-scoped, so anything logged carries request identity
+      // Request-scoped, so what is logged carries request identity, except
+      // the fallback warning (see "Monitoring the fallback").
+      logger: ctx.logger,
     })
   } catch (error) {
     if (error instanceof RateLimitExceededError) {
@@ -239,4 +242,4 @@ fallback. The line goes to the factory `logger` even when a check is given its
 own, and it never includes the key.
 
 When `client` is omitted, the limiter instead calls `error` once at creation,
-and logs nothing per check.
+and does not log this warning per check.

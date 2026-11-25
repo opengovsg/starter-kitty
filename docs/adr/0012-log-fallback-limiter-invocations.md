@@ -35,6 +35,13 @@ instead of a plain `RateLimiterMemory`. It overrides `consume`, `penalty`,
 rate limiter triggered"`, with the limiter's `prefix` in context, then
 delegates to `super.<method>`.
 
+With `burst` configured there are two insurance limiters, one behind each
+Redis-backed window. Only the steady window's is a
+`LoggedFallbackRateLimiter`. The burst window's stays a plain
+`RateLimiterMemory` with `points: 0` (ADR 0010). During an outage a check
+only reaches it after the steady insurance limiter has already rejected the
+check and logged, so a check logs once, not once per window.
+
 The key is left out of the context. It is a client IP for the global limiter
 and a caller-defined actor for the local limiter, so it may contain personal
 data, and this line is logged for every check during an outage, not only for
@@ -65,9 +72,10 @@ specific metrics or alerting backend.
 
 ## Consequences
 
-- Every insurance-limiter call logs a warning, regardless of whether it
-  exceeds the fallback's points. Operators alert on the rate of this
-  message, not only on `RateLimitExceededError`.
+- Every check served by the insurance limiter logs one warning, regardless
+  of whether it exceeds the fallback's points or whether `burst` is
+  configured. Operators alert on the rate of this message, not only on
+  `RateLimitExceededError`.
 - The warning does not carry request identity, even when `check()` is given
   a request-scoped logger. This is the one exception to that logger
   receiving everything a check logs.

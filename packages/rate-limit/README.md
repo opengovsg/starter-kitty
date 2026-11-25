@@ -109,7 +109,7 @@ fallback. The line goes to the factory `logger` even when a check is given its
 own, and it never includes the key.
 
 When `client` is omitted, the limiter instead calls `error` once at creation,
-and logs nothing per check.
+and does not log this warning per check.
 
 ## Configuration
 
