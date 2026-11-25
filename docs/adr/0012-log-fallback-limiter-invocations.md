@@ -1,4 +1,4 @@
-# 12. Log every fallback-limiter invocation
+# 12. Log every insurance-limiter invocation
 
 Date: 2026-08-10
 Status: Accepted (amends [0010](./0010-clamp-insurance-limiter-fallback.md))
@@ -43,8 +43,8 @@ on its fallback.
 
 When no `client` is configured, the fallback is the sole limiter and stays
 a plain `RateLimiterMemory`. `buildLimiter` logs once, at construction, with
-`logger.error`. This keeps the one-time "no Redis client configured" log
-from ADR 0009 rather than adding a log line to every subsequent `check()`
+`logger.error`. This keeps the existing one-time "no Redis client
+configured" log rather than adding a log line to every subsequent `check()`
 call.
 
 ### The warning goes to the factory logger, not the per-check logger

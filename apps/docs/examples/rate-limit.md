@@ -226,3 +226,17 @@ async function touchLastUsed(keyId) {
 
 Keys are used verbatim, so normalize or hash caller-controlled values before
 keying.
+
+## Monitoring the fallback
+
+While Redis is unavailable, every check is served by the in-memory limiter at
+the `fallback` allowance. Each of those checks calls `warn` on the factory
+`logger` with the message `"Fallback rate limiter triggered"` and the
+limiter's `prefix` in `context`.
+
+Alert on the rate of this message to learn that a service is running on its
+fallback. The line goes to the factory `logger` even when a check is given its
+own, and it never includes the key.
+
+When `client` is omitted, the limiter instead calls `error` once at creation,
+and logs nothing per check.

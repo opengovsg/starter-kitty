@@ -1,6 +1,7 @@
-import { IRateLimiterOptions, RateLimiterMemory, RateLimiterRes } from 'rate-limiter-flexible'
+import type { IRateLimiterOptions, RateLimiterRes } from 'rate-limiter-flexible'
+import { RateLimiterMemory } from 'rate-limiter-flexible'
 
-import { Logger } from './types'
+import type { Logger } from './types.js'
 
 const FALLBACK_TRIGGERED_MESSAGE = 'Fallback rate limiter triggered'
 
