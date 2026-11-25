@@ -24,7 +24,9 @@ export interface LocalRateLimiter {
    * anonymous traffic.
    *
    * Pass a request-scoped `logger` to attach request identity to anything
-   * this call logs. Omit it to fall back to the factory logger.
+   * this call logs. Omit it to fall back to the factory logger. The
+   * exception is the warning logged when a check is served by the in-memory
+   * fallback during a Redis outage, which always goes to the factory logger.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */

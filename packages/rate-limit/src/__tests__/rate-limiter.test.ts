@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
+import { Redis } from 'ioredis'
 import { RateLimiterMemory } from 'rate-limiter-flexible'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -466,6 +467,29 @@ describe('createRateLimiter', () => {
           { message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix, key } },
           { message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix, key } },
         ])
+      })
+
+      it('warns on the factory logger even when a per-check logger is given', async () => {
+        const factoryLogger = createLoggerStub()
+        const requestLogger = createLoggerStub()
+        // A real client that never connects, so it is never ready.
+        const client = new Redis({ lazyConnect: true })
+        const limiter = createRateLimiter({
+          logger: factoryLogger,
+          client,
+          overrides: {
+            points: 1,
+            duration: 10,
+            burst: null,
+            fallback: { points: 1, duration: 10 },
+            prefix: uniquePrefix(),
+          },
+        })
+
+        await limiter.check({ key: randomUUID(), logger: requestLogger })
+
+        expect(fallbackWarnings(factoryLogger)).toHaveLength(1)
+        expect(fallbackWarnings(requestLogger)).toEqual([])
       })
 
       it('warns once per check when burst is configured, not once per window', async () => {

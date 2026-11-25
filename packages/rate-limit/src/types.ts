@@ -127,6 +127,10 @@ export interface CreateRateLimiterOptions {
    * Logger receiving configuration warnings and runtime
    * problems such as an unexpected store failure. Per-request logging
    * takes a separate logger on each {@link RateLimiter.check | check}.
+   *
+   * It also receives the warning logged on every check served by the
+   * in-memory fallback during a Redis outage, even when that check was given
+   * its own logger.
    */
   logger: Logger
 }

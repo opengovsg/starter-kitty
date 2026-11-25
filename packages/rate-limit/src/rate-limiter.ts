@@ -135,6 +135,10 @@ export interface RateLimiter {
    *
    * Pass a request-scoped `logger` to attach request identity to anything
    * this call may log. Omit it to fall back to the factory logger.
+   *
+   * The exception is the warning logged when a check is served by the
+   * in-memory fallback during a Redis outage, which always goes to the
+   * factory logger.
    */
   check(args: { key: string; logger?: Logger }): Promise<RateLimitInfo>
 }

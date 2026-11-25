@@ -41,6 +41,17 @@ a plain `RateLimiterMemory`. `buildLimiter` logs once, at construction, with
 from ADR 0009 rather than adding a log line to every subsequent `check()`
 call.
 
+### The warning goes to the factory logger, not the per-check logger
+
+`check()` accepts a request-scoped `logger`, but the insurance limiter logs
+with the factory `logger` it was built with. `rate-limiter-flexible` calls
+the insurance limiter itself after a Redis failure, and its typings give no
+type-safe way to pass a per-call value through `consume`. The alternatives
+were an unsafe cast on the `consume` options or carrying the logger in
+`AsyncLocalStorage`, and neither is worth it for this line. The warning's
+purpose is a volume signal per limiter, identified by `prefix`, not a
+per-request diagnostic.
+
 Alerting on the per-invocation warn line, for example a volume-based alert
 in the operator's log platform, is left outside the package. This reuses
 the existing `Logger` interface instead of adding a dependency on a
@@ -51,6 +62,9 @@ specific metrics or alerting backend.
 - Every insurance-limiter call logs a warning, regardless of whether it
   exceeds the fallback's points. Operators alert on the rate of this
   message, not only on `RateLimitExceededError`.
+- The warning does not carry request identity, even when `check()` is given
+  a request-scoped logger. This is the one exception to that logger
+  receiving everything a check logs.
 - When no `client` is configured, only the initial construction logs.
   Running the package with no Redis client, as in local development or
   tests, does not produce a warning per request.
