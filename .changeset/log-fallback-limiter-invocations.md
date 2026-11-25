@@ -2,7 +2,7 @@
 '@opengovsg/rate-limit': patch
 ---
 
-fix(rate-limit): log every insurance-limiter invocation
+feat(rate-limit): log every insurance-limiter invocation
 
 The in-memory fallback limiter now logs a warn line, `"Fallback rate limiter triggered"`, on every call when it is acting as insurance behind a Redis-backed window, since those calls only happen during a Redis outage and are a signal worth alerting on.
 
