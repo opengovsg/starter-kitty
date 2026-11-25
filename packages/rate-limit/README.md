@@ -304,5 +304,5 @@ live under `rate-limit-block:<prefix>:`. The authn wrapper defaults to
 Their numeric fields are clamped and warned about like every other limiter's.
 
 See the [documentation website](https://kit.open.gov.sg/) for full API docs,
-and [ADR-0011](../../docs/adr/0011-failed-authentication-rate-limiting.md) for the
+and [ADR-0013](../../docs/adr/0013-failed-authentication-rate-limiting.md) for the
 failed-authentication threat model and policy decisions.

@@ -1,4 +1,4 @@
-# 11. Failed-authentication rate limiting
+# 13. Failed-authentication rate limiting
 
 Date: 2026-07-21
 Status: Accepted
