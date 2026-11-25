@@ -1,8 +1,10 @@
 import type { RateLimiterAbstract } from 'rate-limiter-flexible'
 import { RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible'
 
+import { BLOCKING_RATE_LIMIT_DEFAULTS } from './constants.js'
 import { RateLimitExceededError } from './errors.js'
 import { isRateLimiterRes, toRateLimitInfo } from './internal.js'
+import { LoggedFallbackRateLimiter } from './logged-fallback-rate-limiter.js'
 import type { Logger, RedisClient } from './types.js'
 import { clamp } from './utilities.js'
 
@@ -15,15 +17,6 @@ interface Config {
     duration: number
   }
   prefix: string
-}
-
-const BASE_DEFAULTS: Config = {
-  points: 100,
-  duration: 3600,
-  block: {
-    duration: 3600,
-  },
-  prefix: 'block',
 }
 
 export const mergeBlockingConfig = (base: Config, override?: BlockingRateLimitConfig): Config => ({
@@ -42,7 +35,7 @@ export const mergeBlockingConfig = (base: Config, override?: BlockingRateLimitCo
  * misconfigured allowance or block duration shows up in logs instead of only
  * as unexpected block behaviour.
  */
-const validateConfig = (config: Config, logger?: Logger): Config => {
+const validateConfig = (config: Config, logger: Logger): Config => {
   const validated: Config = {
     points: clamp(config.points),
     duration: clamp(config.duration),
@@ -53,7 +46,7 @@ const validateConfig = (config: Config, logger?: Logger): Config => {
   }
 
   if (validated.points !== config.points) {
-    logger?.warn({
+    logger.warn({
       message: 'Rate limit points was clamped',
       context: {
         value: config.points,
@@ -63,7 +56,7 @@ const validateConfig = (config: Config, logger?: Logger): Config => {
     })
   }
   if (validated.duration !== config.duration) {
-    logger?.warn({
+    logger.warn({
       message: 'Rate limit duration was clamped',
       context: {
         value: config.duration,
@@ -73,7 +66,7 @@ const validateConfig = (config: Config, logger?: Logger): Config => {
     })
   }
   if (validated.block.duration !== config.block.duration) {
-    logger?.warn({
+    logger.warn({
       message: 'Rate limit block duration was clamped',
       context: {
         value: config.block.duration,
@@ -87,13 +80,8 @@ const validateConfig = (config: Config, logger?: Logger): Config => {
 }
 
 /**
- * Configuration for a failure-counting limiter. All fields are optional;
- * omitted fields inherit from the factory's defaults.
- *
- * Numeric values are clamped to safe positive integers. Non-finite or below-1
- * values degrade to 1, and fractional values are truncated toward zero, since
- * the Redis-backed limiter rejects non-integer arguments at runtime. Each
- * clamp is logged to the factory logger.
+ * Configuration for a failure-counting limiter. Omitted fields inherit the
+ * limiter's defaults.
  *
  * @public
  */
@@ -121,17 +109,30 @@ export interface BlockingRateLimitConfig {
  * @public
  */
 export interface CreateBlockingRateLimiterOptions {
-  /** Redis client used to share failure counters and block state across instances. */
-  client?: RedisClient | null
-  /** Default allowance, counting window, block duration, and namespace. */
-  defaults?: BlockingRateLimitConfig
   /**
-   * Factory logger for configuration and request warnings: `warn` when a
-   * configuration value is clamped to a safe integer, `error` once when no
-   * Redis client is configured. Request diagnostics prefer the logger passed
-   * to the individual call and fall back to this one.
+   * The Redis client backing the limiter's failure counters and block state.
+   * When absent or `null`, the limiter falls back to in-memory state, which
+   * is per-instance and not shared across replicas.
    */
-  logger?: Logger
+  client?: RedisClient | null
+  /**
+   * Configuration merged over the limiter's built-in defaults.
+   *
+   * Numeric values are clamped to safe positive integers: non-finite or
+   * below-1 values degrade to 1 and fractions are truncated, since the
+   * Redis-backed limiter rejects non-integer arguments at runtime.
+   */
+  overrides?: BlockingRateLimitConfig
+  /**
+   * Logger receiving configuration warnings and runtime problems such as an
+   * unexpected store failure. Per-request logging takes a separate logger
+   * on each call.
+   *
+   * It also receives the fallback warning, logged whenever the in-memory
+   * fallback serves a call during a Redis outage, even if that call has its
+   * own logger.
+   */
+  logger: Logger
 }
 
 /**
@@ -144,6 +145,12 @@ export interface BlockingRateLimiter {
   /**
    * Read the current state without minting a key or consuming a point. Throws
    * {@link RateLimitExceededError} when `key` is blocked.
+   *
+   * Pass a request-scoped `logger` to attach request identity to anything
+   * this call logs. Omit it to fall back to the factory logger. The
+   * fallback warning is the exception. The limiter logs it to the factory
+   * logger whenever the in-memory fallback serves a call during a Redis
+   * outage.
    */
   isBlocked(args: { key: string; logger?: Logger }): Promise<void>
   /**
@@ -154,7 +161,7 @@ export interface BlockingRateLimiter {
   consume(args: { key: string; logger?: Logger }): Promise<void>
   /**
    * Delete the key's counter and any active block. When Redis is configured,
-   * this clears both Redis and the in-memory insurance state, and rejects if
+   * this clears both Redis and the in-memory fallback state, and rejects if
    * Redis could not be cleared so an incomplete reset is never reported as a
    * success.
    */
@@ -162,8 +169,12 @@ export interface BlockingRateLimiter {
 }
 
 /**
- * Create a failure-counting limiter backed by Redis with a matching in-memory
- * insurance limiter, or by per-instance memory when no client is configured.
+ * Create a failure-counting limiter backed by the injected Redis client with
+ * a matching in-memory fallback, or by in-memory state alone when no client
+ * is configured.
+ *
+ * Defaults to an allowance of 100 failures per hour, then a one-hour block.
+ * Override via {@link CreateBlockingRateLimiterOptions.overrides}.
  *
  * Call {@link BlockingRateLimiter.isBlocked | isBlocked} before verification
  * and {@link BlockingRateLimiter.consume | consume} only after verification
@@ -173,18 +184,20 @@ export interface BlockingRateLimiter {
  *
  * @public
  */
-export const createBlockingRateLimiter = (options: CreateBlockingRateLimiterOptions = {}): BlockingRateLimiter => {
+export const createBlockingRateLimiter = (options: CreateBlockingRateLimiterOptions): BlockingRateLimiter => {
   const { client = null, logger } = options
-  const config = validateConfig(mergeBlockingConfig(BASE_DEFAULTS, options.defaults), logger)
+  const config = validateConfig(mergeBlockingConfig(BLOCKING_RATE_LIMIT_DEFAULTS, options.overrides), logger)
   const { points, duration, block, prefix } = config
 
   let limiter: RateLimiterAbstract
   let resetKey: (key: string) => Promise<void>
   if (client) {
-    const insuranceLimiter = new RateLimiterMemory({
+    const insuranceLimiter = new LoggedFallbackRateLimiter({
       points,
       duration,
       blockDuration: block.duration,
+      logger,
+      prefix,
     })
     const redisLimiter = new RateLimiterRedis({
       storeClient: client,
@@ -203,13 +216,19 @@ export const createBlockingRateLimiter = (options: CreateBlockingRateLimiterOpti
       } catch (error) {
         redisError = error
       }
-      // Always clear any outage-era state. If Redis failed above, reject after
-      // clearing memory so the caller knows to retry once the store recovers.
+      // Always clear any outage-era state. Only a failed Redis delete counts
+      // as a fallback invocation, so a healthy reset logs no fallback warning.
+      if (redisError === undefined) {
+        await insuranceLimiter.deleteSilently(key)
+        return
+      }
+      // Reject after clearing memory so the caller knows to retry once the
+      // store recovers.
       await insuranceLimiter.delete(key)
-      if (redisError !== undefined) throw redisError
+      throw redisError
     }
   } else {
-    logger?.error({
+    logger.error({
       message:
         'No Redis client configured, using in-memory failure counters and block state. Limits are per-instance and not shared across replicas.',
       context: { prefix, points, duration, block },
@@ -234,7 +253,7 @@ export const createBlockingRateLimiter = (options: CreateBlockingRateLimiterOpti
         }
       } catch (error) {
         if (error instanceof RateLimitExceededError) throw error
-        lgr?.error({
+        lgr.error({
           message: 'Unexpected rate limiter error',
           context: { prefix },
           error,
@@ -250,9 +269,10 @@ export const createBlockingRateLimiter = (options: CreateBlockingRateLimiterOpti
         if (isRateLimiterRes(error)) {
           const justBlocked = error.consumedPoints > points && error.consumedPoints <= points + 1
           if (justBlocked) {
-            lgr?.warn({
+            lgr.warn({
               message: 'Rate limit block engaged after failure allowance was exceeded',
               context: {
+                prefix,
                 bucket: key,
                 consumed: error.consumedPoints,
                 block,
@@ -261,7 +281,7 @@ export const createBlockingRateLimiter = (options: CreateBlockingRateLimiterOpti
           }
           return
         }
-        lgr?.error({
+        lgr.error({
           message: 'Unexpected rate limiter error',
           context: { prefix },
           error,

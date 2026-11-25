@@ -1,7 +1,8 @@
-import { GLOBAL_RATE_LIMIT_DEFAULTS, UNKNOWN_BUCKET } from './constants.js'
+import { GLOBAL_RATE_LIMIT_DEFAULTS } from './constants.js'
+import { resolveIpBucket } from './ip-bucket.js'
 import { createRateLimiter } from './rate-limiter.js'
 import type { CreateRateLimiterOptions, Logger, RateLimitInfo } from './types.js'
-import { mergeConfig, normalizeIp } from './utilities.js'
+import { mergeConfig } from './utilities.js'
 
 /**
  * A rate limiter keyed purely by client IP, for use before authentication.
@@ -71,26 +72,16 @@ export const createGlobalRateLimiter = (options: CreateGlobalRateLimiterOptions)
     overrides: mergeConfig(GLOBAL_RATE_LIMIT_DEFAULTS, rateLimiterOptions.overrides),
   })
   return {
-    check: ({ ip, logger }) => {
-      // Non-strings never reach normalizeIp or the verbatim path, so a broken
-      // extractor cannot crash the limiter on either path.
-      const key = typeof ip !== 'string' ? null : skipKeyNormalization ? ip : normalizeIp(ip)
-      if (key === null) {
-        const lgr = logger ?? rateLimiterOptions.logger
-        lgr.error({
-          message:
-            typeof ip !== 'string'
-              ? 'Client IP extraction did not return a string, using the shared unknown bucket'
-              : 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
-          // Truncated because an unparseable value is attacker-controlled
-          // input and must not flood logs.
-          context: { ip: String(ip).slice(0, 64) },
-        })
-      }
-      return limiter.check({
-        key: key ?? UNKNOWN_BUCKET,
+    check: ({ ip, logger }) =>
+      limiter.check({
+        key: resolveIpBucket({
+          ip,
+          skipKeyNormalization,
+          // Prefer the request-scoped logger so the extraction failure carries
+          // request identity.
+          logger: logger ?? rateLimiterOptions.logger,
+        }),
         logger,
-      })
-    },
+      }),
   }
 }

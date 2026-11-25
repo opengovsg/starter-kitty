@@ -9,11 +9,11 @@ import type { Redis } from 'ioredis';
 // @public
 export interface AuthnRateLimiter {
     consume(args: {
-        ip: string | null;
+        ip: string | null | undefined;
         logger?: Logger;
     }): Promise<void>;
     isBlocked(args: {
-        ip: string | null;
+        ip: string | null | undefined;
         logger?: Logger;
     }): Promise<void>;
 }
@@ -50,21 +50,21 @@ export interface BurstConfig {
 }
 
 // @public
-export const createAuthnRateLimiter: (options?: CreateAuthnRateLimiterOptions) => AuthnRateLimiter;
+export const createAuthnRateLimiter: (options: CreateAuthnRateLimiterOptions) => AuthnRateLimiter;
 
 // @public
 export interface CreateAuthnRateLimiterOptions extends CreateBlockingRateLimiterOptions {
-    validate?: boolean;
+    skipKeyNormalization?: boolean;
 }
 
 // @public
-export const createBlockingRateLimiter: (options?: CreateBlockingRateLimiterOptions) => BlockingRateLimiter;
+export const createBlockingRateLimiter: (options: CreateBlockingRateLimiterOptions) => BlockingRateLimiter;
 
 // @public
 export interface CreateBlockingRateLimiterOptions {
     client?: RedisClient | null;
-    defaults?: BlockingRateLimitConfig;
-    logger?: Logger;
+    logger: Logger;
+    overrides?: BlockingRateLimitConfig;
 }
 
 // @public

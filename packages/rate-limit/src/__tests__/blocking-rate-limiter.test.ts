@@ -7,18 +7,29 @@ import { createBlockingRateLimiter, type Logger, RateLimitExceededError, type Re
 
 const uniquePrefix = () => `test-${randomUUID()}`
 
+// A Logger stub whose `warn`/`error` methods are vitest mocks, for asserting
+// which diagnostics reached which logger.
 const createLoggerStub = () => {
   const warn = vi.fn<Logger['warn']>()
   const error = vi.fn<Logger['error']>()
   return { warn, error } satisfies Logger
 }
 
+const defaultLogger = createLoggerStub()
+
+// Operators alert on this exact message, so the tests spell it out instead
+// of importing it from the implementation.
+const FALLBACK_TRIGGERED_MESSAGE = 'Fallback rate limiter triggered'
+
+const fallbackWarnings = (logger: ReturnType<typeof createLoggerStub>) =>
+  logger.warn.mock.calls.map(([input]) => input).filter(input => input.message === FALLBACK_TRIGGERED_MESSAGE)
+
 describe('createBlockingRateLimiter', () => {
   it('checks an unseen key without minting state or consuming a point', async () => {
     const getSpy = vi.spyOn(RateLimiterMemory.prototype, 'get')
     const consumeSpy = vi.spyOn(RateLimiterMemory.prototype, 'consume')
     try {
-      const limiter = createBlockingRateLimiter({ defaults: { prefix: uniquePrefix() } })
+      const limiter = createBlockingRateLimiter({ logger: defaultLogger, overrides: { prefix: uniquePrefix() } })
       const key = randomUUID()
 
       await expect(limiter.isBlocked({ key })).resolves.toBeUndefined()
@@ -34,7 +45,8 @@ describe('createBlockingRateLimiter', () => {
 
   it('accumulates failures and engages the block only after the allowance is exceeded', async () => {
     const limiter = createBlockingRateLimiter({
-      defaults: { points: 2, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      logger: defaultLogger,
+      overrides: { points: 2, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
     const key = randomUUID()
 
@@ -52,9 +64,10 @@ describe('createBlockingRateLimiter', () => {
 
   it('warns exactly once when the block engages and stays silent on later consumes', async () => {
     const logger = createLoggerStub()
+    const prefix = uniquePrefix()
     const limiter = createBlockingRateLimiter({
       logger,
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix },
     })
     const key = randomUUID()
 
@@ -66,12 +79,13 @@ describe('createBlockingRateLimiter', () => {
       ([input]) => input.message === 'Rate limit block engaged after failure allowance was exceeded',
     )
     expect(blockWarnings).toHaveLength(1)
-    expect(blockWarnings[0]?.[0].context).toEqual({ bucket: key, consumed: 2, block: { duration: 30 } })
+    expect(blockWarnings[0]?.[0].context).toEqual({ prefix, bucket: key, consumed: 2, block: { duration: 30 } })
   })
 
   it('resets a blocked key', async () => {
     const limiter = createBlockingRateLimiter({
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      logger: defaultLogger,
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
     const key = randomUUID()
 
@@ -89,8 +103,9 @@ describe('createBlockingRateLimiter', () => {
       del: vi.fn(),
     } as unknown as RedisClient
     const limiter = createBlockingRateLimiter({
+      logger: defaultLogger,
       client,
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
     const key = randomUUID()
 
@@ -101,9 +116,11 @@ describe('createBlockingRateLimiter', () => {
 
   it('clears stale insurance state when reset succeeds after Redis recovers', async () => {
     const clientState = { status: 'end', del: vi.fn().mockResolvedValue(1) }
+    const logger = createLoggerStub()
     const limiter = createBlockingRateLimiter({
+      logger,
       client: clientState as unknown as RedisClient,
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
     const key = randomUUID()
 
@@ -112,7 +129,10 @@ describe('createBlockingRateLimiter', () => {
     await expect(limiter.isBlocked({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
 
     clientState.status = 'ready'
+    const warningsBeforeReset = fallbackWarnings(logger).length
     await expect(limiter.reset({ key })).resolves.toBeUndefined()
+    // A reset that reaches Redis is not a fallback invocation.
+    expect(fallbackWarnings(logger)).toHaveLength(warningsBeforeReset)
     clientState.status = 'end'
     await expect(limiter.isBlocked({ key })).resolves.toBeUndefined()
   })
@@ -124,8 +144,9 @@ describe('createBlockingRateLimiter', () => {
       del: vi.fn().mockRejectedValue(storeError),
     } as unknown as RedisClient
     const limiter = createBlockingRateLimiter({
+      logger: defaultLogger,
       client,
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
     const key = randomUUID()
 
@@ -137,11 +158,76 @@ describe('createBlockingRateLimiter', () => {
     await expect(limiter.isBlocked({ key })).resolves.toBeUndefined()
   })
 
+  describe('fallback warnings', () => {
+    it('warns with the prefix, and never the key, on every call served by the insurance limiter', async () => {
+      const logger = createLoggerStub()
+      const client = { status: 'end', del: vi.fn() } as unknown as RedisClient
+      const prefix = uniquePrefix()
+      const limiter = createBlockingRateLimiter({
+        logger,
+        client,
+        overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix },
+      })
+      const key = randomUUID()
+
+      await limiter.isBlocked({ key })
+      expect(fallbackWarnings(logger)).toEqual([{ message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix } }])
+
+      await limiter.consume({ key })
+      expect(fallbackWarnings(logger)).toEqual([
+        { message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix } },
+        { message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix } },
+      ])
+    })
+
+    it('warns on the factory logger even when a per-call logger is given', async () => {
+      const factoryLogger = createLoggerStub()
+      const requestLogger = createLoggerStub()
+      const client = { status: 'end', del: vi.fn() } as unknown as RedisClient
+      const limiter = createBlockingRateLimiter({
+        logger: factoryLogger,
+        client,
+        overrides: { prefix: uniquePrefix() },
+      })
+      const key = randomUUID()
+
+      await limiter.isBlocked({ key, logger: requestLogger })
+      await limiter.consume({ key, logger: requestLogger })
+
+      expect(fallbackWarnings(factoryLogger)).toHaveLength(2)
+      expect(fallbackWarnings(requestLogger)).toEqual([])
+    })
+
+    it('warns when a reset falls back because Redis could not be cleared', async () => {
+      const logger = createLoggerStub()
+      const storeError = new Error('Redis connection is not ready')
+      const client = { status: 'end', del: vi.fn().mockRejectedValue(storeError) } as unknown as RedisClient
+      const prefix = uniquePrefix()
+      const limiter = createBlockingRateLimiter({ logger, client, overrides: { prefix } })
+
+      await expect(limiter.reset({ key: randomUUID() })).rejects.toBe(storeError)
+
+      expect(fallbackWarnings(logger)).toEqual([{ message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix } }])
+    })
+
+    it('does not warn per call when no client is configured', async () => {
+      const logger = createLoggerStub()
+      const limiter = createBlockingRateLimiter({ logger, overrides: { prefix: uniquePrefix() } })
+      const key = randomUUID()
+
+      await limiter.isBlocked({ key })
+      await limiter.consume({ key })
+      await limiter.reset({ key })
+
+      expect(fallbackWarnings(logger)).toEqual([])
+    })
+  })
+
   it('reports at factory creation when no Redis client is configured', () => {
     const logger = createLoggerStub()
     const prefix = uniquePrefix()
 
-    createBlockingRateLimiter({ logger, defaults: { prefix } })
+    createBlockingRateLimiter({ logger, overrides: { prefix } })
 
     expect(logger.error).toHaveBeenCalledWith({
       message:
@@ -152,7 +238,8 @@ describe('createBlockingRateLimiter', () => {
 
   it('clamps invalid allowance, window, and block duration values to 1', async () => {
     const limiter = createBlockingRateLimiter({
-      defaults: { points: 0, duration: NaN, block: { duration: Infinity }, prefix: uniquePrefix() },
+      logger: defaultLogger,
+      overrides: { points: 0, duration: NaN, block: { duration: Infinity }, prefix: uniquePrefix() },
     })
     const key = randomUUID()
 
@@ -170,7 +257,7 @@ describe('createBlockingRateLimiter', () => {
     const logger = createLoggerStub()
     const prefix = uniquePrefix()
 
-    createBlockingRateLimiter({ logger, defaults: { duration: 60.7, prefix } })
+    createBlockingRateLimiter({ logger, overrides: { duration: 60.7, prefix } })
 
     expect(logger.warn).toHaveBeenCalledWith({
       message: 'Rate limit duration was clamped',
@@ -182,7 +269,7 @@ describe('createBlockingRateLimiter', () => {
     const logger = createLoggerStub()
 
     createBlockingRateLimiter({
-      defaults: { points: 0, duration: NaN, block: { duration: Infinity }, prefix: uniquePrefix() },
+      overrides: { points: 0, duration: NaN, block: { duration: Infinity }, prefix: uniquePrefix() },
       logger,
     })
 
@@ -199,7 +286,7 @@ describe('createBlockingRateLimiter', () => {
     const logger = createLoggerStub()
 
     createBlockingRateLimiter({
-      defaults: { points: 5, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      overrides: { points: 5, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
       logger,
     })
 
@@ -211,7 +298,7 @@ describe('createBlockingRateLimiter', () => {
     const requestLogger = createLoggerStub()
     const limiter = createBlockingRateLimiter({
       logger: factoryLogger,
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
     const key = randomUUID()
 
@@ -229,7 +316,7 @@ describe('createBlockingRateLimiter', () => {
     const storeError = new Error('boom')
     const spy = vi.spyOn(RateLimiterMemory.prototype, 'get').mockRejectedValue(storeError)
     try {
-      const limiter = createBlockingRateLimiter({ logger, defaults: { prefix: uniquePrefix() } })
+      const limiter = createBlockingRateLimiter({ logger, overrides: { prefix: uniquePrefix() } })
 
       await expect(limiter.isBlocked({ key: randomUUID() })).rejects.toBe(storeError)
 
@@ -246,7 +333,7 @@ describe('createBlockingRateLimiter', () => {
     const storeError = new Error('boom')
     const spy = vi.spyOn(RateLimiterMemory.prototype, 'consume').mockRejectedValue(storeError)
     try {
-      const limiter = createBlockingRateLimiter({ logger, defaults: { prefix: uniquePrefix() } })
+      const limiter = createBlockingRateLimiter({ logger, overrides: { prefix: uniquePrefix() } })
 
       await expect(limiter.consume({ key: randomUUID() })).rejects.toBe(storeError)
 

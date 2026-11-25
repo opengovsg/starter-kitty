@@ -259,11 +259,6 @@ describe('createGlobalRateLimiter', () => {
     })
   })
 
-  // The global limiter's literal built-in default (100 points/second, no
-  // burst) can no longer be observed via the no-client path — the fallback
-  // allowance (10/s) governs it instead, per ADR 0010. See
-  // `rate-limiter.docker.test.ts` for that coverage against a real Redis.
-
   it('forwards a per-check logger through to the underlying limiter', async () => {
     const requestLogger = createLoggerStub()
     const storeError = new Error('boom')
@@ -293,7 +288,8 @@ describe('createGlobalRateLimiter', () => {
 describe('createAuthnRateLimiter', () => {
   it('records failures by IP and blocks only after the allowance is exceeded', async () => {
     const limiter = createAuthnRateLimiter({
-      defaults: { points: 2, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      logger: defaultLogger,
+      overrides: { points: 2, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
     const ip = '1.2.3.4'
 
@@ -308,7 +304,8 @@ describe('createAuthnRateLimiter', () => {
 
   it('buckets IPv6 addresses by /64 prefix', async () => {
     const limiter = createAuthnRateLimiter({
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      logger: defaultLogger,
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
 
     await limiter.consume({ ip: '2001:db8:85a3:1::1' })
@@ -320,7 +317,8 @@ describe('createAuthnRateLimiter', () => {
 
   it('normalizes IPv4-mapped IPv6 spellings to the embedded IPv4 bucket', async () => {
     const limiter = createAuthnRateLimiter({
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      logger: defaultLogger,
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
 
     await limiter.consume({ ip: '1.2.3.4' })
@@ -329,62 +327,70 @@ describe('createAuthnRateLimiter', () => {
     await expect(limiter.isBlocked({ ip: '::ffff:1.2.3.4' })).rejects.toBeInstanceOf(RateLimitExceededError)
   })
 
-  it('funnels null and unparseable IPs into the shared unknown bucket', async () => {
+  it('funnels missing and unparseable IPs into the shared unknown bucket', async () => {
     const logger = createLoggerStub()
     const limiter = createAuthnRateLimiter({
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      logger: defaultLogger,
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
 
     await limiter.consume({ ip: null, logger })
     await limiter.consume({ ip: 'not-an-ip', logger })
 
-    await expect(limiter.isBlocked({ ip: null, logger })).rejects.toBeInstanceOf(RateLimitExceededError)
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
-    )
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
-        context: { ip: 'not-an-ip' },
-      }),
-    )
+    await expect(limiter.isBlocked({ ip: undefined, logger })).rejects.toBeInstanceOf(RateLimitExceededError)
+    expect(logger.error).toHaveBeenCalledWith({
+      message: 'Client IP extraction did not return a string, using the shared unknown bucket',
+      context: { ip: 'null' },
+    })
+    expect(logger.error).toHaveBeenCalledWith({
+      message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
+      context: { ip: 'not-an-ip' },
+    })
   })
 
-  it('uses non-null strings verbatim when validation is disabled', async () => {
+  it('uses strings verbatim when key normalization is skipped', async () => {
     const logger = createLoggerStub()
     const limiter = createAuthnRateLimiter({
-      validate: false,
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      logger: defaultLogger,
+      skipKeyNormalization: true,
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
 
     await limiter.consume({ ip: 'not-an-ip', logger })
     await limiter.consume({ ip: 'not-an-ip', logger })
 
     await expect(limiter.isBlocked({ ip: 'not-an-ip', logger })).rejects.toBeInstanceOf(RateLimitExceededError)
+    expect(logger.error).not.toHaveBeenCalled()
+
+    // A missing IP still falls into the shared unknown bucket.
     await expect(limiter.isBlocked({ ip: null, logger })).resolves.toBeUndefined()
-    expect(logger.warn).not.toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Client IP is not a valid IPv4 or IPv6 address, using the shared unknown bucket',
+        message: 'Client IP extraction did not return a string, using the shared unknown bucket',
       }),
-    )
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
     )
   })
 
-  it('routes IP and block warnings to the per-call logger', async () => {
+  it('routes IP errors and block warnings to the per-call logger', async () => {
     const factoryLogger = createLoggerStub()
     const requestLogger = createLoggerStub()
     const limiter = createAuthnRateLimiter({
       logger: factoryLogger,
-      defaults: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      overrides: { points: 1, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
 
     await limiter.consume({ ip: null, logger: requestLogger })
     await limiter.consume({ ip: null, logger: requestLogger })
 
-    expect(requestLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Client IP extraction returned null, using the shared unknown bucket' }),
+    expect(requestLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Client IP extraction did not return a string, using the shared unknown bucket',
+      }),
+    )
+    expect(factoryLogger.error).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Client IP extraction did not return a string, using the shared unknown bucket',
+      }),
     )
     expect(requestLogger.warn).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Rate limit block engaged after failure allowance was exceeded' }),
@@ -410,7 +416,7 @@ describe('createAuthnRateLimiter', () => {
     const logger = createLoggerStub()
     const prefix = uniquePrefix()
 
-    createAuthnRateLimiter({ logger, defaults: { duration: 60.7, prefix } })
+    createAuthnRateLimiter({ logger, overrides: { duration: 60.7, prefix } })
 
     // Once, not twice: the wrapper merges its own defaults and the factory
     // merges again over the base, but only the factory validates.
@@ -422,7 +428,7 @@ describe('createAuthnRateLimiter', () => {
   })
 
   it('does not expose reset on the IP-keyed wrapper', () => {
-    const limiter = createAuthnRateLimiter({ defaults: { prefix: uniquePrefix() } })
+    const limiter = createAuthnRateLimiter({ logger: defaultLogger, overrides: { prefix: uniquePrefix() } })
 
     expect('reset' in limiter).toBe(false)
   })

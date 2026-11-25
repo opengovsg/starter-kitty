@@ -71,4 +71,12 @@ export class LoggedFallbackRateLimiter extends RateLimiterMemory {
     this.logTriggered()
     return super.delete(key, options)
   }
+
+  /**
+   * Delete without logging, for a caller clearing fallback state itself
+   * while Redis is healthy, which is not a fallback invocation.
+   */
+  deleteSilently(key: string | number): Promise<boolean> {
+    return super.delete(key)
+  }
 }

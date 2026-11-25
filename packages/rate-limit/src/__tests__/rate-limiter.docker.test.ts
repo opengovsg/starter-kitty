@@ -112,7 +112,8 @@ describe('rate limiters against a real, healthy Redis', () => {
   it('persists and resets a primitive block in Redis', async () => {
     const limiter = createBlockingRateLimiter({
       client,
-      defaults: { points: 2, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      logger: defaultLogger,
+      overrides: { points: 2, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
     const key = randomUUID()
 
@@ -135,7 +136,8 @@ describe('rate limiters against a real, healthy Redis', () => {
   it('persists an authn IP block in Redis', async () => {
     const limiter = createAuthnRateLimiter({
       client,
-      defaults: { points: 2, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
+      logger: defaultLogger,
+      overrides: { points: 2, duration: 60, block: { duration: 30 }, prefix: uniquePrefix() },
     })
     const ip = `10.0.1.${Math.floor(Math.random() * 255)}`
 

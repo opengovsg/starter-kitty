@@ -23,10 +23,19 @@ export const GLOBAL_RATE_LIMIT_DEFAULTS = {
   prefix: 'global',
 }
 
-export const AUTHN_RATE_LIMIT_DEFAULTS = {
+/**
+ * Sized so one misconfigured client cannot block a whole shared IP, while an
+ * enumerator is still capped at 101 attempts per hour.
+ */
+export const BLOCKING_RATE_LIMIT_DEFAULTS = {
   points: 100,
   duration: 3600,
   block: { duration: 3600 },
+  prefix: 'block',
+}
+
+export const AUTHN_RATE_LIMIT_DEFAULTS = {
+  ...BLOCKING_RATE_LIMIT_DEFAULTS,
   prefix: 'authn',
 }
 
