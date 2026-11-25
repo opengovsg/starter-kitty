@@ -97,6 +97,20 @@ dependency graph loads multiple copies, the constructors differ and the check
 can fail. At that boundary, use a structural guard that checks `name`, `info`,
 and `toHttpHeaders` instead.
 
+## Monitoring the fallback
+
+While Redis is unavailable, the in-memory limiter serves every check at the
+`fallback` allowance. Each of those checks calls `warn` on the factory
+`logger` with the message `"Fallback rate limiter triggered"` and the
+limiter's `prefix` in `context`.
+
+Alert on the rate of this message to learn that a service is running on its
+fallback. The line goes to the factory `logger` even when you pass a check
+its own `logger`, and it never includes the key.
+
+If you omit `client`, the limiter calls `error` once at creation and does not
+log this warning per check.
+
 ## Configuration
 
 Every limiter accepts `overrides` of the shape below. Defaults shown are for

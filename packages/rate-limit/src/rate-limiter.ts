@@ -3,6 +3,7 @@ import { BurstyRateLimiter, RateLimiterMemory, RateLimiterRedis } from 'rate-lim
 
 import { BASE_RATE_LIMIT_DEFAULTS } from './constants.js'
 import { RateLimitExceededError } from './errors.js'
+import { LoggedFallbackRateLimiter } from './logged-fallback-rate-limiter.js'
 import type { CreateRateLimiterOptions, Logger, RateLimitInfo, RedisClient, RequiredRateLimitConfig } from './types.js'
 import { clamp, mergeConfig } from './utilities.js'
 
@@ -134,6 +135,10 @@ export interface RateLimiter {
    *
    * Pass a request-scoped `logger` to attach request identity to anything
    * this call may log. Omit it to fall back to the factory logger.
+   *
+   * The fallback warning is the exception. The limiter logs it to the
+   * factory logger whenever the in-memory fallback serves a check during a
+   * Redis outage.
    */
   check(args: { key: string; logger?: Logger }): Promise<RateLimitInfo>
 }
@@ -145,12 +150,11 @@ const buildLimiter = (
 ): RateLimiterAbstract | BurstyRateLimiter => {
   const { points, duration, burst, fallback } = config
 
-  const memory = new RateLimiterMemory({
-    points: fallback.points,
-    duration: fallback.duration,
-  })
-
   if (!client) {
+    const memory = new RateLimiterMemory({
+      points: fallback.points,
+      duration: fallback.duration,
+    })
     logger.error({
       message:
         'No Redis client configured, using in-memory rate limiting at the fallback allowance. Limits are per-instance and not shared across replicas.',
@@ -162,6 +166,13 @@ const buildLimiter = (
     })
     return memory
   }
+
+  const memory = new LoggedFallbackRateLimiter({
+    points: fallback.points,
+    duration: fallback.duration,
+    logger,
+    prefix: config.prefix,
+  })
 
   const steady = new RateLimiterRedis({
     storeClient: client,

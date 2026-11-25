@@ -26,7 +26,10 @@ export interface GlobalRateLimiter {
    * Pass `skipKeyNormalization: true` to use every string verbatim instead.
    *
    * Pass a request-scoped `logger` to attach request identity to anything
-   * this call logs. Omit it to fall back to the factory logger.
+   * this call logs. Omit it to fall back to the factory logger. The
+   * fallback warning is the exception. The limiter logs it to the factory
+   * logger whenever the in-memory fallback serves a check during a Redis
+   * outage.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */

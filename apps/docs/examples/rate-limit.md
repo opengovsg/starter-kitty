@@ -89,7 +89,8 @@ app.use(async (req, res, next) => {
 })
 
 // After authn: fair per-actor, per-route quotas. Passing the request logger
-// means anything logged for this request carries its identity (path, user, IP).
+// means logs for this request carry its identity (path, user, IP). The
+// fallback warning is the exception. See "Monitoring the fallback".
 const rateLimited = limiter => async (req, res, next) => {
   try {
     await limiter.check({ actor: req.session.userId, resource: `${req.method} ${req.route.path}`, logger: req.log })
@@ -154,7 +155,9 @@ const rateLimitMiddleware = t.middleware(async ({ ctx, meta, path, next }) => {
     await limiter.check({
       actor: ctx.session?.userId ?? ctx.clientIp ?? 'unknown',
       resource: path,
-      logger: ctx.logger, // request-scoped, so anything logged carries request identity
+      // Request-scoped, so logs carry request identity. The fallback warning
+      // is the exception. See "Monitoring the fallback".
+      logger: ctx.logger,
     })
   } catch (error) {
     if (error instanceof RateLimitExceededError) {
@@ -226,3 +229,17 @@ async function touchLastUsed(keyId) {
 
 Keys are used verbatim, so normalize or hash caller-controlled values before
 keying.
+
+## Monitoring the fallback
+
+While Redis is unavailable, the in-memory limiter serves every check at the
+`fallback` allowance. Each of those checks calls `warn` on the factory
+`logger` with the message `"Fallback rate limiter triggered"` and the
+limiter's `prefix` in `context`.
+
+Alert on the rate of this message to learn that a service is running on its
+fallback. The line goes to the factory `logger` even when you pass a check
+its own `logger`, and it never includes the key.
+
+If you omit `client`, the limiter calls `error` once at creation and does not
+log this warning per check.
