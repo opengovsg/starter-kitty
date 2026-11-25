@@ -22,3 +22,4 @@ Files are numbered sequentially: `NNNN-kebab-case-title.md`.
 | [0010](./0010-clamp-insurance-limiter-fallback.md) | Clamp the insurance limiter's fallback allowance | Accepted (amended by [0012](./0012-log-fallback-limiter-invocations.md)) |
 | [0011](./0011-system-loggers-audit-without-a-client.md) | System loggers audit without a client | Accepted |
 | [0012](./0012-log-fallback-limiter-invocations.md) | Log every insurance-limiter invocation       | Accepted |
+| [0013](./0013-failed-authentication-rate-limiting.md) | Failed-authentication rate limiting | Accepted |
