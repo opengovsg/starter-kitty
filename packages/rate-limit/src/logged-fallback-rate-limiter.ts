@@ -14,12 +14,15 @@ export class LoggedFallbackRateLimiter extends RateLimiterMemory {
     this.prefix = prefix
   }
 
-  private logTriggered(key: string | number): void {
+  /**
+   * The key is deliberately left out of the context, since it is a client IP
+   * or a caller-defined actor and may contain personal data.
+   */
+  private logTriggered(): void {
     this.logger.warn({
       message: FALLBACK_TRIGGERED_MESSAGE,
       context: {
         prefix: this.prefix,
-        key: key.toString(),
       },
     })
   }
@@ -29,22 +32,22 @@ export class LoggedFallbackRateLimiter extends RateLimiterMemory {
     pointsToConsume?: number,
     options?: { [key: string]: unknown },
   ): Promise<RateLimiterRes> {
-    this.logTriggered(key)
+    this.logTriggered()
     return super.consume(key, pointsToConsume, options)
   }
 
   penalty(key: string | number, points?: number, options?: { [key: string]: unknown }): Promise<RateLimiterRes> {
-    this.logTriggered(key)
+    this.logTriggered()
     return super.penalty(key, points, options)
   }
 
   reward(key: string | number, points?: number, options?: { [key: string]: unknown }): Promise<RateLimiterRes> {
-    this.logTriggered(key)
+    this.logTriggered()
     return super.reward(key, points, options)
   }
 
   get(key: string | number, options?: { [key: string]: unknown }): Promise<RateLimiterRes | null> {
-    this.logTriggered(key)
+    this.logTriggered()
     return super.get(key, options)
   }
 
@@ -54,17 +57,17 @@ export class LoggedFallbackRateLimiter extends RateLimiterMemory {
     secDuration: number,
     options?: { [key: string]: unknown },
   ): Promise<RateLimiterRes> {
-    this.logTriggered(key)
+    this.logTriggered()
     return super.set(key, points, secDuration, options)
   }
 
   block(key: string | number, secDuration: number, options?: { [key: string]: unknown }): Promise<RateLimiterRes> {
-    this.logTriggered(key)
+    this.logTriggered()
     return super.block(key, secDuration, options)
   }
 
   delete(key: string | number, options?: { [key: string]: unknown }): Promise<boolean> {
-    this.logTriggered(key)
+    this.logTriggered()
     return super.delete(key, options)
   }
 }

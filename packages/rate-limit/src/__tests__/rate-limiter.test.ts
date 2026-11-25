@@ -442,7 +442,7 @@ describe('createRateLimiter', () => {
       const fallbackWarnings = (logger: ReturnType<typeof createLoggerStub>) =>
         logger.warn.mock.calls.map(([input]) => input).filter(input => input.message === FALLBACK_TRIGGERED_MESSAGE)
 
-      it('warns with the prefix and key on every check served by the insurance limiter, including rejected ones', async () => {
+      it('warns with the prefix, and never the key, on every check served by the insurance limiter, including rejected ones', async () => {
         const logger = createLoggerStub()
         const client = { status: 'end' } as unknown as RedisClient
         const prefix = uniquePrefix()
@@ -460,12 +460,12 @@ describe('createRateLimiter', () => {
         const key = randomUUID()
 
         await limiter.check({ key })
-        expect(fallbackWarnings(logger)).toEqual([{ message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix, key } }])
+        expect(fallbackWarnings(logger)).toEqual([{ message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix } }])
 
         await expect(limiter.check({ key })).rejects.toBeInstanceOf(RateLimitExceededError)
         expect(fallbackWarnings(logger)).toEqual([
-          { message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix, key } },
-          { message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix, key } },
+          { message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix } },
+          { message: FALLBACK_TRIGGERED_MESSAGE, context: { prefix } },
         ])
       })
 
