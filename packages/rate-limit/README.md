@@ -11,38 +11,34 @@ The package reads **no environment variables** of its own and depends on no
 HTTP framework. `ioredis` is an optional peer dependency. Install it only if
 you back the limiter with Redis.
 
-## The opinionated limiters
+## The three limiters
 
 Most deployments want all three, mounted in this order:
 
-1. **`createGlobalRateLimiter`** — keyed purely by client IP, mounted
-   **before** authentication. Authentication itself hits critical infrastructure
-   (database lookups for sessions, API keys, OTPs); a per-user limiter cannot
-   protect that because unauthenticated traffic has no user yet. Defaults to
-   100 points per second per IP, no burst. IPv4-mapped IPv6 addresses are
-   normalized to their embedded IPv4 address; other IPv6 clients are bucketed
-   by /64 prefix (a subscriber typically holds a whole /64, so finer keying
-   would allow bucket-minting by address rotation). An unparseable IP shares
-   one `unknown` bucket and is reported through the request logger.
-2. **`createAuthnRateLimiter`** — keyed by client IP and mounted around
-   credential verification. It reads block state before verification and
-   records only presented credentials that fail verification. Defaults to an
-   allowance of 100 failures/hour and a one-hour block when the allowance is
-   exceeded.
-3. **`createLocalRateLimiter`** — keyed by `actor` + `resource`, mounted
-   after identity exists. Enforces fair per-actor quotas per resource.
-   Defaults to 50 points per 10 seconds with a burst of 20 per 30 seconds.
+1. **`createGlobalRateLimiter`**, mounted **before** authentication.
+   Protects session, API-key, and OTP verification from unauthenticated floods.
+   Keyed by client IP, defaulting to 100 points per second.
+2. **`createAuthnRateLimiter`**, mounted around credential verification.
+   Keyed by client IP. Reads block state before verification and records only
+   presented credentials that fail it. Defaults to 100 failures per hour,
+   then a one-hour block.
+3. **`createLocalRateLimiter`**, mounted after identity exists. Keyed by
+   `actor` + `resource`, enforcing fair per-actor quotas per resource so one
+   identified caller cannot monopolize an endpoint. Defaults to 50 points per
+   10 seconds with a burst of 20 per 30 seconds.
 
 `createRateLimiter` exposes the underlying core for anything else (custom
 keys, throttling non-HTTP work such as database writes).
+`createBlockingRateLimiter` exposes the failure-counting core behind the
+authn limiter.
 
 ## Setup
 
 Create the limiters once, injecting your app's Redis client, and re-export
 them:
 
-```ts
-// src/rate-limiters.ts — owned by your app
+```javascript
+// src/rate-limiters.ts
 import { createAuthnRateLimiter, createGlobalRateLimiter, createLocalRateLimiter } from '@opengovsg/rate-limit'
 
 // Recommended to use `@opengovsg/logging`.
@@ -56,10 +52,9 @@ export const localRateLimiter = createLocalRateLimiter({ client: redis, logger }
 
 The global and authn limiters validate and normalize IP addresses by default.
 If the application already supplies a trusted, canonical key, pass
-`skipKeyNormalization: true` to the global limiter or `validate: false` to the
-authn limiter to use each string verbatim. This disables IPv6 /64 bucketing
-and IPv4-mapped normalization, so do not use it with attacker-controlled or
-unnormalized values.
+`skipKeyNormalization: true` to use every string verbatim. This also disables
+IPv6 /64 bucketing and IPv4-mapped normalization, so do not use it with
+attacker-controlled or unnormalized values.
 
 When `client` is omitted, the limiter runs on in-memory counters at the
 `fallback` allowance, not the steady limits. This is suitable for tests and
@@ -73,11 +68,11 @@ replicas, it is not suitable for production.
 await globalRateLimiter.check({ ip: req.ip })
 
 // Around credential verification: read first, record only failures.
-await authnRateLimiter.isBlocked({ ip: req.ip ?? null })
+await authnRateLimiter.isBlocked({ ip: req.ip })
 const credential = readPresentedCredential(req)
 if (credential !== null) {
   const identity = await verifyPresentedCredential(credential)
-  if (identity === null) await authnRateLimiter.consume({ ip: req.ip ?? null })
+  if (identity === null) await authnRateLimiter.consume({ ip: req.ip })
 }
 
 // After auth: fair per-actor, per-resource quotas.
@@ -140,7 +135,7 @@ const uniform401 = res => res.status(401).json({ message: 'Invalid credentials' 
 // Place after the global limiter and before credential verification.
 const rejectBlockedAuthn = async (req, res, next) => {
   try {
-    await authnRateLimiter.isBlocked({ ip: req.ip ?? null, logger: req.log })
+    await authnRateLimiter.isBlocked({ ip: req.ip, logger: req.log })
     next()
   } catch (error) {
     if (AUTHN_SHADOW_MODE) {
@@ -161,7 +156,7 @@ const authenticate = async (req, res, next) => {
   const identity = await verifyCredential(credential) // identity or null; infrastructure errors throw
   if (identity === null) {
     try {
-      await authnRateLimiter.consume({ ip: req.ip ?? null, logger: req.log })
+      await authnRateLimiter.consume({ ip: req.ip, logger: req.log })
     } catch (error) {
       // Shadow/fail-open for limiter infrastructure only. The credential still
       // failed, so the request remains a uniform 401 rather than being admitted.
@@ -191,7 +186,7 @@ credential verifier, a service may add a second limiter keyed by a one-way hash
 of the presented credential to collapse a distributed retry storm of the same
 dead secret. This is an optional extension, not a replacement for the IP
 limiter: it does not detect probes that present each candidate only once.
-With Redis configured, `reset` clears both Redis and insurance state; if Redis
+With Redis configured, `reset` clears both Redis and fallback state. If Redis
 cannot be cleared, it clears the in-memory state but rejects so the caller can
 retry after recovery.
 
@@ -201,7 +196,8 @@ import { createBlockingRateLimiter } from '@opengovsg/rate-limit'
 
 const credentialFailures = createBlockingRateLimiter({
   client: redis,
-  defaults: { points: 20, duration: 3600, block: { duration: 3600 }, prefix: 'credential-authn' },
+  logger,
+  overrides: { points: 20, duration: 3600, block: { duration: 3600 }, prefix: 'credential-authn' },
 })
 const bucket = createHash('sha256').update(presentedCredential).digest('hex')
 
@@ -244,6 +240,11 @@ its own `logger`, and it never includes the key.
 
 If you omit `client`, the limiter calls `error` once at creation and does not
 log this warning per check.
+
+The authn and blocking limiters log the same warning whenever their in-memory
+limiter serves a call during a Redis outage. They have no `fallback`
+allowance. The in-memory limiter enforces the configured allowance and block
+duration, counted per instance.
 
 ## Configuration
 
@@ -296,13 +297,22 @@ factory default. An override must provide both `points` and `duration`.
 Store keys live under `rate-limit:<prefix>:` (steady) and
 `rate-limit-burst:<prefix>:` (burst).
 
-`createBlockingRateLimiter` and `createAuthnRateLimiter` instead accept
-`defaults` with `points` (failure allowance), `duration` (counting window),
-`block: { duration }` (block length in seconds), and `prefix`. Their store keys
-live under `rate-limit-block:<prefix>:`. The authn wrapper defaults to
-`{ points: 100, duration: 3600, block: { duration: 3600 }, prefix: 'authn' }`.
-Their numeric fields are clamped and warned about like every other limiter's.
+`createBlockingRateLimiter` and `createAuthnRateLimiter` take `overrides` of
+a different shape. Defaults shown are for `createBlockingRateLimiter`:
 
-See the [documentation website](https://kit.open.gov.sg/) for full API docs,
-and [ADR-0013](../../docs/adr/0013-failed-authentication-rate-limiting.md) for the
-failed-authentication threat model and policy decisions.
+| Field      | Default              | Meaning                                                                 |
+| ---------- | -------------------- | ----------------------------------------------------------------------- |
+| `points`   | `100`                | Failures allowed per counting window                                    |
+| `duration` | `3600`               | Counting window in seconds                                              |
+| `block`    | `{ duration: 3600 }` | Seconds a key stays blocked once it exceeds the allowance               |
+| `prefix`   | `'block'`            | Namespace segment isolating this limiter's counters in the shared store |
+
+`createAuthnRateLimiter` changes only the prefix:
+
+| Field    | Default   |
+| -------- | --------- |
+| `prefix` | `'authn'` |
+
+Store keys live under `rate-limit-block:<prefix>:`.
+
+See the [documentation website](https://kit.open.gov.sg/) for full API docs.

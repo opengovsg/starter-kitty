@@ -22,7 +22,7 @@ Create the limiters once, injecting your app's Redis client, and re-export
 them:
 
 ```javascript
-// src/rate-limiters.ts — owned by your app
+// src/rate-limiters.ts
 import { createAuthnRateLimiter, createGlobalRateLimiter, createLocalRateLimiter } from '@opengovsg/rate-limit'
 
 // Recommended to use `@opengovsg/logging`.
@@ -46,18 +46,20 @@ a flood before the caller's identity is known.
 The global limiter validates and normalizes IP addresses by default.
 When the IP is invalid or missing, requests are bucketed into an `unknown` bucket.
 
-If the application already supplies a trusted, canonical key, pass
-`skipKeyNormalization: true` to the global limiter or `validate: false` to the
-authn limiter to use each string verbatim. This disables IPv6 /64 bucketing
+If the application already supplies a trusted, canonical key, pass `skipKeyNormalization: true`
+to use every string verbatim. This also disables IPv6 /64 bucketing
 and IPv4-mapped normalization, so do not use it with attacker-controlled or
-unnormalized values. A `null` authn IP still uses the shared `unknown` bucket.
+unnormalized values.
 
-The factory `logger` receives an `error` when no client is configured, since
-enforcement is then degraded rather than merely misconfigured, and a `warn`
-whenever a rate-limit value is clamped to a safe integer, reporting the field's
-original and clamped values. Both fire once when the limiter is created.
-Per-request warnings take a separate, request-scoped logger on each `check`
-(see below).
+### Authn rate limiter
+
+Use the authn limiter around credential verification to count failed attempts
+by client IP. It reads block state before verification and records only
+presented credentials that fail it. Once an IP exceeds its allowance, the
+limiter blocks that IP for a fixed duration.
+
+The authn limiter normalizes IP addresses the same way as the global limiter
+and accepts the same `skipKeyNormalization` option.
 
 ### Local rate limiter
 
@@ -65,19 +67,18 @@ Use the local limiter after authentication to apply per-actor, per-resource
 quotas, such as limiting a user or API key on a particular route or procedure.
 This prevents one identified caller from monopolizing an endpoint.
 
-## Where each limiter fits
+## Why three limiters?
 
 **Mount the global limiter before authentication.** Verifying a session, an
 API key, or an OTP may hit critical infrastructure such as your database. A
 per-user limiter only engages _after_ identity is established, so it cannot
 shield that infrastructure from an unauthenticated flood. The global limiter
-is keyed purely by client IP (100 points/second by default, no burst) and
-stands in front of auth. The authn limiter then counts failed credential
-verification by IP (100 failures/hour and a one-hour block by default). The
-local limiter (keyed by `actor` + `resource`, 50 points/10 s with a 20/30 s
-burst by default) enforces fair per-user quotas once identity exists.
-
-A `null` IP falls into a shared `unknown` bucket rather than being exempted.
+is keyed purely by client IP (100 points/second by default) and
+stands in front of authentication. The authn limiter counts failed credential
+verification by client IP (100 failures/hour, then a one-hour block by
+default). The local limiter (keyed by `actor` + `resource`,
+50 points/10 s with a 20 points/30 s burst by default) enforces fair per-user quotas
+once identity exists.
 
 ## Failed-authentication limiting
 
@@ -134,7 +135,7 @@ const uniform401 = res => res.status(401).json({ message: 'Invalid credentials' 
 
 app.use(async (req, res, next) => {
   try {
-    await authnRateLimiter.isBlocked({ ip: req.ip ?? null, logger: req.log })
+    await authnRateLimiter.isBlocked({ ip: req.ip, logger: req.log })
     next()
   } catch (error) {
     if (AUTHN_SHADOW_MODE) {
@@ -146,14 +147,14 @@ app.use(async (req, res, next) => {
   }
 })
 
-app.use(async (req, res, next) => {
+const authenticate = async (req, res, next) => {
   const credential = readCredential(req)
   if (credential === null) return uniform401(res) // missing: do not consume
 
   const identity = await verifyCredential(credential) // identity or null; infrastructure errors throw
   if (identity === null) {
     try {
-      await authnRateLimiter.consume({ ip: req.ip ?? null, logger: req.log })
+      await authnRateLimiter.consume({ ip: req.ip, logger: req.log })
     } catch (error) {
       // Fail open for limiter infrastructure only. Authentication still failed,
       // so this remains a uniform 401 rather than admitting the request.
@@ -164,14 +165,14 @@ app.use(async (req, res, next) => {
 
   req.identity = identity
   next()
-})
+}
 
 // After authn: fair per-actor, per-route quotas. Passing the request logger
 // means logs for this request carry its identity (path, user, IP). The
 // fallback warning is the exception. See "Monitoring the fallback".
 const rateLimited = limiter => async (req, res, next) => {
   try {
-    await limiter.check({ actor: req.identity.id, resource: req.route.path, logger: req.log })
+    await limiter.check({ actor: req.identity.id, resource: `${req.method} ${req.route.path}`, logger: req.log })
     next()
   } catch (error) {
     if (error instanceof RateLimitExceededError) return respond429(res, error)
@@ -179,7 +180,7 @@ const rateLimited = limiter => async (req, res, next) => {
   }
 }
 
-app.post('/api/bookings', rateLimited(localRateLimiter), createBooking)
+app.post('/api/submission', authenticate, rateLimited(localRateLimiter), createSubmission)
 ```
 
 Configuration is fixed at creation, so a route that needs different limits
@@ -317,7 +318,7 @@ in a store key. Services with expensive verification may optionally add a
 second limiter keyed by a one-way credential hash, collapsing a distributed
 retry storm of the same dead secret. This does not replace the IP limiter or
 catch probing where every candidate is tried once.
-With Redis configured, `reset` clears both Redis and insurance state; if Redis
+With Redis configured, `reset` clears both Redis and fallback state. If Redis
 cannot be cleared, it clears the in-memory state but rejects so the caller can
 retry after recovery.
 
@@ -327,7 +328,8 @@ import { createBlockingRateLimiter } from '@opengovsg/rate-limit'
 
 const credentialFailures = createBlockingRateLimiter({
   client: redis,
-  defaults: { points: 20, duration: 3600, block: { duration: 3600 }, prefix: 'credential-authn' },
+  logger,
+  overrides: { points: 20, duration: 3600, block: { duration: 3600 }, prefix: 'credential-authn' },
 })
 const bucket = createHash('sha256').update(presentedCredential).digest('hex')
 
@@ -349,3 +351,8 @@ its own `logger`, and it never includes the key.
 
 If you omit `client`, the limiter calls `error` once at creation and does not
 log this warning per check.
+
+The authn and blocking limiters log the same warning whenever their in-memory
+limiter serves a call during a Redis outage. They have no `fallback`
+allowance. The in-memory limiter enforces the configured allowance and block
+duration, counted per instance.

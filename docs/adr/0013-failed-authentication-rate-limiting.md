@@ -102,8 +102,13 @@ memory-only fallback, applies unchanged.
 Notably, a block does not survive a Redis outage, since the insurance limiter
 never saw the failures Redis recorded.
 
-As in ADR 0010, alerting when the insurance limiter is in use is deferred to a
-subsequent ADR.
+As in [ADR 0012](./0012-log-fallback-limiter-invocations.md), the insurance
+limiter logs a warning on every invocation, so operators can alert when
+failure counting runs on the fallback. A `reset` that clears Redis is not a
+fallback invocation and logs nothing.
+
+ADR 0010's reduced fallback allowance does not apply. The insurance limiter
+enforces the configured allowance and block duration, counted per instance.
 
 The mounting order extends ADR 0009's map: global limiter, then authn
 `isBlocked`, then credential verification with `consume` on failure, then the
