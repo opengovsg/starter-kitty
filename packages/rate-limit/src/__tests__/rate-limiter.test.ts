@@ -22,8 +22,8 @@ const defaultLogger = createLoggerStub()
 // ready and runs on its insurance limiter.
 const createUnreadyClient = () => new Redis({ lazyConnect: true })
 
-// Operators alert on this exact message, so it is pinned here rather than
-// imported from the implementation.
+// Operators alert on this exact message, so the tests spell it out instead
+// of importing it from the implementation.
 const FALLBACK_TRIGGERED_MESSAGE = 'Fallback rate limiter triggered'
 
 describe('createRateLimiter', () => {

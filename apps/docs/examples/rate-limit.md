@@ -89,8 +89,8 @@ app.use(async (req, res, next) => {
 })
 
 // After authn: fair per-actor, per-route quotas. Passing the request logger
-// means what is logged for this request carries its identity (path, user, IP),
-// except the fallback warning (see "Monitoring the fallback").
+// means logs for this request carry its identity (path, user, IP). The
+// fallback warning is the exception. See "Monitoring the fallback".
 const rateLimited = limiter => async (req, res, next) => {
   try {
     await limiter.check({ actor: req.session.userId, resource: `${req.method} ${req.route.path}`, logger: req.log })
@@ -155,8 +155,8 @@ const rateLimitMiddleware = t.middleware(async ({ ctx, meta, path, next }) => {
     await limiter.check({
       actor: ctx.session?.userId ?? ctx.clientIp ?? 'unknown',
       resource: path,
-      // Request-scoped, so what is logged carries request identity, except
-      // the fallback warning (see "Monitoring the fallback").
+      // Request-scoped, so logs carry request identity. The fallback warning
+      // is the exception. See "Monitoring the fallback".
       logger: ctx.logger,
     })
   } catch (error) {
@@ -232,14 +232,14 @@ keying.
 
 ## Monitoring the fallback
 
-While Redis is unavailable, every check is served by the in-memory limiter at
-the `fallback` allowance. Each of those checks calls `warn` on the factory
+While Redis is unavailable, the in-memory limiter serves every check at the
+`fallback` allowance. Each of those checks calls `warn` on the factory
 `logger` with the message `"Fallback rate limiter triggered"` and the
 limiter's `prefix` in `context`.
 
 Alert on the rate of this message to learn that a service is running on its
-fallback. The line goes to the factory `logger` even when a check is given its
-own, and it never includes the key.
+fallback. The line goes to the factory `logger` even when you pass a check
+its own `logger`, and it never includes the key.
 
-When `client` is omitted, the limiter instead calls `error` once at creation,
-and does not log this warning per check.
+If you omit `client`, the limiter calls `error` once at creation and does not
+log this warning per check.

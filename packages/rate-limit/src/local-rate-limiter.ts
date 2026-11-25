@@ -25,8 +25,9 @@ export interface LocalRateLimiter {
    *
    * Pass a request-scoped `logger` to attach request identity to anything
    * this call logs. Omit it to fall back to the factory logger. The
-   * exception is the warning logged when a check is served by the in-memory
-   * fallback during a Redis outage, which always goes to the factory logger.
+   * fallback warning is the exception. The limiter logs it to the factory
+   * logger whenever the in-memory fallback serves a check during a Redis
+   * outage.
    *
    * Throws {@link RateLimitExceededError} when the allowance is exhausted.
    */

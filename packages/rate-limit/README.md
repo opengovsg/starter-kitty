@@ -99,17 +99,17 @@ and `toHttpHeaders` instead.
 
 ## Monitoring the fallback
 
-While Redis is unavailable, every check is served by the in-memory limiter at
-the `fallback` allowance. Each of those checks calls `warn` on the factory
+While Redis is unavailable, the in-memory limiter serves every check at the
+`fallback` allowance. Each of those checks calls `warn` on the factory
 `logger` with the message `"Fallback rate limiter triggered"` and the
 limiter's `prefix` in `context`.
 
 Alert on the rate of this message to learn that a service is running on its
-fallback. The line goes to the factory `logger` even when a check is given its
-own, and it never includes the key.
+fallback. The line goes to the factory `logger` even when you pass a check
+its own `logger`, and it never includes the key.
 
-When `client` is omitted, the limiter instead calls `error` once at creation,
-and does not log this warning per check.
+If you omit `client`, the limiter calls `error` once at creation and does not
+log this warning per check.
 
 ## Configuration
 

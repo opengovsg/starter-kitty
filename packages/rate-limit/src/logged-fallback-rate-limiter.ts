@@ -16,8 +16,8 @@ export class LoggedFallbackRateLimiter extends RateLimiterMemory {
   }
 
   /**
-   * The key is deliberately left out of the context, since it is a client IP
-   * or a caller-defined actor and may contain personal data.
+   * The context omits the key, which is a client IP or a caller-defined
+   * actor and may contain personal data.
    */
   private logTriggered(): void {
     this.logger.warn({
