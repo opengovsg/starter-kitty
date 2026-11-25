@@ -4,7 +4,7 @@ import { Redis } from 'ioredis'
 import { RateLimiterMemory } from 'rate-limiter-flexible'
 import { describe, expect, it, vi } from 'vitest'
 
-import { createRateLimiter, type Logger, RateLimitExceededError, type RedisClient } from '../index.js'
+import { createRateLimiter, type Logger, RateLimitExceededError } from '../index.js'
 
 const uniquePrefix = () => `test-${randomUUID()}`
 
@@ -17,6 +17,10 @@ const createLoggerStub = () => {
 }
 
 const defaultLogger = createLoggerStub()
+
+// A real client that never connects, so the limiter always finds Redis not
+// ready and runs on its insurance limiter.
+const createUnreadyClient = () => new Redis({ lazyConnect: true })
 
 // Operators alert on this exact message, so it is pinned here rather than
 // imported from the implementation.
@@ -397,7 +401,7 @@ describe('createRateLimiter', () => {
 
   describe('redis path', () => {
     it('falls back to the insurance memory limiter when the client is not ready', async () => {
-      const client = { status: 'end' } as unknown as RedisClient
+      const client = createUnreadyClient()
       const limiter = createRateLimiter({
         logger: defaultLogger,
         client,
@@ -418,7 +422,7 @@ describe('createRateLimiter', () => {
     })
 
     it('grants nothing extra from burst when Redis is not ready, even though burst is configured', async () => {
-      const client = { status: 'end' } as unknown as RedisClient
+      const client = createUnreadyClient()
       const limiter = createRateLimiter({
         logger: defaultLogger,
         client,
@@ -444,7 +448,7 @@ describe('createRateLimiter', () => {
 
       it('warns with the prefix, and never the key, on every check served by the insurance limiter, including rejected ones', async () => {
         const logger = createLoggerStub()
-        const client = { status: 'end' } as unknown as RedisClient
+        const client = createUnreadyClient()
         const prefix = uniquePrefix()
         const limiter = createRateLimiter({
           logger,
@@ -472,8 +476,7 @@ describe('createRateLimiter', () => {
       it('warns on the factory logger even when a per-check logger is given', async () => {
         const factoryLogger = createLoggerStub()
         const requestLogger = createLoggerStub()
-        // A real client that never connects, so it is never ready.
-        const client = new Redis({ lazyConnect: true })
+        const client = createUnreadyClient()
         const limiter = createRateLimiter({
           logger: factoryLogger,
           client,
@@ -494,7 +497,7 @@ describe('createRateLimiter', () => {
 
       it('warns once per check when burst is configured, not once per window', async () => {
         const logger = createLoggerStub()
-        const client = { status: 'end' } as unknown as RedisClient
+        const client = createUnreadyClient()
         const limiter = createRateLimiter({
           logger,
           client,
